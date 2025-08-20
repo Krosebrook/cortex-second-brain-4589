@@ -16,6 +16,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = () => {
     setIsAuthenticated(true);
     localStorage.setItem('isAuthenticated', 'true');
+    // Redirect to dashboard after login
+    window.location.href = '/dashboard';
   };
 
   const logout = () => {

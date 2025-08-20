@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import AuthModal from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { NotificationCenter } from '@/components/features/NotificationCenter';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -142,6 +143,7 @@ export const Navbar = () => {
   ];
   
   const authNavItems = [
+    { to: '/dashboard', icon: <Brain size={20} />, label: 'Dashboard', id: 'dashboard' },
     { to: '/manage', icon: <Table size={20} />, label: 'Manage', id: 'manage' },
     { to: '/search', icon: <Search size={20} />, label: 'Search', id: 'search' },
     { to: '/import', icon: <Upload size={20} />, label: 'Import', id: 'import' },
@@ -188,6 +190,8 @@ export const Navbar = () => {
                 onClick={() => handleNavItemClick(item.id)}
               />
             ))}
+            
+            {isAuthenticated && <NotificationCenter />}
             
             <Tooltip>
               <TooltipTrigger asChild>

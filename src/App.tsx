@@ -16,7 +16,9 @@ import Import from "./pages/Import";
 import SearchPage from "./pages/SearchPage";
 import Settings from "./pages/Settings";
 import ManagePage from "./pages/ManagePage";
+import Dashboard from "./pages/Dashboard";
 import Navbar from "./components/Navbar";
+import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -63,10 +65,22 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/dashboard" 
+        element={
+          <PageTransition>
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          </PageTransition>
+        } 
+      />
+      <Route 
         path="/manage" 
         element={
           <PageTransition>
-            <ManagePage />
+            <ProtectedRoute>
+              <ManagePage />
+            </ProtectedRoute>
           </PageTransition>
         } 
       />
@@ -74,7 +88,9 @@ const AppRoutes = () => {
         path="/profile" 
         element={
           <PageTransition>
-            <Profile />
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
           </PageTransition>
         } 
       />
@@ -82,7 +98,9 @@ const AppRoutes = () => {
         path="/import" 
         element={
           <PageTransition>
-            <Import />
+            <ProtectedRoute>
+              <Import />
+            </ProtectedRoute>
           </PageTransition>
         } 
       />
@@ -90,7 +108,9 @@ const AppRoutes = () => {
         path="/search" 
         element={
           <PageTransition>
-            <SearchPage />
+            <ProtectedRoute>
+              <SearchPage />
+            </ProtectedRoute>
           </PageTransition>
         } 
       />
@@ -98,7 +118,9 @@ const AppRoutes = () => {
         path="/settings" 
         element={
           <PageTransition>
-            <Settings />
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
           </PageTransition>
         } 
       />
