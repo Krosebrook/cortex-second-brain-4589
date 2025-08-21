@@ -17,6 +17,7 @@ import SearchPage from "./pages/SearchPage";
 import Settings from "./pages/Settings";
 import ManagePage from "./pages/ManagePage";
 import Dashboard from "./pages/Dashboard";
+import TessaPage from "./pages/TessaPage";
 import Navbar from "./components/Navbar";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
@@ -110,6 +111,16 @@ const AppRoutes = () => {
           <PageTransition>
             <ProtectedRoute>
               <SearchPage />
+            </ProtectedRoute>
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/tessa" 
+        element={
+          <PageTransition>
+            <ProtectedRoute>
+              <TessaPage />
             </ProtectedRoute>
           </PageTransition>
         } 
