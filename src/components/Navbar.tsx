@@ -146,7 +146,7 @@ export const Navbar = () => {
     { to: '/dashboard', icon: <Brain size={20} />, label: 'Dashboard', id: 'dashboard' },
     { to: '/manage', icon: <Table size={20} />, label: 'Manage', id: 'manage' },
     { to: '/tessa', icon: <Brain size={20} />, label: 'Tessa', id: 'tessa' },
-    { to: '/search', icon: <Search size={20} />, label: 'Search', id: 'search' },
+    { to: '/search', icon: <Search size={20} />, label: 'Chat with Tessa', id: 'search' },
     { to: '/import', icon: <Upload size={20} />, label: 'Import', id: 'import' },
     { to: '/profile', icon: <User size={20} />, label: 'Profile', id: 'profile' },
     { to: '/settings', icon: <Settings size={20} />, label: 'Settings', id: 'settings' },

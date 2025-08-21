@@ -37,7 +37,7 @@ const Dashboard = () => {
 
   const quickActions = [
     { title: 'Import Content', description: 'Add new knowledge to your brain', icon: Upload, to: '/import', color: 'bg-blue-500' },
-    { title: 'Search Brain', description: 'Find insights instantly', icon: Search, to: '/search', color: 'bg-green-500' },
+    { title: 'Chat with Tessa', description: 'Your personal AI agent', icon: Search, to: '/search', color: 'bg-green-500' },
     { title: 'Manage Cortex', description: 'Organize your knowledge', icon: Brain, to: '/manage', color: 'bg-purple-500' },
     { title: 'View Profile', description: 'Update your information', icon: Target, to: '/profile', color: 'bg-orange-500' },
   ];
@@ -52,9 +52,9 @@ const Dashboard = () => {
     <div className="max-w-7xl mx-auto px-4 pt-24 pb-16">
       <AnimatedTransition show={showContent} animation="slide-up">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your second brain.
+            Tessa is ready to help you explore your knowledge base with advanced AI capabilities.
           </p>
         </div>
 
@@ -183,9 +183,9 @@ const Dashboard = () => {
               <CardContent className="space-y-4">
                 <div className="text-center p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg">
                   <Brain className="h-8 w-8 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium mb-1">Your brain is growing!</p>
+                  <p className="text-sm font-medium mb-1">Tessa is learning!</p>
                   <p className="text-xs text-muted-foreground">
-                    You've added 23% more content this month compared to last month.
+                    Your AI agent has processed 23% more content this month, enhancing her reasoning capabilities.
                   </p>
                 </div>
                 

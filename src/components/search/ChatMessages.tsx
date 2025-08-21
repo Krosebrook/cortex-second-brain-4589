@@ -4,6 +4,7 @@ import { User, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnimatedTransition from '@/components/AnimatedTransition';
 import { Chat, ChatMessage } from '@/types/chat';
+import { TessaPersonality } from './TessaPersonality';
 
 interface ChatMessagesProps {
   activeChat: Chat | null;
@@ -17,11 +18,8 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ activeChat }) => {
         animation="fade"
         className="h-full flex items-center justify-center"
       >
-        <div className="text-center space-y-2 max-w-md">
-          <h3 className="text-xl font-medium">Search Your Second Brain</h3>
-          <p className="text-muted-foreground">
-            Ask questions to search across your notes, documents, and knowledge base.
-          </p>
+        <div className="max-w-2xl w-full">
+          <TessaPersonality show={true} />
         </div>
       </AnimatedTransition>
       
@@ -42,12 +40,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ activeChat }) => {
           >
             <div className={cn(
               "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-              message.type === 'user' ? "bg-primary/20" : "bg-secondary/20"
+              message.type === 'user' ? "bg-primary/20" : "bg-gradient-to-br from-primary/20 to-accent/20"
             )}>
               {message.type === 'user' ? (
                 <User size={16} className="text-primary" />
               ) : (
-                <Bot size={16} className="text-secondary" />
+                <div className="text-xs font-bold text-primary">T</div>
               )}
             </div>
             <div className="flex-1">
@@ -64,16 +62,20 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ activeChat }) => {
         
         {activeChat?.messages.length > 0 && activeChat.messages[activeChat.messages.length - 1].type === 'assistant' && (
           <div className="p-4 glass-panel rounded-xl space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Suggested Results</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Tessa's Analysis</h3>
             <div className="space-y-3">
-              {['Artificial Intelligence', 'Machine Learning', 'Neural Networks'].map((result, index) => (
+              {[
+                { title: 'Temporal Context', description: 'Recent patterns in your knowledge base' },
+                { title: 'Cross-Referenced Insights', description: 'Connections Tessa found across your content' },
+                { title: 'Goal Alignment', description: 'How this relates to your objectives' }
+              ].map((result, index) => (
                 <div 
                   key={index}
                   className="p-3 hover:bg-primary/5 rounded-lg transition-all duration-200 cursor-pointer"
                 >
-                  <h4 className="font-medium">{result}</h4>
+                  <h4 className="font-medium">{result.title}</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Related to your search query
+                    {result.description}
                   </p>
                 </div>
               ))}

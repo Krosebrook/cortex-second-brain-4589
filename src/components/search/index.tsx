@@ -118,7 +118,7 @@ export const Search: React.FC = () => {
           const aiMessage: ChatMessage = {
             id: generateId(),
             type: 'assistant',
-            content: `Based on your search for "${userMessage.content}", I found several relevant notes in your second brain. Would you like me to summarize the key insights?`,
+            content: `I'm Tessa, your personal AI agent. I've analyzed your knowledge base for "${userMessage.content}" and found some interesting insights. Let me break down what I discovered using my advanced reasoning capabilities.`,
             timestamp: new Date()
           };
           
@@ -178,7 +178,7 @@ export const Search: React.FC = () => {
             <SearchIcon size={18} />
           </Button>
           <h2 className="font-medium">
-            {activeChat?.title || 'Universal Search'}
+            {activeChat?.title || 'Chat with Tessa'}
           </h2>
         </div>
         
