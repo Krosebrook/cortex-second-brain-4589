@@ -186,7 +186,7 @@ export const Search: React.FC = () => {
         <ChatMessages activeChat={activeChat} />
         
         {/* Input area */}
-        <ChatInput 
+        <ChatInput
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           handleSubmit={handleSubmit}

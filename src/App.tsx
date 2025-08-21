@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
 import HowPage from "./pages/HowPage";
+import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Import from "./pages/Import";
@@ -62,6 +63,14 @@ const AppRoutes = () => {
         element={
           <PageTransition>
             <HowPage />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/auth" 
+        element={
+          <PageTransition>
+            <AuthPage />
           </PageTransition>
         } 
       />

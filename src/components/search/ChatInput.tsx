@@ -10,6 +10,7 @@ interface ChatInputProps {
   handleSubmit: (e: React.FormEvent) => void;
   isFocused: boolean;
   setIsFocused: (focused: boolean) => void;
+  loading?: boolean;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -17,7 +18,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   setSearchQuery,
   handleSubmit,
   isFocused,
-  setIsFocused
+  setIsFocused,
+  loading = false
 }) => {
   return (
     <div className="p-4 border-t">
@@ -54,9 +56,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
               searchQuery.trim() ? "opacity-100" : "opacity-50",
               isFocused && searchQuery.trim() ? "text-primary" : ""
             )}
-            disabled={!searchQuery.trim()}
+            disabled={!searchQuery.trim() || loading}
           >
-            <SendIcon size={18} />
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            ) : (
+              <SendIcon size={18} />
+            )}
           </Button>
         </div>
       </form>

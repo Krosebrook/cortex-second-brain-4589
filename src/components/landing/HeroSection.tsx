@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { WaitlistModal } from '../waitlist/WaitlistModal';
 import DiagramComponent from './DiagramComponent';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +13,7 @@ export const HeroSection = ({
   showTitle
 }: HeroSectionProps) => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'scattered' | 'convergence' | 'organized'>('scattered');
   const [heroText, setHeroText] = useState("All your notes, bookmarks, inspirations, articles and images in one single, private second brain, accessible anywhere, anytime.");
@@ -41,14 +43,14 @@ export const HeroSection = ({
           size="lg" 
           onClick={() => {
             if (isAuthenticated) {
-              window.location.href = '/dashboard';
+              navigate('/dashboard');
             } else {
-              setIsModalOpen(true);
+              navigate('/auth');
             }
           }} 
           className="rounded-full px-8 py-6 text-base font-medium bg-primary hover:bg-primary/90 transition-all duration-300"
         >
-          {isAuthenticated ? 'Go to Dashboard' : 'Join Waitlist'}
+          {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
 
