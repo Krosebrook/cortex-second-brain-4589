@@ -1,57 +1,45 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Chat, ChatMessage } from '@/types/chat';
-import { generateId, createNewChat as createNewChatUtil } from '@/utils/chatUtils';
 import ChatSidebar from './ChatSidebar';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
-import { cn } from '@/lib/utils';
+import { useChat } from '@/hooks/useChat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Search: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [showSidebar, setShowSidebar] = useState(true);
   
-  // Initialize with a sample chat on first render
-  useEffect(() => {
-    if (chats.length === 0) {
-      const newChat = createNewChatUtil();
-      setChats([newChat]);
-      setActiveChat(newChat);
-    }
-  }, []);
+  const { user } = useAuth();
+  const {
+    chats,
+    activeChat,
+    loading,
+    isSubmitting,
+    setActiveChat,
+    createNewChat,
+    deleteChat: deleteChatFromDB,
+    updateChatTitle,
+    sendMessage
+  } = useChat();
 
-  // Create a new chat
-  const createNewChat = () => {
-    const newChat = createNewChatUtil();
-    setChats([newChat, ...chats]);
-    setActiveChat(newChat);
+  // Handle new chat creation
+  const handleCreateNewChat = () => {
+    createNewChat();
   };
 
-  // Delete a chat
-  const deleteChat = (chatId: string, e: React.MouseEvent) => {
+  // Handle chat deletion
+  const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updatedChats = chats.filter(chat => chat.id !== chatId);
-    setChats(updatedChats);
-    
-    // If we deleted the active chat, set the first available chat as active
-    if (activeChat && activeChat.id === chatId) {
-      setActiveChat(updatedChats.length > 0 ? updatedChats[0] : null);
-    }
-    
-    // If no chats left, create a new one
-    if (updatedChats.length === 0) {
-      createNewChat();
-    }
+    deleteChatFromDB(chatId);
   };
 
-  // Edit chat title
+  // Edit chat title handlers
   const startEditingTitle = (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const chat = chats.find(c => c.id === chatId);
@@ -62,86 +50,35 @@ export const Search: React.FC = () => {
   };
 
   const saveTitle = (chatId: string) => {
-    const updatedChats = chats.map(chat => {
-      if (chat.id === chatId) {
-        return { ...chat, title: editTitle || 'Untitled Chat' };
-      }
-      return chat;
-    });
-    setChats(updatedChats);
+    updateChatTitle(chatId, editTitle);
     setIsEditingTitle(null);
   };
 
   // Handle message submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim() && activeChat) {
-      // Create user message
-      const userMessage: ChatMessage = {
-        id: generateId(),
-        type: 'user',
-        content: searchQuery,
-        timestamp: new Date()
-      };
-      
-      // Update chat with new message
-      const updatedChats = chats.map(chat => {
-        if (chat.id === activeChat.id) {
-          // If this is the first message, update the chat title
-          let updatedTitle = chat.title;
-          if (chat.messages.length === 0) {
-            updatedTitle = searchQuery.length > 25 
-              ? `${searchQuery.substring(0, 22)}...` 
-              : searchQuery;
-          }
-          
-          return {
-            ...chat,
-            title: updatedTitle,
-            messages: [...chat.messages, userMessage],
-            updatedAt: new Date()
-          };
-        }
-        return chat;
-      });
-      
-      setChats(updatedChats);
+    if (searchQuery.trim() && !isSubmitting) {
+      await sendMessage(searchQuery);
       setSearchQuery('');
-      
-      // Find the updated active chat
-      const updatedActiveChat = updatedChats.find(chat => chat.id === activeChat.id);
-      if (updatedActiveChat) {
-        setActiveChat(updatedActiveChat);
-        
-        // Add AI response after a short delay
-        setTimeout(() => {
-          const aiMessage: ChatMessage = {
-            id: generateId(),
-            type: 'assistant',
-            content: `I'm Tessa, your personal AI agent. I've analyzed your knowledge base for "${userMessage.content}" and found some interesting insights. Let me break down what I discovered using my advanced reasoning capabilities.`,
-            timestamp: new Date()
-          };
-          
-          const updatedChatsWithAi = updatedChats.map(chat => {
-            if (chat.id === activeChat.id) {
-              return {
-                ...chat,
-                messages: [...chat.messages, aiMessage],
-                updatedAt: new Date()
-              };
-            }
-            return chat;
-          });
-          
-          setChats(updatedChatsWithAi);
-          const updatedActiveChatWithAi = updatedChatsWithAi.find(chat => chat.id === activeChat.id);
-          if (updatedActiveChatWithAi) {
-            setActiveChat(updatedActiveChatWithAi);
-          }
-        }, 800);
-      }
     }
   };
+
+  // Show loading or require authentication
+  if (!user) {
+    return (
+      <div className="w-full h-[calc(100vh-120px)] flex items-center justify-center">
+        <p className="text-muted-foreground">Please sign in to start chatting with Tessa.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="w-full h-[calc(100vh-120px)] flex items-center justify-center">
+        <p className="text-muted-foreground">Loading your chats...</p>
+      </div>
+    );
+  }
 
   // Toggle sidebar
   const toggleSidebar = () => {
@@ -155,8 +92,8 @@ export const Search: React.FC = () => {
         chats={chats}
         activeChat={activeChat}
         setActiveChat={setActiveChat}
-        createNewChat={createNewChat}
-        deleteChat={deleteChat}
+        createNewChat={handleCreateNewChat}
+        deleteChat={handleDeleteChat}
         showSidebar={showSidebar}
         isEditingTitle={isEditingTitle}
         editTitle={editTitle}
@@ -192,6 +129,7 @@ export const Search: React.FC = () => {
           handleSubmit={handleSubmit}
           isFocused={isFocused}
           setIsFocused={setIsFocused}
+          loading={isSubmitting}
         />
       </div>
     </div>

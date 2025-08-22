@@ -35,6 +35,13 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
+      // Enhanced password validation
+      if (password.length < 8) {
+        toast.error('Password must be at least 8 characters long');
+        setLoading(false);
+        return;
+      }
+
       const redirectUrl = `${window.location.origin}/dashboard`;
       
       const { error } = await supabase.auth.signUp({
@@ -208,7 +215,7 @@ const AuthPage = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="pl-10"
-                          minLength={6}
+                          minLength={8}
                           required
                         />
                       </div>
