@@ -180,7 +180,7 @@ export const useChat = () => {
   const sendMessage = async (content: string) => {
     if (!user || !activeChat || !content.trim() || isSubmitting) return;
 
-    // Validate message length (security enhancement)
+    // Enhanced input validation (security enhancement)
     if (content.length > 4000) {
       toast({
         title: "Error",
@@ -190,6 +190,9 @@ export const useChat = () => {
       return;
     }
 
+    // Sanitize content for basic XSS protection
+    const sanitizedContent = content.trim().replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
     setIsSubmitting(true);
 
     try {
@@ -197,7 +200,7 @@ export const useChat = () => {
       const userMessage: ChatMessage = {
         id: generateId(),
         type: 'user',
-        content: content.trim(),
+        content: sanitizedContent,
         timestamp: new Date()
       };
 
@@ -210,9 +213,9 @@ export const useChat = () => {
       
       // Update title if it's the first message
       if (activeChat.messages.length === 0) {
-        updatedChat.title = content.length > 25 
-          ? `${content.substring(0, 22)}...` 
-          : content;
+        updatedChat.title = sanitizedContent.length > 25 
+          ? `${sanitizedContent.substring(0, 22)}...` 
+          : sanitizedContent;
       }
 
       setActiveChat(updatedChat);
@@ -221,7 +224,7 @@ export const useChat = () => {
       // Call the edge function for AI response
       const { data, error } = await supabase.functions.invoke('chat-with-tessa', {
         body: {
-          message: content.trim(),
+          message: sanitizedContent,
           chatId: activeChat.id
         }
       });
