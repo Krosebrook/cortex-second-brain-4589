@@ -17,6 +17,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { secureStorage } from '@/utils/security';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -81,9 +82,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
   };
 
   const handleComplete = () => {
-    // Save user data
-    localStorage.setItem('onboardingComplete', 'true');
-    localStorage.setItem('userData', JSON.stringify(userData));
+    // Save user data securely with expiration (30 days)
+    secureStorage.setItem('onboardingComplete', 'true', 24 * 30);
+    secureStorage.setItem('userData', userData, 24 * 30);
     toast.success('Welcome to your second brain!');
     onComplete();
   };

@@ -5,7 +5,7 @@ export const SecurityHeaders = () => {
     // Set Content Security Policy for enhanced security
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://nxosqzkzfayjwqdhijrp.supabase.co https://api.openai.com; frame-ancestors 'none';";
+    meta.content = "default-src 'self'; img-src 'self' data: https: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; connect-src 'self' https://nxosqzkzfayjwqdhijrp.supabase.co https://api.openai.com wss://nxosqzkzfayjwqdhijrp.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self';";
     document.head.appendChild(meta);
 
     // Additional security headers via meta tags where possible

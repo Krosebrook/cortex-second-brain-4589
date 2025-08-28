@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Chat, ChatMessage } from '@/types/chat';
 import { generateId } from '@/utils/chatUtils';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeContent, validateChatMessage, RateLimiter } from '@/utils/security';
 
 export const useChat = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -12,6 +13,9 @@ export const useChat = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Rate limiter for chat messages (20 messages per minute)
+  const [rateLimiter] = useState(() => new RateLimiter(20, 60000));
 
   // Load chats from database
   const loadChats = async () => {
@@ -180,18 +184,29 @@ export const useChat = () => {
   const sendMessage = async (content: string) => {
     if (!user || !activeChat || !content.trim() || isSubmitting) return;
 
-    // Enhanced input validation (security enhancement)
-    if (content.length > 4000) {
+    // Rate limiting check
+    if (!rateLimiter.isAllowed(user.id)) {
       toast({
-        title: "Error",
-        description: "Message too long. Please keep messages under 4000 characters.",
+        title: "Rate Limit Exceeded",
+        description: "Please wait before sending another message (20 messages per minute limit)",
         variant: "destructive"
       });
       return;
     }
 
-    // Sanitize content for basic XSS protection
-    const sanitizedContent = content.trim().replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    // Enhanced input validation
+    const validation = validateChatMessage(content);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid Message",
+        description: validation.error,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Enhanced XSS protection with DOMPurify
+    const sanitizedContent = sanitizeContent(content);
 
     setIsSubmitting(true);
 
