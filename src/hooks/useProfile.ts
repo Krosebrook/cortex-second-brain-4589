@@ -5,9 +5,15 @@ import { toast } from 'sonner';
 
 export interface Profile {
   id: string;
-  username: string | null;
+  email: string;
   full_name: string | null;
   avatar_url: string | null;
+  subscription_tier: 'starter' | 'professional' | 'enterprise';
+  subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled';
+  stripe_customer_id: string | null;
+  trial_ends_at: string | null;
+  onboarding_completed: boolean;
+  usage_limits: any;
   created_at: string;
   updated_at: string;
 }
@@ -29,10 +35,10 @@ export const useProfile = () => {
   const loadProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .eq('id', user?.id)
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading profile:', error);
@@ -53,9 +59,9 @@ export const useProfile = () => {
 
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .update(updates)
-        .eq('user_id', user.id);
+        .eq('id', user.id);
 
       if (error) {
         console.error('Error updating profile:', error);
