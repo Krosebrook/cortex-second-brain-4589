@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, LogIn, Search, Upload, User, Settings, LogOut, Moon, Sun, Table, Info, HelpCircle, Code } from 'lucide-react';
 import { useRippleEffect } from '@/lib/animations';
+import { StatusIndicator } from './connection/StatusIndicator';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -219,21 +220,24 @@ export const Navbar = () => {
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground"
-                    onClick={() => navigate('/auth')}
-                  >
-                    <LogIn size={20} />
-                    {active === 'login' && <span className="font-medium">Login</span>}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Login</p>
-                </TooltipContent>
-              </Tooltip>
+              <>
+                <StatusIndicator />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground"
+                      onClick={() => navigate('/auth')}
+                    >
+                      <LogIn size={20} />
+                      {active === 'login' && <span className="font-medium">Login</span>}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Login</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
             )}
           </nav>
         </header>
