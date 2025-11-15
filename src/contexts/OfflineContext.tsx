@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 interface OfflineContextType {
   isOffline: boolean;
+  isOnline: boolean;
   hasPendingSync: boolean;
   syncPendingOperations: () => Promise<void>;
   isSyncing: boolean;
@@ -22,14 +23,12 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
   const { isOnline, wasOffline } = useNetworkStatus();
   const { user } = useAuth();
 
-  // Initialize offline storage
   useEffect(() => {
     offlineStorage.init().catch(error => {
       console.error('Failed to initialize offline storage:', error);
     });
   }, []);
 
-  // Check for pending operations
   useEffect(() => {
     const checkPending = async () => {
       try {
@@ -42,12 +41,11 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
     };
 
     checkPending();
-    const interval = setInterval(checkPending, 10000); // Check every 10 seconds
+    const interval = setInterval(checkPending, 10000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-sync when coming back online
   useEffect(() => {
     if (isOnline && wasOffline && hasPendingSync && user) {
       console.log('Connection restored, syncing pending operations...');
@@ -71,7 +69,6 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
 
       for (const operation of queue) {
         try {
-          // Skip operations with too many retries
           if (operation.retries >= 3) {
             console.warn(`Skipping operation ${operation.id} (too many retries)`);
             await offlineStorage.removeFromSyncQueue(operation.id);
@@ -79,14 +76,12 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
             continue;
           }
 
-          // Execute the operation based on type
           if (operation.type === 'chat') {
             await syncChatOperation(operation);
           } else if (operation.type === 'knowledge') {
             await syncKnowledgeOperation(operation);
           }
 
-          // Remove from queue on success
           await offlineStorage.removeFromSyncQueue(operation.id);
           successCount++;
         } catch (error) {
@@ -106,13 +101,12 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
         toast.error(`Failed to sync ${failCount} ${failCount === 1 ? 'change' : 'changes'}`);
       }
 
-      // Update pending state
       const remainingQueue = await offlineStorage.getSyncQueue();
       setHasPendingSync(remainingQueue.length > 0);
       setPendingCount(remainingQueue.length);
     } catch (error) {
       console.error('Error during sync:', error);
-      toast.error('Failed to sync changes. Will retry automatically.');
+      toast.error('Failed to sync pending changes');
     } finally {
       setIsSyncing(false);
     }
@@ -120,30 +114,39 @@ export const OfflineProvider = ({ children }: { children: React.ReactNode }) => 
 
   const syncChatOperation = async (operation: any) => {
     const { operation: op, data } = operation;
-
-    if (op === 'create') {
-      await supabase.from('chats').insert(data);
-    } else if (op === 'update') {
-      await supabase.from('chats').update(data).eq('id', data.id);
-    } else if (op === 'delete') {
-      await supabase.from('chats').delete().eq('id', data.id);
+    
+    switch (op) {
+      case 'create':
+        await supabase.from('chats').insert(data);
+        break;
+      case 'update':
+        await supabase.from('chats').update(data.updates).eq('id', data.id);
+        break;
+      case 'delete':
+        await supabase.from('chats').delete().eq('id', data.id);
+        break;
     }
   };
 
   const syncKnowledgeOperation = async (operation: any) => {
     const { operation: op, data } = operation;
-
-    if (op === 'create') {
-      await supabase.from('knowledge_base').insert(data);
-    } else if (op === 'update') {
-      await supabase.from('knowledge_base').update(data).eq('id', data.id);
-    } else if (op === 'delete') {
-      await supabase.from('knowledge_base').delete().eq('id', data.id);
+    
+    switch (op) {
+      case 'create':
+        await supabase.from('knowledge_base').insert(data);
+        break;
+      case 'update':
+        await supabase.from('knowledge_base').update(data.updates).eq('id', data.id);
+        break;
+      case 'delete':
+        await supabase.from('knowledge_base').delete().eq('id', data.id);
+        break;
     }
   };
 
-  const value = {
+  const value: OfflineContextType = {
     isOffline: !isOnline,
+    isOnline,
     hasPendingSync,
     syncPendingOperations,
     isSyncing,

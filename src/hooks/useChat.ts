@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOffline } from '@/contexts/OfflineContext';
 import { Chat, ChatMessage } from '@/types/chat';
 import { generateId } from '@/utils/chatUtils';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeContent, validateChatMessage, RateLimiter } from '@/utils/security';
+import { ChatService } from '@/services/chat.service';
 
 export const useChat = () => {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -12,94 +13,51 @@ export const useChat = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { isOnline } = useOffline();
   const { toast } = useToast();
   
-  // Rate limiter for chat messages (20 messages per minute)
   const [rateLimiter] = useState(() => new RateLimiter(20, 60000));
 
-  // Load chats from database
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     if (!user) return;
     
     try {
-      const { data: chatsData, error } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Convert database format to Chat type
-      const formattedChats: Chat[] = await Promise.all(
-        chatsData.map(async (chat) => {
-          const { data: messagesData, error: messagesError } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('chat_id', chat.id)
-            .order('created_at', { ascending: true });
-
-          if (messagesError) throw messagesError;
-
-          const messages: ChatMessage[] = messagesData.map(msg => ({
-            id: msg.id,
-            type: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            timestamp: new Date(msg.created_at)
-          }));
-
-          return {
-            id: chat.id,
-            title: chat.title,
-            messages,
-            createdAt: new Date(chat.created_at),
-            updatedAt: new Date(chat.updated_at)
-          };
-        })
-      );
-
+      const formattedChats = await ChatService.loadChats(user.id);
       setChats(formattedChats);
       
-      // Set first chat as active if none selected
       if (formattedChats.length > 0 && !activeChat) {
         setActiveChat(formattedChats[0]);
       }
     } catch (error) {
       console.error('Error loading chats:', error);
       toast({
-        title: "Error",
-        description: "Failed to load chats",
-        variant: "destructive"
+        title: isOnline ? "Error" : "Offline Mode",
+        description: isOnline ? "Failed to load chats" : "Showing offline chats",
+        variant: isOnline ? "destructive" : "default"
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, activeChat, isOnline, toast]);
 
-  // Create new chat
-  const createNewChat = async (): Promise<Chat | null> => {
+  useEffect(() => {
+    loadChats();
+  }, [user]);
+
+  const createNewChat = useCallback(async (): Promise<Chat | null> => {
     if (!user) return null;
 
+    if (!isOnline) {
+      toast({
+        title: "Offline",
+        description: "Cannot create new chats while offline",
+        variant: "default"
+      });
+      return null;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('chats')
-        .insert({
-          user_id: user.id,
-          title: 'New Chat'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newChat: Chat = {
-        id: data.id,
-        title: data.title,
-        messages: [],
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at)
-      };
-
+      const newChat = await ChatService.createChat(user.id);
       setChats([newChat, ...chats]);
       setActiveChat(newChat);
       return newChat;
@@ -112,32 +70,27 @@ export const useChat = () => {
       });
       return null;
     }
-  };
+  }, [user, chats, isOnline, toast]);
 
-  // Delete chat
-  const deleteChat = async (chatId: string) => {
+  const deleteChat = useCallback(async (chatId: string) => {
     if (!user) return;
 
+    if (!isOnline) {
+      toast({
+        title: "Offline",
+        description: "Cannot delete chats while offline",
+        variant: "default"
+      });
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('chats')
-        .delete()
-        .eq('id', chatId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
+      await ChatService.deleteChat(chatId, user.id);
       const updatedChats = chats.filter(chat => chat.id !== chatId);
       setChats(updatedChats);
-
-      // If we deleted the active chat, set the first available chat as active
-      if (activeChat && activeChat.id === chatId) {
-        if (updatedChats.length > 0) {
-          setActiveChat(updatedChats[0]);
-        } else {
-          // Create a new chat if none left
-          await createNewChat();
-        }
+      
+      if (activeChat?.id === chatId) {
+        setActiveChat(updatedChats[0] || null);
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
@@ -147,28 +100,28 @@ export const useChat = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [user, chats, activeChat, isOnline, toast]);
 
-  // Update chat title
-  const updateChatTitle = async (chatId: string, title: string) => {
+  const updateChatTitle = useCallback(async (chatId: string, title: string) => {
     if (!user) return;
 
+    if (!isOnline) {
+      toast({
+        title: "Offline",
+        description: "Cannot update chat titles while offline",
+        variant: "default"
+      });
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('chats')
-        .update({ title: title.trim() || 'Untitled Chat' })
-        .eq('id', chatId)
-        .eq('user_id', user.id);
+      await ChatService.updateChatTitle(chatId, user.id, title);
+      setChats(chats.map(chat => 
+        chat.id === chatId ? { ...chat, title } : chat
+      ));
 
-      if (error) throw error;
-
-      const updatedChats = chats.map(chat => 
-        chat.id === chatId ? { ...chat, title: title.trim() || 'Untitled Chat' } : chat
-      );
-      setChats(updatedChats);
-
-      if (activeChat && activeChat.id === chatId) {
-        setActiveChat({ ...activeChat, title: title.trim() || 'Untitled Chat' });
+      if (activeChat?.id === chatId) {
+        setActiveChat({ ...activeChat, title });
       }
     } catch (error) {
       console.error('Error updating chat title:', error);
@@ -178,23 +131,29 @@ export const useChat = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [user, chats, activeChat, isOnline, toast]);
 
-  // Send message and get AI response
-  const sendMessage = async (content: string) => {
+  const sendMessage = useCallback(async (content: string) => {
     if (!user || !activeChat || !content.trim() || isSubmitting) return;
 
-    // Rate limiting check
+    if (!isOnline) {
+      toast({
+        title: "Offline",
+        description: "Cannot send messages while offline",
+        variant: "default"
+      });
+      return;
+    }
+
     if (!rateLimiter.isAllowed(user.id)) {
       toast({
         title: "Rate Limit Exceeded",
-        description: "Please wait before sending another message (20 messages per minute limit)",
+        description: "Please wait before sending another message",
         variant: "destructive"
       });
       return;
     }
 
-    // Enhanced input validation
     const validation = validateChatMessage(content);
     if (!validation.isValid) {
       toast({
@@ -205,13 +164,10 @@ export const useChat = () => {
       return;
     }
 
-    // Enhanced XSS protection with DOMPurify
     const sanitizedContent = sanitizeContent(content);
-
     setIsSubmitting(true);
 
     try {
-      // Create user message
       const userMessage: ChatMessage = {
         id: generateId(),
         type: 'user',
@@ -219,82 +175,56 @@ export const useChat = () => {
         timestamp: new Date()
       };
 
-      // Update local state immediately for better UX
       const updatedChat = {
         ...activeChat,
         messages: [...activeChat.messages, userMessage],
         updatedAt: new Date()
       };
       
-      // Update title if it's the first message
       if (activeChat.messages.length === 0) {
         updatedChat.title = sanitizedContent.length > 25 
           ? `${sanitizedContent.substring(0, 22)}...` 
           : sanitizedContent;
       }
 
-      setActiveChat(updatedChat);
-      setChats(chats.map(chat => chat.id === activeChat.id ? updatedChat : chat));
+      let chatToUse = updatedChat;
 
-      // Call the edge function for AI response
-      const { data, error } = await supabase.functions.invoke('chat-with-tessa', {
-        body: {
-          message: sanitizedContent,
-          chatId: activeChat.id
-        }
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to get AI response');
+      if (activeChat.messages.length === 0) {
+        await ChatService.updateChatTitle(activeChat.id, user.id, updatedChat.title);
+        chatToUse = { ...updatedChat, title: updatedChat.title };
       }
 
-      // Create AI message
+      setActiveChat(chatToUse);
+      setChats(chats.map(chat => chat.id === activeChat.id ? chatToUse : chat));
+
+      const aiResponse = await ChatService.sendMessageToAPI(sanitizedContent, chatToUse.id);
+
       const aiMessage: ChatMessage = {
         id: generateId(),
         type: 'assistant',
-        content: data.message,
+        content: aiResponse,
         timestamp: new Date()
       };
 
-      // Update chat with AI response
-      const finalUpdatedChat = {
-        ...updatedChat,
-        messages: [...updatedChat.messages, aiMessage],
+      const finalChat = {
+        ...chatToUse,
+        messages: [...chatToUse.messages, aiMessage],
         updatedAt: new Date()
       };
 
-      setActiveChat(finalUpdatedChat);
-      setChats(chats.map(chat => chat.id === activeChat.id ? finalUpdatedChat : chat));
-
-      // Update chat title in database if it changed
-      if (updatedChat.title !== activeChat.title) {
-        await updateChatTitle(activeChat.id, updatedChat.title);
-      }
-
+      setActiveChat(finalChat);
+      setChats(chats.map(chat => chat.id === finalChat.id ? finalChat : chat));
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
+        title: isOnline ? "Error" : "Offline",
+        description: isOnline ? "Failed to send message" : "Cannot send messages while offline",
         variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Load chats when user changes
-  useEffect(() => {
-    if (user) {
-      loadChats();
-    } else {
-      setChats([]);
-      setActiveChat(null);
-      setLoading(false);
-    }
-  }, [user]);
+  }, [user, activeChat, chats, isOnline, isSubmitting, rateLimiter, toast]);
 
   return {
     chats,
