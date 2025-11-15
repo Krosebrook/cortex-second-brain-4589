@@ -119,7 +119,25 @@ class OfflineStorage {
     ).then(() => {});
   }
 
-  // Sync queue operations
+  // Chat-specific operations
+  async storeChats(chats: any[]): Promise<void> {
+    const promises = chats.map(chat => this.saveToCache(CHATS_STORE, chat));
+    await Promise.all(promises);
+  }
+
+  async getChats(): Promise<any[]> {
+    return this.getAllFromCache(CHATS_STORE);
+  }
+
+  // Knowledge-specific operations
+  async storeKnowledge(items: any[]): Promise<void> {
+    const promises = items.map(item => this.saveToCache(KNOWLEDGE_STORE, item));
+    await Promise.all(promises);
+  }
+
+  async getKnowledge(): Promise<any[]> {
+    return this.getAllFromCache(KNOWLEDGE_STORE);
+  }
   async addToSyncQueue(operation: Omit<SyncOperation, 'id' | 'timestamp' | 'retries'>): Promise<void> {
     const syncOp: SyncOperation = {
       ...operation,
