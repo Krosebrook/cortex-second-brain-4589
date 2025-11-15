@@ -9,6 +9,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   connectionError: boolean;
+  isReconnecting: boolean;
+  reconnectAttempts: number;
   logout: () => Promise<void>;
   retryConnection: () => Promise<void>;
 }
@@ -20,6 +22,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const initializeAuth = async () => {
     try {
@@ -82,7 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const retryConnection = async () => {
+    setIsReconnecting(true);
+    setReconnectAttempts(prev => prev + 1);
     await initializeAuth();
+    setIsReconnecting(false);
   };
 
   const value = {
@@ -91,6 +98,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     isAuthenticated: !!user,
     loading,
     connectionError,
+    isReconnecting,
+    reconnectAttempts,
     logout,
     retryConnection,
   };

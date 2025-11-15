@@ -6,8 +6,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SecurityHeaders } from "@/components/layout/SecurityHeaders";
+import { OfflineBanner } from "@/components/connection/OfflineBanner";
+import { ReconnectionBanner } from "@/components/connection/ReconnectionBanner";
+import StatusPage from "./pages/StatusPage";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
 import HowPage from "./pages/HowPage";
@@ -136,6 +140,14 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/status" 
+        element={
+          <PageTransition>
+            <StatusPage />
+          </PageTransition>
+        } 
+      />
+      <Route 
         path="/settings" 
         element={
           <PageTransition>
@@ -161,20 +173,24 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <SecurityHeaders />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen">
-              <Navbar />
+        <OfflineProvider>
+          <TooltipProvider>
+            <SecurityHeaders />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <OfflineBanner />
+              <ReconnectionBanner />
+              <div className="min-h-screen">
+                <Navbar />
               <AppRoutes />
             </div>
           </BrowserRouter>
         </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </OfflineProvider>
+    </AuthProvider>
+  </ThemeProvider>
+</QueryClientProvider>
 );
 
 export default App;
