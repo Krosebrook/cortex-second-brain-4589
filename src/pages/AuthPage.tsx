@@ -5,14 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Brain, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Brain, Mail, Lock, User, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
+import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
 
 const AuthPage = () => {
   const [loading, setLoading] = useState(false);
+  const [checkingHealth, setCheckingHealth] = useState(true);
+  const [connectionHealthy, setConnectionHealthy] = useState(true);
+  const [healthError, setHealthError] = useState<string>('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -20,18 +25,52 @@ const AuthPage = () => {
   const showContent = useAnimateIn(false, 300);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/dashboard');
+    const initializePage = async () => {
+      // First check Supabase health
+      const health = await checkSupabaseHealth();
+      setConnectionHealthy(health.isHealthy);
+      setHealthError(health.error || '');
+      setCheckingHealth(false);
+
+      // Then check if user is already logged in
+      if (health.isHealthy) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            navigate('/dashboard');
+          }
+        } catch (error) {
+          console.error('Session check error:', error);
+        }
       }
     };
-    checkUser();
+
+    initializePage();
   }, [navigate]);
+
+  const handleRetryConnection = async () => {
+    setCheckingHealth(true);
+    const health = await checkSupabaseHealth();
+    setConnectionHealthy(health.isHealthy);
+    setHealthError(health.error || '');
+    setCheckingHealth(false);
+
+    if (health.isHealthy) {
+      toast.success('Connection restored!');
+    } else {
+      toast.error('Still unable to connect. Please try again later.');
+    }
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check connection health before attempting
+    if (!connectionHealthy) {
+      toast.error('Cannot connect to authentication service. Please retry connection.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -57,16 +96,21 @@ const AuthPage = () => {
       });
 
       if (error) {
-        if (error.message.includes('User already registered')) {
-          toast.error('Account already exists. Please sign in instead.');
-        } else {
-          toast.error(error.message);
-        }
+        toast.error(getAuthErrorMessage(error));
       } else {
         toast.success('Account created! Check your email to confirm your account.');
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      const errorMessage = error instanceof Error 
+        ? getAuthErrorMessage(error)
+        : 'An unexpected error occurred';
+      toast.error(errorMessage);
+      
+      // Recheck health if fetch failed
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setConnectionHealthy(false);
+        setHealthError('Connection lost. Please retry connection.');
+      }
     } finally {
       setLoading(false);
     }
@@ -74,6 +118,13 @@ const AuthPage = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check connection health before attempting
+    if (!connectionHealthy) {
+      toast.error('Cannot connect to authentication service. Please retry connection.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -83,17 +134,22 @@ const AuthPage = () => {
       });
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password');
-        } else {
-          toast.error(error.message);
-        }
+        toast.error(getAuthErrorMessage(error));
       } else {
         toast.success('Welcome back!');
         navigate('/dashboard');
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
+      const errorMessage = error instanceof Error 
+        ? getAuthErrorMessage(error)
+        : 'An unexpected error occurred';
+      toast.error(errorMessage);
+      
+      // Recheck health if fetch failed
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setConnectionHealthy(false);
+        setHealthError('Connection lost. Please retry connection.');
+      }
     } finally {
       setLoading(false);
     }
@@ -113,6 +169,32 @@ const AuthPage = () => {
               Your personal AI assistant for knowledge management
             </p>
           </div>
+
+          {/* Connection Error Alert */}
+          {!connectionHealthy && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="flex-1">{healthError || 'Cannot connect to authentication service'}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryConnection}
+                  disabled={checkingHealth}
+                  className="ml-2"
+                >
+                  {checkingHealth ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Retry
+                    </>
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Auth Form */}
           <Card className="w-full">
@@ -164,7 +246,7 @@ const AuthPage = () => {
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={loading}
+                      disabled={loading || !connectionHealthy}
                     >
                       {loading ? 'Signing in...' : 'Sign In'}
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -223,7 +305,7 @@ const AuthPage = () => {
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={loading}
+                      disabled={loading || !connectionHealthy}
                     >
                       {loading ? 'Creating account...' : 'Create Account'}
                       <ArrowRight className="ml-2 h-4 w-4" />
