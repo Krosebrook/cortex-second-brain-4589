@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { enhancedToast } from '@/components/feedback/EnhancedToast';
 
 export interface KnowledgeItem {
   id: string;
@@ -38,7 +38,7 @@ export const useKnowledge = () => {
 
       if (error) {
         console.error('Error loading knowledge:', error);
-        toast.error('Failed to load knowledge base');
+        enhancedToast.error('Error', 'Failed to load knowledge base');
         return;
       }
 
@@ -63,15 +63,15 @@ export const useKnowledge = () => {
 
       if (error) {
         console.error('Error adding knowledge item:', error);
-        toast.error('Failed to add knowledge item');
+        enhancedToast.error('Error', 'Failed to add knowledge item');
         return;
       }
 
       await loadKnowledge();
-      toast.success('Knowledge item added successfully');
+      enhancedToast.success('Success', 'Knowledge item added successfully');
     } catch (error) {
       console.error('Error adding knowledge item:', error);
-      toast.error('Failed to add knowledge item');
+      enhancedToast.error('Error', 'Failed to add knowledge item');
     }
   };
 
@@ -84,19 +84,27 @@ export const useKnowledge = () => {
 
       if (error) {
         console.error('Error updating knowledge item:', error);
-        toast.error('Failed to update knowledge item');
+        enhancedToast.error('Error', 'Failed to update knowledge item');
         return;
       }
 
       await loadKnowledge();
-      toast.success('Knowledge item updated successfully');
+      enhancedToast.success('Success', 'Knowledge item updated successfully');
     } catch (error) {
       console.error('Error updating knowledge item:', error);
-      toast.error('Failed to update knowledge item');
+      enhancedToast.error('Error', 'Failed to update knowledge item');
     }
   };
 
   const deleteKnowledgeItem = async (id: string) => {
+    const itemToDelete = items.find(item => item.id === id);
+    if (!itemToDelete) return;
+
+    const previousItems = [...items];
+
+    // Optimistically update UI
+    setItems(items.filter(item => item.id !== id));
+
     try {
       const { error } = await supabase
         .from('knowledge_base')
@@ -105,15 +113,40 @@ export const useKnowledge = () => {
 
       if (error) {
         console.error('Error deleting knowledge item:', error);
-        toast.error('Failed to delete knowledge item');
+        setItems(previousItems);
+        enhancedToast.error('Error', 'Failed to delete knowledge item');
         return;
       }
 
-      await loadKnowledge();
-      toast.success('Knowledge item deleted successfully');
+      enhancedToast.destructive(
+        'Item Deleted',
+        `"${itemToDelete.title}" has been deleted`,
+        async () => {
+          // Undo deletion - restore the item
+          const { error: restoreError } = await supabase
+            .from('knowledge_base')
+            .insert({
+              id: itemToDelete.id,
+              user_id: user?.id,
+              title: itemToDelete.title,
+              content: itemToDelete.content,
+              type: itemToDelete.type,
+              source_url: itemToDelete.source_url,
+              tags: itemToDelete.tags
+            });
+
+          if (restoreError) {
+            enhancedToast.error('Error', 'Failed to restore knowledge item');
+          } else {
+            await loadKnowledge();
+            enhancedToast.success('Item Restored', 'The knowledge item has been restored');
+          }
+        }
+      );
     } catch (error) {
       console.error('Error deleting knowledge item:', error);
-      toast.error('Failed to delete knowledge item');
+      setItems(previousItems);
+      enhancedToast.error('Error', 'Failed to delete knowledge item');
     }
   };
 
