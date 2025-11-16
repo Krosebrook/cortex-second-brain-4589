@@ -24,7 +24,14 @@ export const useChat = () => {
     
     try {
       const formattedChats = await ChatService.loadChats(user.id);
-      setChats(formattedChats);
+      // Sort by order_index first, then by updatedAt
+      const sortedChats = formattedChats.sort((a, b) => {
+        if (a.order_index !== b.order_index) {
+          return (a.order_index || 0) - (b.order_index || 0);
+        }
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+      setChats(sortedChats);
       
       if (formattedChats.length > 0 && !activeChat) {
         setActiveChat(formattedChats[0]);
@@ -282,6 +289,28 @@ export const useChat = () => {
     }
   }, [user, activeChat, chats, isOnline, isSubmitting, rateLimiter]);
 
+  const updateChatOrder = useCallback(async (orderedChats: { id: string; order_index: number }[]) => {
+    if (!user) return;
+
+    if (!isOnline) {
+      enhancedToast.warning('Offline', 'Cannot reorder chats while offline');
+      return;
+    }
+
+    try {
+      const updates = orderedChats.map(({ id, order_index }) =>
+        ChatService.updateChat(id, user.id, { order_index })
+      );
+
+      await Promise.all(updates);
+      await loadChats();
+      enhancedToast.success('Success', 'Chats reordered successfully');
+    } catch (error) {
+      console.error('Error updating chat order:', error);
+      enhancedToast.error('Error', 'Failed to update order');
+    }
+  }, [user, isOnline, loadChats]);
+
   return {
     chats,
     activeChat,
@@ -293,6 +322,7 @@ export const useChat = () => {
     deleteBulkChats,
     updateChatTitle,
     sendMessage,
+    updateChatOrder,
     refreshChats: loadChats
   };
 };

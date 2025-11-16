@@ -36,6 +36,7 @@ export const useKnowledge = () => {
         .from('knowledge_base')
         .select('*')
         .eq('user_id', user?.id)
+        .order('order_index', { ascending: true })
         .order('updated_at', { ascending: false });
 
       if (error) {
@@ -231,6 +232,56 @@ export const useKnowledge = () => {
     });
   };
 
+  const updateKnowledgeOrder = async (orderedItems: { id: string; order_index: number }[]) => {
+    try {
+      const updates = orderedItems.map(({ id, order_index }) =>
+        supabase
+          .from('knowledge_base')
+          .update({ order_index })
+          .eq('id', id)
+      );
+
+      await Promise.all(updates);
+      await loadKnowledge();
+      enhancedToast.success('Success', 'Items reordered successfully');
+    } catch (error) {
+      console.error('Error updating order:', error);
+      enhancedToast.error('Error', 'Failed to update order');
+    }
+  };
+
+  const updateBulkTags = async (itemIds: string[], tagsToAdd: string[], tagsToRemove: string[]) => {
+    try {
+      const itemsToUpdate = items.filter(item => itemIds.includes(item.id));
+      
+      const updates = itemsToUpdate.map(async (item) => {
+        let updatedTags = [...(item.tags || [])];
+        
+        tagsToAdd.forEach(tag => {
+          if (!updatedTags.includes(tag)) {
+            updatedTags.push(tag);
+          }
+        });
+        
+        updatedTags = updatedTags.filter(tag => !tagsToRemove.includes(tag));
+        
+        return supabase
+          .from('knowledge_base')
+          .update({ tags: updatedTags })
+          .eq('id', item.id);
+      });
+
+      await Promise.all(updates);
+      await loadKnowledge();
+      
+      const action = tagsToAdd.length > 0 ? 'added to' : 'removed from';
+      enhancedToast.success('Success', `Tags ${action} ${itemIds.length} items`);
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      enhancedToast.error('Error', 'Failed to update tags');
+    }
+  };
+
   return {
     items,
     loading,
@@ -238,6 +289,16 @@ export const useKnowledge = () => {
     updateKnowledgeItem,
     deleteKnowledgeItem,
     deleteBulkKnowledgeItems,
+    updateKnowledgeOrder,
+    updateBulkTags,
     refreshKnowledge: loadKnowledge
   };
+};
+
+const updateKnowledgeOrder = async (orderedItems: { id: string; order_index: number }[]) => {
+  // This will be added inside useKnowledge hook
+};
+
+const updateBulkTags = async (itemIds: string[], tagsToAdd: string[], tagsToRemove: string[]) => {
+  // This will be added inside useKnowledge hook
 };

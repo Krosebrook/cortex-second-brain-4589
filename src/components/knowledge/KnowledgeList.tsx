@@ -23,7 +23,7 @@ const typeIcons = {
 };
 
 export const KnowledgeList: React.FC = () => {
-  const { items, loading, deleteKnowledgeItem, deleteBulkKnowledgeItems } = useKnowledge();
+  const { items, loading, deleteKnowledgeItem, deleteBulkKnowledgeItems, updateKnowledgeOrder, updateBulkTags } = useKnowledge();
   const {
     selectedIds,
     selectedCount,

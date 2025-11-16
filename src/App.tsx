@@ -15,6 +15,9 @@ import { ReconnectionBanner } from "@/components/connection/ReconnectionBanner";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { SyncStatus } from "@/components/feedback/SyncStatus";
 import { initializeCachePolicies } from "@/config/cache-policies";
+import { CommandPalette } from "@/components/ui/command-palette";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import StatusPage from "./pages/StatusPage";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
@@ -52,8 +55,31 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
+  const { open, setOpen, search, setSearch, filteredCommands, executeCommand, toggle } = useCommandPalette();
+
+  // Global Ctrl+K / Cmd+K shortcut
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      ctrlKey: true,
+      callback: (e) => {
+        e.preventDefault();
+        toggle();
+      },
+    },
+  ]);
+
   return (
-    <Routes>
+    <>
+      <CommandPalette
+        open={open}
+        onOpenChange={setOpen}
+        search={search}
+        onSearchChange={setSearch}
+        commands={filteredCommands}
+        onExecute={executeCommand}
+      />
+      <Routes>
       <Route 
         path="/" 
         element={

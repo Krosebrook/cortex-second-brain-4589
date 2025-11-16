@@ -12,4 +12,5 @@ export interface Chat {
   messages: ChatMessage[];
   createdAt: Date;
   updatedAt: Date;
+  order_index?: number;
 }

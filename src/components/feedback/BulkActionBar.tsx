@@ -1,12 +1,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, X, Download } from 'lucide-react';
+import { Trash2, X, Download, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BulkActionBarProps {
   selectedCount: number;
   onDelete: () => void;
   onExport?: () => void;
+  onManageTags?: () => void;
   onCancel: () => void;
   className?: string;
 }
@@ -15,6 +16,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   selectedCount,
   onDelete,
   onExport,
+  onManageTags,
   onCancel,
   className
 }) => {
@@ -39,6 +41,16 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         </div>
         
         <div className="flex gap-2">
+          {onManageTags && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onManageTags}
+            >
+              <Tag size={16} className="mr-1" />
+              Tags
+            </Button>
+          )}
           {onExport && (
             <Button
               variant="outline"
