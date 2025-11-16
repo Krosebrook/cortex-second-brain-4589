@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOffline } from '@/contexts/OfflineContext';
 import { Chat, ChatMessage } from '@/types/chat';
 import { generateId } from '@/utils/chatUtils';
-import { useToast } from '@/hooks/use-toast';
+import { enhancedToast } from '@/components/feedback/EnhancedToast';
 import { sanitizeContent, validateChatMessage, RateLimiter } from '@/utils/security';
 import { ChatService } from '@/services/chat.service';
 
@@ -14,7 +14,6 @@ export const useChat = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { isOnline } = useOffline();
-  const { toast } = useToast();
   
   const [rateLimiter] = useState(() => new RateLimiter(20, 60000));
 
@@ -30,15 +29,15 @@ export const useChat = () => {
       }
     } catch (error) {
       console.error('Error loading chats:', error);
-      toast({
-        title: isOnline ? "Error" : "Offline Mode",
-        description: isOnline ? "Failed to load chats" : "Showing offline chats",
-        variant: isOnline ? "destructive" : "default"
-      });
+      if (isOnline) {
+        enhancedToast.error('Error', 'Failed to load chats');
+      } else {
+        enhancedToast.info('Offline Mode', 'Showing offline chats');
+      }
     } finally {
       setLoading(false);
     }
-  }, [user, activeChat, isOnline, toast]);
+  }, [user, activeChat, isOnline]);
 
   useEffect(() => {
     loadChats();
@@ -48,11 +47,7 @@ export const useChat = () => {
     if (!user) return null;
 
     if (!isOnline) {
-      toast({
-        title: "Offline",
-        description: "Cannot create new chats while offline",
-        variant: "default"
-      });
+      enhancedToast.warning('Offline', 'Cannot create new chats while offline');
       return null;
     }
 
@@ -63,54 +58,59 @@ export const useChat = () => {
       return newChat;
     } catch (error) {
       console.error('Error creating chat:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create new chat",
-        variant: "destructive"
-      });
+      enhancedToast.error('Error', 'Failed to create new chat');
       return null;
     }
-  }, [user, chats, isOnline, toast]);
+  }, [user, chats, isOnline]);
 
   const deleteChat = useCallback(async (chatId: string) => {
     if (!user) return;
 
     if (!isOnline) {
-      toast({
-        title: "Offline",
-        description: "Cannot delete chats while offline",
-        variant: "default"
-      });
+      enhancedToast.warning('Offline', 'Cannot delete chats while offline');
       return;
+    }
+
+    const chatToDelete = chats.find(chat => chat.id === chatId);
+    if (!chatToDelete) return;
+
+    const previousChats = [...chats];
+    const previousActiveChat = activeChat;
+
+    // Optimistically update UI
+    const updatedChats = chats.filter(chat => chat.id !== chatId);
+    setChats(updatedChats);
+    
+    if (activeChat?.id === chatId) {
+      setActiveChat(updatedChats[0] || null);
     }
 
     try {
       await ChatService.deleteChat(chatId, user.id);
-      const updatedChats = chats.filter(chat => chat.id !== chatId);
-      setChats(updatedChats);
-      
-      if (activeChat?.id === chatId) {
-        setActiveChat(updatedChats[0] || null);
-      }
+      enhancedToast.destructive(
+        'Chat Deleted',
+        `"${chatToDelete.title}" has been deleted`,
+        async () => {
+          // Undo deletion
+          setChats(previousChats);
+          setActiveChat(previousActiveChat);
+          enhancedToast.success('Chat Restored', 'The chat has been restored');
+        }
+      );
     } catch (error) {
       console.error('Error deleting chat:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete chat",
-        variant: "destructive"
-      });
+      // Revert optimistic update on error
+      setChats(previousChats);
+      setActiveChat(previousActiveChat);
+      enhancedToast.error('Error', 'Failed to delete chat');
     }
-  }, [user, chats, activeChat, isOnline, toast]);
+  }, [user, chats, activeChat, isOnline]);
 
   const updateChatTitle = useCallback(async (chatId: string, title: string) => {
     if (!user) return;
 
     if (!isOnline) {
-      toast({
-        title: "Offline",
-        description: "Cannot update chat titles while offline",
-        variant: "default"
-      });
+      enhancedToast.warning('Offline', 'Cannot update chat titles while offline');
       return;
     }
 
@@ -125,42 +125,26 @@ export const useChat = () => {
       }
     } catch (error) {
       console.error('Error updating chat title:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update chat title",
-        variant: "destructive"
-      });
+      enhancedToast.error('Error', 'Failed to update chat title');
     }
-  }, [user, chats, activeChat, isOnline, toast]);
+  }, [user, chats, activeChat, isOnline]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!user || !activeChat || !content.trim() || isSubmitting) return;
 
     if (!isOnline) {
-      toast({
-        title: "Offline",
-        description: "Cannot send messages while offline",
-        variant: "default"
-      });
+      enhancedToast.warning('Offline', 'Cannot send messages while offline');
       return;
     }
 
     if (!rateLimiter.isAllowed(user.id)) {
-      toast({
-        title: "Rate Limit Exceeded",
-        description: "Please wait before sending another message",
-        variant: "destructive"
-      });
+      enhancedToast.warning('Rate Limit Exceeded', 'Please wait before sending another message');
       return;
     }
 
     const validation = validateChatMessage(content);
     if (!validation.isValid) {
-      toast({
-        title: "Invalid Message",
-        description: validation.error,
-        variant: "destructive"
-      });
+      enhancedToast.error('Invalid Message', validation.error);
       return;
     }
 
@@ -216,15 +200,15 @@ export const useChat = () => {
       setChats(chats.map(chat => chat.id === finalChat.id ? finalChat : chat));
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: isOnline ? "Error" : "Offline",
-        description: isOnline ? "Failed to send message" : "Cannot send messages while offline",
-        variant: "destructive"
-      });
+      if (isOnline) {
+        enhancedToast.error('Error', 'Failed to send message');
+      } else {
+        enhancedToast.warning('Offline', 'Cannot send messages while offline');
+      }
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, activeChat, chats, isOnline, isSubmitting, rateLimiter, toast]);
+  }, [user, activeChat, chats, isOnline, isSubmitting, rateLimiter]);
 
   return {
     chats,
