@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SearchIcon } from 'lucide-react';
-import ChatSidebar from './ChatSidebar';
+import ChatSidebarWithBulk from './ChatSidebarWithBulk';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import { Chat } from '@/types/chat';
@@ -13,6 +13,7 @@ interface ChatContainerProps {
   onSetActiveChat: (chat: Chat) => void;
   onCreateNewChat: () => void;
   onDeleteChat: (chatId: string, e: React.MouseEvent) => void;
+  onDeleteBulkChats: (chatIds: string[]) => void;
   onUpdateTitle: (chatId: string, title: string) => void;
   onSendMessage: (message: string) => Promise<void>;
 }
@@ -24,6 +25,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   onSetActiveChat,
   onCreateNewChat,
   onDeleteChat,
+  onDeleteBulkChats,
   onUpdateTitle,
   onSendMessage
 }) => {
@@ -57,12 +59,13 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
   return (
     <div className="w-full h-[calc(100vh-120px)] flex">
-      <ChatSidebar 
+      <ChatSidebarWithBulk
         chats={chats}
         activeChat={activeChat}
         setActiveChat={onSetActiveChat}
         createNewChat={onCreateNewChat}
         deleteChat={onDeleteChat}
+        deleteBulkChats={onDeleteBulkChats}
         showSidebar={showSidebar}
         isEditingTitle={isEditingTitle}
         editTitle={editTitle}

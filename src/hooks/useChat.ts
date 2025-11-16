@@ -119,6 +119,65 @@ export const useChat = () => {
     });
   }, [user, chats, activeChat, isOnline, confirm]);
 
+  const deleteBulkChats = useCallback(async (chatIds: string[]) => {
+    if (!user) return;
+
+    if (!isOnline) {
+      enhancedToast.warning('Offline', 'Cannot delete chats while offline');
+      return;
+    }
+
+    if (chatIds.length === 0) return;
+
+    const chatsToDelete = chats.filter(chat => chatIds.includes(chat.id));
+    
+    confirm({
+      title: 'Delete Multiple Chats',
+      description: `Are you sure you want to delete ${chatIds.length} chat${chatIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete ${chatIds.length} Chat${chatIds.length > 1 ? 's' : ''}`,
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      onConfirm: async () => {
+        const previousChats = [...chats];
+        const previousActiveChat = activeChat;
+
+        // Optimistically update UI
+        const updatedChats = chats.filter(chat => !chatIds.includes(chat.id));
+        setChats(updatedChats);
+        
+        if (activeChat && chatIds.includes(activeChat.id)) {
+          setActiveChat(updatedChats[0] || null);
+        }
+
+        try {
+          // Delete all chats in parallel
+          await Promise.all(
+            chatIds.map(chatId => ChatService.deleteChat(chatId, user.id))
+          );
+
+          enhancedToast.destructive(
+            'Chats Deleted',
+            `${chatIds.length} chat${chatIds.length > 1 ? 's have' : ' has'} been deleted`,
+            async () => {
+              // Undo deletion
+              setChats(previousChats);
+              setActiveChat(previousActiveChat);
+              enhancedToast.success('Chats Restored', 'All chats have been restored');
+            }
+          );
+        } catch (error) {
+          console.error('Error deleting chats:', error);
+          // Revert optimistic update on error
+          setChats(previousChats);
+          setActiveChat(previousActiveChat);
+          enhancedToast.error('Error', 'Failed to delete some chats');
+        }
+      },
+      successMessage: undefined,
+      errorMessage: undefined
+    });
+  }, [user, chats, activeChat, isOnline, confirm]);
+
   const updateChatTitle = useCallback(async (chatId: string, title: string) => {
     if (!user) return;
 
@@ -231,6 +290,7 @@ export const useChat = () => {
     setActiveChat,
     createNewChat,
     deleteChat,
+    deleteBulkChats,
     updateChatTitle,
     sendMessage,
     refreshChats: loadChats
