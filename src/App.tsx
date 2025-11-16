@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ConfirmationProvider } from "@/components/feedback/ConfirmationProvider";
 import { SecurityHeaders } from "@/components/layout/SecurityHeaders";
 import { OfflineBanner } from "@/components/connection/OfflineBanner";
 import { ReconnectionBanner } from "@/components/connection/ReconnectionBanner";
@@ -182,24 +183,26 @@ const App = () => (
         <AuthProvider>
           <OfflineProvider>
             <TooltipProvider>
-              <SecurityHeaders />
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <OfflineBanner />
-                <ReconnectionBanner />
-                <SyncStatus />
-                <div className="min-h-screen">
-                  <Navbar />
-                <AppRoutes />
-              </div>
-            </BrowserRouter>
-          </TooltipProvider>
-        </OfflineProvider>
-      </AuthProvider>
-    </ErrorBoundary>
-  </ThemeProvider>
-</QueryClientProvider>
+              <ConfirmationProvider>
+                <SecurityHeaders />
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <OfflineBanner />
+                  <ReconnectionBanner />
+                  <SyncStatus />
+                  <div className="min-h-screen">
+                    <Navbar />
+                  <AppRoutes />
+                </div>
+              </BrowserRouter>
+              </ConfirmationProvider>
+            </TooltipProvider>
+          </OfflineProvider>
+        </AuthProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
+  </QueryClientProvider>
 );
 
 export default App;
