@@ -4,6 +4,7 @@ import { useOffline } from '@/contexts/OfflineContext';
 import { Chat, ChatMessage } from '@/types/chat';
 import { generateId } from '@/utils/chatUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
+import { useConfirmationDialog } from '@/components/feedback/ConfirmationProvider';
 import { sanitizeContent, validateChatMessage, RateLimiter } from '@/utils/security';
 import { ChatService } from '@/services/chat.service';
 
@@ -14,6 +15,7 @@ export const useChat = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { isOnline } = useOffline();
+  const { confirm } = useConfirmationDialog();
   
   const [rateLimiter] = useState(() => new RateLimiter(20, 60000));
 
@@ -74,37 +76,48 @@ export const useChat = () => {
     const chatToDelete = chats.find(chat => chat.id === chatId);
     if (!chatToDelete) return;
 
-    const previousChats = [...chats];
-    const previousActiveChat = activeChat;
+    confirm({
+      title: 'Delete Chat',
+      description: `Are you sure you want to delete "${chatToDelete.title}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      onConfirm: async () => {
+        const previousChats = [...chats];
+        const previousActiveChat = activeChat;
 
-    // Optimistically update UI
-    const updatedChats = chats.filter(chat => chat.id !== chatId);
-    setChats(updatedChats);
-    
-    if (activeChat?.id === chatId) {
-      setActiveChat(updatedChats[0] || null);
-    }
+        // Optimistically update UI
+        const updatedChats = chats.filter(chat => chat.id !== chatId);
+        setChats(updatedChats);
+        
+        if (activeChat?.id === chatId) {
+          setActiveChat(updatedChats[0] || null);
+        }
 
-    try {
-      await ChatService.deleteChat(chatId, user.id);
-      enhancedToast.destructive(
-        'Chat Deleted',
-        `"${chatToDelete.title}" has been deleted`,
-        async () => {
-          // Undo deletion
+        try {
+          await ChatService.deleteChat(chatId, user.id);
+          enhancedToast.destructive(
+            'Chat Deleted',
+            `"${chatToDelete.title}" has been deleted`,
+            async () => {
+              // Undo deletion
+              setChats(previousChats);
+              setActiveChat(previousActiveChat);
+              enhancedToast.success('Chat Restored', 'The chat has been restored');
+            }
+          );
+        } catch (error) {
+          console.error('Error deleting chat:', error);
+          // Revert optimistic update on error
           setChats(previousChats);
           setActiveChat(previousActiveChat);
-          enhancedToast.success('Chat Restored', 'The chat has been restored');
+          enhancedToast.error('Error', 'Failed to delete chat');
         }
-      );
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-      // Revert optimistic update on error
-      setChats(previousChats);
-      setActiveChat(previousActiveChat);
-      enhancedToast.error('Error', 'Failed to delete chat');
-    }
-  }, [user, chats, activeChat, isOnline]);
+      },
+      successMessage: undefined,
+      errorMessage: undefined
+    });
+  }, [user, chats, activeChat, isOnline, confirm]);
 
   const updateChatTitle = useCallback(async (chatId: string, title: string) => {
     if (!user) return;

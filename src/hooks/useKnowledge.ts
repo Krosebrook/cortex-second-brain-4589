@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
+import { useConfirmationDialog } from '@/components/feedback/ConfirmationProvider';
 
 export interface KnowledgeItem {
   id: string;
@@ -18,6 +19,7 @@ export const useKnowledge = () => {
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { confirm } = useConfirmationDialog();
 
   useEffect(() => {
     if (user) {
@@ -100,54 +102,65 @@ export const useKnowledge = () => {
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;
 
-    const previousItems = [...items];
+    confirm({
+      title: 'Delete Knowledge Item',
+      description: `Are you sure you want to delete "${itemToDelete.title}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+      onConfirm: async () => {
+        const previousItems = [...items];
 
-    // Optimistically update UI
-    setItems(items.filter(item => item.id !== id));
+        // Optimistically update UI
+        setItems(items.filter(item => item.id !== id));
 
-    try {
-      const { error } = await supabase
-        .from('knowledge_base')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting knowledge item:', error);
-        setItems(previousItems);
-        enhancedToast.error('Error', 'Failed to delete knowledge item');
-        return;
-      }
-
-      enhancedToast.destructive(
-        'Item Deleted',
-        `"${itemToDelete.title}" has been deleted`,
-        async () => {
-          // Undo deletion - restore the item
-          const { error: restoreError } = await supabase
+        try {
+          const { error } = await supabase
             .from('knowledge_base')
-            .insert({
-              id: itemToDelete.id,
-              user_id: user?.id,
-              title: itemToDelete.title,
-              content: itemToDelete.content,
-              type: itemToDelete.type,
-              source_url: itemToDelete.source_url,
-              tags: itemToDelete.tags
-            });
+            .delete()
+            .eq('id', id);
 
-          if (restoreError) {
-            enhancedToast.error('Error', 'Failed to restore knowledge item');
-          } else {
-            await loadKnowledge();
-            enhancedToast.success('Item Restored', 'The knowledge item has been restored');
+          if (error) {
+            console.error('Error deleting knowledge item:', error);
+            setItems(previousItems);
+            enhancedToast.error('Error', 'Failed to delete knowledge item');
+            return;
           }
+
+          enhancedToast.destructive(
+            'Item Deleted',
+            `"${itemToDelete.title}" has been deleted`,
+            async () => {
+              // Undo deletion - restore the item
+              const { error: restoreError } = await supabase
+                .from('knowledge_base')
+                .insert({
+                  id: itemToDelete.id,
+                  user_id: user?.id,
+                  title: itemToDelete.title,
+                  content: itemToDelete.content,
+                  type: itemToDelete.type,
+                  source_url: itemToDelete.source_url,
+                  tags: itemToDelete.tags
+                });
+
+              if (restoreError) {
+                enhancedToast.error('Error', 'Failed to restore knowledge item');
+              } else {
+                await loadKnowledge();
+                enhancedToast.success('Item Restored', 'The knowledge item has been restored');
+              }
+            }
+          );
+        } catch (error) {
+          console.error('Error deleting knowledge item:', error);
+          setItems(previousItems);
+          enhancedToast.error('Error', 'Failed to delete knowledge item');
         }
-      );
-    } catch (error) {
-      console.error('Error deleting knowledge item:', error);
-      setItems(previousItems);
-      enhancedToast.error('Error', 'Failed to delete knowledge item');
-    }
+      },
+      successMessage: undefined,
+      errorMessage: undefined
+    });
   };
 
   return {
