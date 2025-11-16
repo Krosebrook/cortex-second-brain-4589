@@ -1,3 +1,5 @@
+import { cacheManager } from './cache-manager';
+
 // IndexedDB wrapper for offline storage
 const DB_NAME = 'tessa_offline_db';
 const DB_VERSION = 1;
@@ -78,13 +80,27 @@ class OfflineStorage {
   }
 
   async getAllFromCache<T>(storeName: string): Promise<T[]> {
+    // Check memory cache first
+    const cacheKey = storeName === CHATS_STORE ? 'chats' : storeName === KNOWLEDGE_STORE ? 'knowledge' : null;
+    if (cacheKey) {
+      const cached = cacheManager.get<T[]>(cacheKey);
+      if (cached) return cached;
+    }
+
     const db = await this.ensureDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([storeName], 'readonly');
       const store = transaction.objectStore(storeName);
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => {
+        const result = request.result || [];
+        // Store in memory cache
+        if (cacheKey && result.length > 0) {
+          cacheManager.set(cacheKey, result);
+        }
+        resolve(result);
+      };
       request.onerror = () => reject(request.error);
     });
   }

@@ -11,6 +11,9 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SecurityHeaders } from "@/components/layout/SecurityHeaders";
 import { OfflineBanner } from "@/components/connection/OfflineBanner";
 import { ReconnectionBanner } from "@/components/connection/ReconnectionBanner";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
+import { SyncStatus } from "@/components/feedback/SyncStatus";
+import { initializeCachePolicies } from "@/config/cache-policies";
 import StatusPage from "./pages/StatusPage";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
@@ -28,6 +31,9 @@ import Navbar from "./components/Navbar";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
 const queryClient = new QueryClient();
+
+// Initialize cache policies on app start
+initializeCachePolicies();
 
 // Page transition wrapper
 const PageTransition = ({ children }: { children: React.ReactNode }) => {
@@ -172,25 +178,29 @@ const AppRoutes = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <AuthProvider>
-        <OfflineProvider>
-          <TooltipProvider>
-            <SecurityHeaders />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <OfflineBanner />
-              <ReconnectionBanner />
-              <div className="min-h-screen">
-                <Navbar />
-              <AppRoutes />
-            </div>
-          </BrowserRouter>
-        </TooltipProvider>
-      </OfflineProvider>
-    </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <OfflineProvider>
+            <TooltipProvider>
+              <SecurityHeaders />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <OfflineBanner />
+                <ReconnectionBanner />
+                <SyncStatus />
+                <div className="min-h-screen">
+                  <Navbar />
+                <AppRoutes />
+              </div>
+            </BrowserRouter>
+          </TooltipProvider>
+        </OfflineProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </ThemeProvider>
 </QueryClientProvider>
 );
 
 export default App;
+
