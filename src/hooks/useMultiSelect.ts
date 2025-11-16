@@ -29,6 +29,15 @@ export const useMultiSelect = <T extends string = string>() => {
     setIsMultiSelectMode(true);
   }, []);
 
+  const selectRange = useCallback((ids: T[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.add(id));
+      return next;
+    });
+    setIsMultiSelectMode(true);
+  }, []);
+
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setIsMultiSelectMode(false);
@@ -44,6 +53,7 @@ export const useMultiSelect = <T extends string = string>() => {
     isMultiSelectMode,
     toggleSelect,
     selectAll,
+    selectRange,
     clearSelection,
     isSelected,
   };

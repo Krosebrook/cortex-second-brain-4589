@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useRangeSelection } from '@/hooks/useRangeSelection';
+import { useSearchFilter } from '@/hooks/useSearchFilter';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
+import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
+import { ExportDialog } from '@/components/feedback/ExportDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, Globe, Database, File, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
+import { enhancedToast } from '@/components/feedback/EnhancedToast';
 
 const typeIcons = {
   note: FileText,
@@ -22,13 +29,103 @@ export const KnowledgeList: React.FC = () => {
     selectedCount,
     isMultiSelectMode,
     toggleSelect,
+    selectAll,
+    selectRange,
     clearSelection,
     isSelected,
   } = useMultiSelect();
 
+  const {
+    searchQuery,
+    setSearchQuery,
+    selectedTypes,
+    toggleType,
+    selectedTags,
+    toggleTag,
+    clearFilters,
+    filteredItems,
+    availableTypes,
+    availableTags,
+    hasActiveFilters,
+  } = useSearchFilter(items);
+
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  
+  const { handleClick, resetLastClicked } = useRangeSelection();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'a',
+      ctrlKey: true,
+      callback: (e) => {
+        e.preventDefault();
+        if (filteredItems.length > 0) {
+          selectAll(filteredItems.map(item => item.id));
+          enhancedToast.info('All Selected', `${filteredItems.length} items selected`);
+        }
+      },
+    },
+    {
+      key: 'Escape',
+      callback: () => {
+        if (isMultiSelectMode) {
+          clearSelection();
+          resetLastClicked();
+          enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated');
+        }
+      },
+    },
+    {
+      key: 'Delete',
+      callback: () => {
+        if (selectedCount > 0) {
+          handleBulkDelete();
+        }
+      },
+    },
+  ], { enabled: true });
+
   const handleBulkDelete = () => {
     deleteBulkKnowledgeItems(selectedIds);
     clearSelection();
+    resetLastClicked();
+  };
+
+  const handleItemClick = (index: number, itemId: string, e: React.MouseEvent) => {
+    if (isMultiSelectMode) {
+      handleClick(
+        index,
+        itemId,
+        e.shiftKey,
+        filteredItems.map(item => item.id),
+        isSelected,
+        toggleSelect,
+        selectRange
+      );
+    }
+  };
+
+  const handleExport = (format: ExportFormat) => {
+    const itemsToExport = selectedCount > 0
+      ? items.filter(item => selectedIds.includes(item.id))
+      : filteredItems;
+
+    const filename = getExportFilename('knowledge-items', format);
+
+    try {
+      if (format === 'json') {
+        exportToJSON(itemsToExport, filename);
+      } else if (format === 'csv') {
+        exportToCSV(itemsToExport, filename);
+      } else if (format === 'pdf') {
+        exportToPDF(itemsToExport, filename, 'Knowledge Base Export');
+      }
+      enhancedToast.success('Export Successful', `Exported ${itemsToExport.length} items as ${format.toUpperCase()}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      enhancedToast.error('Export Failed', 'Failed to export items');
+    }
   };
 
   if (loading) {
@@ -53,8 +150,24 @@ export const KnowledgeList: React.FC = () => {
 
   return (
     <div className="space-y-4 p-4">
+      <SearchFilterBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        availableTypes={availableTypes}
+        selectedTypes={selectedTypes}
+        onToggleType={toggleType}
+        availableTags={availableTags}
+        selectedTags={selectedTags}
+        onToggleTag={toggleTag}
+        onClearFilters={clearFilters}
+        hasActiveFilters={!!hasActiveFilters}
+        resultCount={filteredItems.length}
+        totalCount={items.length}
+        placeholder="Search knowledge base..."
+      />
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => {
+        {filteredItems.map((item, index) => {
           const Icon = typeIcons[item.type] || FileText;
           const selected = isSelected(item.id);
 
@@ -65,12 +178,12 @@ export const KnowledgeList: React.FC = () => {
                 "p-4 cursor-pointer transition-all hover:shadow-md",
                 selected && "ring-2 ring-primary"
               )}
-              onClick={() => isMultiSelectMode && toggleSelect(item.id)}
+              onClick={(e) => handleItemClick(index, item.id, e)}
             >
               <div className="flex items-start gap-3">
                 {isMultiSelectMode && (
                   <Checkbox
-                    checked={selected}
+                    checked={!!selected}
                     onCheckedChange={() => toggleSelect(item.id)}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -115,25 +228,22 @@ export const KnowledgeList: React.FC = () => {
         })}
       </div>
 
-      {!isMultiSelectMode && items.length > 0 && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              // Enter multi-select mode
-              toggleSelect(items[0].id);
-              clearSelection();
-            }}
-          >
-            Select Multiple Items
-          </Button>
-        </div>
-      )}
-
       <BulkActionBar
         selectedCount={selectedCount}
         onDelete={handleBulkDelete}
-        onCancel={clearSelection}
+        onExport={() => setExportDialogOpen(true)}
+        onCancel={() => {
+          clearSelection();
+          resetLastClicked();
+        }}
+      />
+
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        onExport={handleExport}
+        itemCount={selectedCount > 0 ? selectedCount : filteredItems.length}
+        itemType="knowledge items"
       />
     </div>
   );
