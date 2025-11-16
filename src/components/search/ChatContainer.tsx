@@ -14,6 +14,7 @@ interface ChatContainerProps {
   onCreateNewChat: () => void;
   onDeleteChat: (chatId: string, e: React.MouseEvent) => void;
   onDeleteBulkChats: (chatIds: string[]) => void;
+  onUpdateChatOrder?: (orderedChats: { id: string; order_index: number }[]) => void;
   onUpdateTitle: (chatId: string, title: string) => void;
   onSendMessage: (message: string) => Promise<void>;
 }
@@ -26,6 +27,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   onCreateNewChat,
   onDeleteChat,
   onDeleteBulkChats,
+  onUpdateChatOrder = () => {},
   onUpdateTitle,
   onSendMessage
 }) => {
@@ -66,6 +68,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         createNewChat={onCreateNewChat}
         deleteChat={onDeleteChat}
         deleteBulkChats={onDeleteBulkChats}
+        updateChatOrder={onUpdateChatOrder}
         showSidebar={showSidebar}
         isEditingTitle={isEditingTitle}
         editTitle={editTitle}

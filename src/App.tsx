@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,10 +35,8 @@ import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
-// Initialize cache policies on app start
 initializeCachePolicies();
 
-// Page transition wrapper
 const PageTransition = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   
@@ -57,7 +54,6 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   const { open, setOpen, search, setSearch, filteredCommands, executeCommand, toggle } = useCommandPalette();
 
-  // Global Ctrl+K / Cmd+K shortcut
   useKeyboardShortcuts([
     {
       key: 'k',
@@ -80,125 +76,21 @@ const AppRoutes = () => {
         onExecute={executeCommand}
       />
       <Routes>
-      <Route 
-        path="/" 
-        element={
-          <PageTransition>
-            <Index />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/why" 
-        element={
-          <PageTransition>
-            <WhyPage />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/how" 
-        element={
-          <PageTransition>
-            <HowPage />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/auth" 
-        element={
-          <PageTransition>
-            <AuthPage />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/dashboard" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/manage" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <ManagePage />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/profile" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/import" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <Import />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/search" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <SearchPage />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/tessa" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <TessaPage />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/status" 
-        element={
-          <PageTransition>
-            <StatusPage />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/settings" 
-        element={
-          <PageTransition>
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="*" 
-        element={
-          <PageTransition>
-            <NotFound />
-          </PageTransition>
-        } 
-      />
-    </Routes>
+        <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+        <Route path="/why" element={<PageTransition><WhyPage /></PageTransition>} />
+        <Route path="/how" element={<PageTransition><HowPage /></PageTransition>} />
+        <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
+        <Route path="/dashboard" element={<PageTransition><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
+        <Route path="/manage" element={<PageTransition><ProtectedRoute><ManagePage /></ProtectedRoute></PageTransition>} />
+        <Route path="/profile" element={<PageTransition><ProtectedRoute><Profile /></ProtectedRoute></PageTransition>} />
+        <Route path="/import" element={<PageTransition><ProtectedRoute><Import /></ProtectedRoute></PageTransition>} />
+        <Route path="/search" element={<PageTransition><ProtectedRoute><SearchPage /></ProtectedRoute></PageTransition>} />
+        <Route path="/tessa" element={<PageTransition><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition>} />
+        <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
+        <Route path="/settings" element={<PageTransition><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+      </Routes>
+    </>
   );
 };
 
@@ -210,18 +102,18 @@ const App = () => (
           <OfflineProvider>
             <TooltipProvider>
               <ConfirmationProvider>
-                <SecurityHeaders />
-                <Toaster />
-                <Sonner />
                 <BrowserRouter>
+                  <SecurityHeaders />
                   <OfflineBanner />
                   <ReconnectionBanner />
                   <SyncStatus />
-                  <div className="min-h-screen">
+                  <div className="min-h-screen bg-background">
                     <Navbar />
-                  <AppRoutes />
-                </div>
-              </BrowserRouter>
+                    <AppRoutes />
+                  </div>
+                  <Toaster />
+                  <Sonner />
+                </BrowserRouter>
               </ConfirmationProvider>
             </TooltipProvider>
           </OfflineProvider>
@@ -232,4 +124,3 @@ const App = () => (
 );
 
 export default App;
-

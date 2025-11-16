@@ -631,14 +631,20 @@ export type Database = {
       kv_store_e259a3bb: {
         Row: {
           key: string
+          tenant_id: string | null
+          user_id: string
           value: Json
         }
         Insert: {
           key: string
+          tenant_id?: string | null
+          user_id: string
           value: Json
         }
         Update: {
           key?: string
+          tenant_id?: string | null
+          user_id?: string
           value?: Json
         }
         Relationships: []
@@ -1154,6 +1160,7 @@ export type Database = {
     }
     Functions: {
       bootstrap_admin: { Args: { target_user: string }; Returns: undefined }
+      current_tenant: { Args: never; Returns: string }
       current_tenant_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }

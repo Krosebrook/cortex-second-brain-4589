@@ -2,15 +2,19 @@ import React, { useState } from 'react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useRangeSelection } from '@/hooks/useRangeSelection';
+import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useSearchFilter } from '@/hooks/useSearchFilter';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
+import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { DragIndicator } from '@/components/ui/drag-indicator';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FileText, Globe, Database, File, Trash2 } from 'lucide-react';
+import { FileText, Globe, Database, File, Trash2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
@@ -30,7 +34,6 @@ export const KnowledgeList: React.FC = () => {
     isMultiSelectMode,
     toggleSelect,
     selectAll,
-    selectRange,
     clearSelection,
     isSelected,
   } = useMultiSelect();
@@ -50,201 +53,174 @@ export const KnowledgeList: React.FC = () => {
   } = useSearchFilter(items);
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
   
   const { handleClick, resetLastClicked } = useRangeSelection();
 
-  // Keyboard shortcuts
+  const { draggedId, dragOverId, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
+    items: filteredItems,
+    onReorder: async (reorderedItems) => {
+      const updates = reorderedItems.map((item, idx) => ({
+        id: item.id,
+        order_index: idx,
+      }));
+      await updateKnowledgeOrder(updates);
+    },
+    getId: (item) => item.id,
+    disabled: isMultiSelectMode,
+  });
+
+  const { focusedIndex, setItemRef, handleArrowDown, handleArrowUp, handleHome, handleEnd, handleEnter } = useKeyboardNavigation({
+    items: filteredItems,
+    onSelect: () => {},
+    onActivate: (index) => {
+      console.log('Activated:', filteredItems[index]);
+    },
+    enabled: !isMultiSelectMode,
+  });
+
   useKeyboardShortcuts([
-    {
-      key: 'a',
-      ctrlKey: true,
-      callback: (e) => {
-        e.preventDefault();
-        if (filteredItems.length > 0) {
-          selectAll(filteredItems.map(item => item.id));
-          enhancedToast.info('All Selected', `${filteredItems.length} items selected`);
-        }
-      },
-    },
-    {
-      key: 'Escape',
-      callback: () => {
-        if (isMultiSelectMode) {
-          clearSelection();
-          resetLastClicked();
-          enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated');
-        }
-      },
-    },
-    {
-      key: 'Delete',
-      callback: () => {
-        if (selectedCount > 0) {
-          handleBulkDelete();
-        }
-      },
-    },
+    { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredItems.length > 0) { selectAll(filteredItems.map(item => item.id)); enhancedToast.info('All Selected', `${filteredItems.length} items selected`); } } },
+    { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
+    { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowDown(); } } },
+    { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowUp(); } } },
+    { key: 'Home', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleHome(); } } },
+    { key: 'End', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleEnd(); } } },
+    { key: 'Enter', callback: () => { if (!isMultiSelectMode) handleEnter(); } },
   ], { enabled: true });
 
-  const handleBulkDelete = () => {
-    deleteBulkKnowledgeItems(selectedIds);
-    clearSelection();
-    resetLastClicked();
-  };
+  const handleBulkDelete = () => { deleteBulkKnowledgeItems(selectedIds); clearSelection(); resetLastClicked(); };
 
   const handleItemClick = (index: number, itemId: string, e: React.MouseEvent) => {
     if (isMultiSelectMode) {
-      handleClick(
-        index,
-        itemId,
-        e.shiftKey,
-        filteredItems.map(item => item.id),
-        isSelected,
-        toggleSelect,
-        selectRange
-      );
+      handleClick(index, itemId, e.shiftKey, filteredItems.map(item => item.id), isSelected, toggleSelect, selectAll);
+    } else {
+      toggleSelect(itemId);
     }
   };
 
-  const handleExport = (format: ExportFormat) => {
-    const itemsToExport = selectedCount > 0
-      ? items.filter(item => selectedIds.includes(item.id))
-      : filteredItems;
-
-    const filename = getExportFilename('knowledge-items', format);
+  const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
+    const itemsToExport = selectedCount > 0 ? items.filter(item => selectedIds.includes(item.id)) : filteredItems;
+    const data = itemsToExport.map(item => {
+      const filtered: any = {};
+      selectedFields.forEach(field => { filtered[field] = item[field as keyof typeof item]; });
+      return filtered;
+    });
 
     try {
-      if (format === 'json') {
-        exportToJSON(itemsToExport, filename);
-      } else if (format === 'csv') {
-        exportToCSV(itemsToExport, filename);
-      } else if (format === 'pdf') {
-        exportToPDF(itemsToExport, filename, 'Knowledge Base Export');
-      }
-      enhancedToast.success('Export Successful', `Exported ${itemsToExport.length} items as ${format.toUpperCase()}`);
+      let blob: Blob;
+      if (format === 'json') blob = exportToJSON(data);
+      else if (format === 'csv') blob = exportToCSV(data, selectedFields);
+      else blob = exportToPDF(data, selectedFields, 'Knowledge Base Export');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = getExportFilename('knowledge', format);
+      a.click();
+      URL.revokeObjectURL(url);
+
+      enhancedToast.success('Export Complete', `Exported ${data.length} items as ${format.toUpperCase()}`);
+      setExportDialogOpen(false);
     } catch (error) {
-      console.error('Export error:', error);
       enhancedToast.error('Export Failed', 'Failed to export items');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground">Loading knowledge base...</p>
-      </div>
-    );
-  }
+  const handleAddTags = async (tags: string[]) => { await updateBulkTags(selectedIds, tags, []); setTagDialogOpen(false); clearSelection(); };
+  const handleRemoveTags = async (tags: string[]) => { await updateBulkTags(selectedIds, [], tags); setTagDialogOpen(false); clearSelection(); };
 
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <Database size={48} className="text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium mb-2">No knowledge items yet</h3>
-        <p className="text-sm text-muted-foreground">
-          Start importing data to build your knowledge base
-        </p>
-      </div>
-    );
-  }
+  const allTags = items.flatMap(item => item.tags || []);
+  const selectedItemTags = items.filter(item => selectedIds.includes(item.id)).map(item => item.tags || []);
+
+  if (loading) return <div className="flex items-center justify-center p-8">Loading...</div>;
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
       <SearchFilterBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        availableTypes={availableTypes}
         selectedTypes={selectedTypes}
+        availableTypes={availableTypes}
         onToggleType={toggleType}
-        availableTags={availableTags}
         selectedTags={selectedTags}
+        availableTags={availableTags}
         onToggleTag={toggleTag}
         onClearFilters={clearFilters}
-        hasActiveFilters={!!hasActiveFilters}
-        resultCount={filteredItems.length}
-        totalCount={items.length}
-        placeholder="Search knowledge base..."
+        hasActiveFilters={hasActiveFilters}
       />
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {filteredItems.map((item, index) => {
-          const Icon = typeIcons[item.type] || FileText;
-          const selected = isSelected(item.id);
+      {filteredItems.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
+          <p>No knowledge items found</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredItems.map((item, index) => {
+            const Icon = typeIcons[item.type];
+            const isFocused = focusedIndex === index;
+            const isDragging = draggedId === item.id;
+            const isDropTarget = dragOverId === item.id;
 
-          return (
-            <Card
-              key={item.id}
-              className={cn(
-                "p-4 cursor-pointer transition-all hover:shadow-md",
-                selected && "ring-2 ring-primary"
-              )}
-              onClick={(e) => handleItemClick(index, item.id, e)}
-            >
-              <div className="flex items-start gap-3">
-                {isMultiSelectMode && (
-                  <Checkbox
-                    checked={!!selected}
-                    onCheckedChange={() => toggleSelect(item.id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-                <Icon size={20} className="text-muted-foreground mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{item.title}</h3>
-                  {item.content && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                      {item.content}
-                    </p>
+            return (
+              <div key={item.id} className="relative">
+                <DragIndicator visible={isDropTarget} className="-top-1" />
+                <Card
+                  ref={(el) => setItemRef(index, el)}
+                  draggable={!isMultiSelectMode}
+                  onDragStart={(e) => handleDragStart(e, item)}
+                  onDragOver={(e) => handleDragOver(e, item)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, item)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "p-4 cursor-pointer transition-all",
+                    isSelected(item.id) && "ring-2 ring-primary",
+                    isFocused && "ring-2 ring-primary/50",
+                    isDragging && "opacity-50",
+                    "hover:shadow-md"
                   )}
-                  {item.tags && item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {item.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-xs bg-muted px-2 py-0.5 rounded"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                  onClick={(e) => !isMultiSelectMode && handleItemClick(index, item.id, e)}
+                >
+                  <div className="flex items-start gap-3">
+                    {!isMultiSelectMode && (
+                      <div className="cursor-move pt-1" onMouseDown={(e) => e.stopPropagation()}>
+                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    {isMultiSelectMode && (
+                      <Checkbox checked={isSelected(item.id)} onCheckedChange={() => handleItemClick(index, item.id, {} as any)} onClick={(e) => e.stopPropagation()} />
+                    )}
+                    <Icon className="h-5 w-5 text-muted-foreground mt-1" />
+                    <div className="flex-1">
+                      <h3 className="font-medium">{item.title}</h3>
+                      {item.content && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.content}</p>}
+                      {item.tags && item.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {item.tags.map(tag => (
+                            <span key={tag} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {!isMultiSelectMode && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteKnowledgeItem(item.id);
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                )}
+                    {!isMultiSelectMode && (
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteKnowledgeItem(item.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </Card>
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      <BulkActionBar
-        selectedCount={selectedCount}
-        onDelete={handleBulkDelete}
-        onExport={() => setExportDialogOpen(true)}
-        onCancel={() => {
-          clearSelection();
-          resetLastClicked();
-        }}
-      />
-
-      <ExportDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        onExport={handleExport}
-        itemCount={selectedCount > 0 ? selectedCount : filteredItems.length}
-        itemType="knowledge items"
-      />
+      <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onManageTags={() => setTagDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
+      <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'content', 'type', 'tags', 'source_url', 'created_at', 'updated_at']} itemCount={selectedCount > 0 ? selectedCount : filteredItems.length} />
+      <BulkTagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} selectedCount={selectedCount} existingTags={allTags} selectedItemTags={selectedItemTags} onAddTags={handleAddTags} onRemoveTags={handleRemoveTags} />
     </div>
   );
 };
