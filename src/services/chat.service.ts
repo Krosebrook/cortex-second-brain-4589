@@ -91,6 +91,16 @@ export class ChatService {
     if (error) throw error;
   }
 
+  static async updateChat(chatId: string, userId: string, updates: { order_index?: number; title?: string }): Promise<void> {
+    const { error } = await supabase
+      .from('chats')
+      .update(updates)
+      .eq('id', chatId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  }
+
   static async sendMessageToAPI(message: string, chatId: string): Promise<string> {
     const { data, error } = await supabase.functions.invoke('chat-with-tessa-secure', {
       body: { message, chatId }

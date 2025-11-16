@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Chat } from '@/types/chat';
-import { PlusCircle, Edit3, Trash2, X } from 'lucide-react';
+import { PlusCircle, Edit3, Trash2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { groupChatsByDate } from '@/utils/chatUtils';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useRangeSelection } from '@/hooks/useRangeSelection';
+import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { DragIndicator } from '@/components/ui/drag-indicator';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
 
@@ -21,6 +24,7 @@ interface ChatSidebarWithBulkProps {
   createNewChat: () => void;
   deleteChat: (chatId: string, e: React.MouseEvent) => void;
   deleteBulkChats: (chatIds: string[]) => void;
+  updateChatOrder: (orderedChats: { id: string; order_index: number }[]) => void;
   showSidebar: boolean;
   isEditingTitle: string | null;
   editTitle: string;
@@ -36,6 +40,7 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   createNewChat,
   deleteChat,
   deleteBulkChats,
+  updateChatOrder,
   showSidebar,
   isEditingTitle,
   editTitle,
@@ -43,269 +48,181 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   startEditingTitle,
   saveTitle
 }) => {
-  const {
-    selectedIds,
-    selectedCount,
-    isMultiSelectMode,
-    toggleSelect,
-    selectAll,
-    selectRange,
-    clearSelection,
-    isSelected,
-  } = useMultiSelect<string>();
-
+  const { selectedIds, selectedCount, isMultiSelectMode, toggleSelect, selectAll, clearSelection, isSelected } = useMultiSelect<string>();
   const [searchQuery, setSearchQuery] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { handleClick, resetLastClicked } = useRangeSelection<string>();
 
-  // Filter chats based on search
   const filteredChats = useMemo(() => {
     if (!searchQuery) return chats;
     const query = searchQuery.toLowerCase();
     return chats.filter(chat => chat.title.toLowerCase().includes(query));
   }, [chats, searchQuery]);
 
-  // Keyboard shortcuts
+  const { draggedId, dragOverId, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
+    items: filteredChats,
+    onReorder: async (reorderedChats) => {
+      const updates = reorderedChats.map((chat, idx) => ({ id: chat.id, order_index: idx }));
+      await updateChatOrder(updates);
+    },
+    getId: (chat) => chat.id,
+    disabled: isMultiSelectMode,
+  });
+
+  const { focusedIndex, setItemRef, handleArrowDown, handleArrowUp, handleHome, handleEnd, handleEnter } = useKeyboardNavigation({
+    items: filteredChats,
+    onSelect: () => {},
+    onActivate: (index) => { setActiveChat(filteredChats[index]); },
+    enabled: !isMultiSelectMode && showSidebar,
+  });
+
   useKeyboardShortcuts([
-    {
-      key: 'a',
-      ctrlKey: true,
-      callback: (e) => {
-        e.preventDefault();
-        if (filteredChats.length > 0) {
-          selectAll(filteredChats.map(chat => chat.id));
-          enhancedToast.info('All Selected', `${filteredChats.length} chats selected`);
-        }
-      },
-    },
-    {
-      key: 'Escape',
-      callback: () => {
-        if (isMultiSelectMode) {
-          clearSelection();
-          resetLastClicked();
-          enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated');
-        }
-      },
-    },
-    {
-      key: 'Delete',
-      callback: () => {
-        if (selectedCount > 0) {
-          handleBulkDelete();
-        }
-      },
-    },
+    { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredChats.length > 0) { selectAll(filteredChats.map(chat => chat.id)); enhancedToast.info('All Selected', `${filteredChats.length} chats selected`); } } },
+    { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
+    { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowDown(); } } },
+    { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowUp(); } } },
+    { key: 'Home', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleHome(); } } },
+    { key: 'End', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleEnd(); } } },
+    { key: 'Enter', callback: () => { if (!isMultiSelectMode && showSidebar) handleEnter(); } },
   ], { enabled: showSidebar });
 
-  const handleBulkDelete = () => {
-    deleteBulkChats(selectedIds);
-    clearSelection();
-    resetLastClicked();
-  };
+  const handleBulkDelete = () => { deleteBulkChats(selectedIds); clearSelection(); resetLastClicked(); };
 
-  const handleChatClick = (chat: Chat, index: number, e: React.MouseEvent) => {
+  const handleChatClick = (index: number, chat: Chat, e: React.MouseEvent) => {
     if (isMultiSelectMode) {
-      handleClick(
-        index,
-        chat.id,
-        e.shiftKey,
-        filteredChats.map(c => c.id),
-        isSelected,
-        toggleSelect,
-        selectRange
-      );
+      handleClick(index, chat.id, e.shiftKey, filteredChats.map(c => c.id), isSelected, toggleSelect, selectAll);
     } else {
       setActiveChat(chat);
     }
   };
 
-  const handleExport = (format: ExportFormat) => {
-    const chatsToExport = selectedCount > 0
-      ? chats.filter(chat => selectedIds.includes(chat.id))
-      : filteredChats;
-
-    const exportData = chatsToExport.map(chat => ({
-      id: chat.id,
+  const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
+    const chatsToExport = selectedCount > 0 ? chats.filter(chat => selectedIds.includes(chat.id)) : filteredChats;
+    const data = chatsToExport.map(chat => ({
       title: chat.title,
       created_at: chat.createdAt.toISOString(),
       updated_at: chat.updatedAt.toISOString(),
-      content: chat.messages.map(m => `${m.type}: ${m.content}`).join('\n\n'),
       message_count: chat.messages.length,
+      messages: chat.messages.map(m => ({ role: m.type, content: m.content, timestamp: m.timestamp.toISOString() })),
     }));
 
-    const filename = getExportFilename('chats', format);
-
     try {
-      if (format === 'json') {
-        exportToJSON(exportData, filename);
-      } else if (format === 'csv') {
-        exportToCSV(exportData, filename);
-      } else if (format === 'pdf') {
-        exportToPDF(exportData, filename, 'Chat History Export');
-      }
-      enhancedToast.success('Export Successful', `Exported ${exportData.length} chats as ${format.toUpperCase()}`);
+      let blob: Blob;
+      if (format === 'json') blob = exportToJSON(data);
+      else if (format === 'csv') {
+        const flatData = data.map(({ messages, ...rest }) => ({ ...rest, messages: messages.length }));
+        blob = exportToCSV(flatData, ['title', 'created_at', 'updated_at', 'messages']);
+      } else blob = exportToPDF(data, ['title', 'created_at', 'message_count'], 'Chats Export');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = getExportFilename('chats', format);
+      a.click();
+      URL.revokeObjectURL(url);
+
+      enhancedToast.success('Export Complete', `Exported ${data.length} chats as ${format.toUpperCase()}`);
+      setExportDialogOpen(false);
     } catch (error) {
-      console.error('Export error:', error);
       enhancedToast.error('Export Failed', 'Failed to export chats');
     }
   };
 
-  return (
-    <>
-      <div className={cn(
-        "h-full bg-muted/30 border-r transition-all duration-300",
-        showSidebar ? "w-64" : "w-0 overflow-hidden"
-      )}>
-        <div className="h-full flex flex-col">
-          <div className="p-3 space-y-2">
-            <Button 
-              onClick={createNewChat}
-              className="w-full justify-start gap-2"
-              variant="outline"
-              disabled={isMultiSelectMode}
-            >
-              <PlusCircle size={16} />
-              New Chat
-            </Button>
-            
-            {/* Search bar */}
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search chats..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-8"
-                disabled={isMultiSelectMode}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+  const groupedChats = groupChatsByDate(filteredChats);
 
-            {!isMultiSelectMode && filteredChats.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  // Enter multi-select mode
-                  toggleSelect(filteredChats[0].id);
-                  clearSelection();
-                }}
-                className="w-full justify-start text-xs"
-              >
-                Select Multiple
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-2 space-y-4">
-            {filteredChats.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center p-4">
-                {searchQuery ? 'No chats found' : 'No chats yet'}
-              </p>
-            ) : (
-              groupChatsByDate(filteredChats).map(([dateGroup, dateChats]) => (
-                <div key={dateGroup} className="space-y-2">
-                  <h3 className="text-xs font-medium text-muted-foreground px-2">{dateGroup}</h3>
-                  
-                  {dateChats.map((chat, index) => {
-                    const selected = isSelected(chat.id);
-                    const globalIndex = filteredChats.findIndex(c => c.id === chat.id);
-                    
-                    return (
-                      <div 
-                        key={chat.id}
-                        onClick={(e) => handleChatClick(chat, globalIndex, e)}
-                        className={cn(
-                          "p-2 rounded-lg flex items-center gap-2 cursor-pointer group",
-                          activeChat?.id === chat.id && !isMultiSelectMode
-                            ? "bg-primary/10 text-primary" 
-                            : "hover:bg-muted/50",
-                          selected && "ring-2 ring-primary"
-                        )}
-                      >
-                        {isMultiSelectMode && (
-                          <Checkbox
-                            checked={!!selected}
-                            onCheckedChange={() => toggleSelect(chat.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        )}
-                        
+  if (!showSidebar) return null;
+
+  return (
+    <div className="h-full flex flex-col border-r bg-background">
+      <div className="p-4 border-b space-y-4">
+        <Button onClick={createNewChat} className="w-full" disabled={isMultiSelectMode}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          New Chat
+        </Button>
+        <Input placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-4">
+        {Object.entries(groupedChats).map(([date, dateChats]) => (
+          <div key={date}>
+            <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{date}</h3>
+            <div className="space-y-1">
+              {dateChats.map((chat, index) => {
+                const globalIndex = filteredChats.findIndex(c => c.id === chat.id);
+                const isFocused = focusedIndex === globalIndex;
+                const isDragging = draggedId === chat.id;
+                const isDropTarget = dragOverId === chat.id;
+
+                return (
+                  <div key={chat.id} className="relative">
+                    <DragIndicator visible={isDropTarget} className="-top-0.5" />
+                    <div
+                      ref={(el) => setItemRef(globalIndex, el)}
+                      draggable={!isMultiSelectMode}
+                      onDragStart={(e) => handleDragStart(e, chat)}
+                      onDragOver={(e) => handleDragOver(e, chat)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, chat)}
+                      onDragEnd={handleDragEnd}
+                      onClick={(e) => handleChatClick(globalIndex, chat, e)}
+                      className={cn(
+                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
+                        activeChat?.id === chat.id && !isMultiSelectMode && "bg-accent",
+                        isSelected(chat.id) && "bg-primary/10 ring-2 ring-primary",
+                        isFocused && "ring-2 ring-primary/50",
+                        isDragging && "opacity-50",
+                        "hover:bg-accent"
+                      )}
+                    >
+                      {!isMultiSelectMode && (
+                        <div className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => e.stopPropagation()}>
+                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      {isMultiSelectMode && (
+                        <Checkbox checked={isSelected(chat.id)} onCheckedChange={() => toggleSelect(chat.id)} onClick={(e) => e.stopPropagation()} />
+                      )}
+                      <div className="flex-1 min-w-0">
                         {isEditingTitle === chat.id ? (
                           <Input
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
                             onBlur={() => saveTitle(chat.id)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                saveTitle(chat.id);
-                              }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveTitle(chat.id);
+                              if (e.key === 'Escape') setEditTitle('');
                             }}
-                            className="h-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                             autoFocus
+                            className="h-7"
                           />
                         ) : (
-                          <>
-                            <span className="flex-1 text-sm truncate">{chat.title}</span>
-                            {!isMultiSelectMode && (
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => startEditingTitle(chat.id, e)}
-                                >
-                                  <Edit3 size={12} />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => deleteChat(chat.id, e)}
-                                >
-                                  <Trash2 size={12} />
-                                </Button>
-                              </div>
-                            )}
-                          </>
+                          <p className="text-sm truncate">{chat.title}</p>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              ))
-            )}
+                      {!isMultiSelectMode && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" onClick={(e) => startEditingTitle(chat.id, e)} className="h-7 w-7 p-0">
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={(e) => deleteChat(chat.id, e)} className="h-7 w-7 p-0">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      <BulkActionBar
-        selectedCount={selectedCount}
-        onDelete={handleBulkDelete}
-        onExport={() => setExportDialogOpen(true)}
-        onCancel={() => {
-          clearSelection();
-          resetLastClicked();
-        }}
-      />
-
-      <ExportDialog
-        open={exportDialogOpen}
-        onOpenChange={setExportDialogOpen}
-        onExport={handleExport}
-        itemCount={selectedCount > 0 ? selectedCount : filteredChats.length}
-        itemType="chats"
-      />
-    </>
+      <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
+      <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'created_at', 'updated_at', 'messages']} itemCount={selectedCount > 0 ? selectedCount : filteredChats.length} />
+    </div>
   );
 };
 

@@ -20,6 +20,7 @@ export const Search: React.FC = () => {
     deleteChat,
     deleteBulkChats,
     updateChatTitle,
+    updateChatOrder,
     sendMessage
   } = useChat();
 
@@ -55,6 +56,7 @@ export const Search: React.FC = () => {
         onDeleteChat={handleDeleteChat}
         onDeleteBulkChats={deleteBulkChats}
         onUpdateTitle={updateChatTitle}
+        onUpdateChatOrder={updateChatOrder}
         onSendMessage={sendMessage}
       />
     </ChatErrorBoundary>
