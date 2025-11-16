@@ -3,6 +3,10 @@ import React from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatContainer } from './ChatContainer';
+import { ChatErrorBoundary } from '@/components/error/ChatErrorBoundary';
+import { ChatListSkeleton } from '@/components/ui/skeleton-variants';
+import { EmptyState } from '@/components/feedback/EmptyState';
+import { MessageSquare } from 'lucide-react';
 
 export const Search: React.FC = () => {
   const { user } = useAuth();
@@ -28,8 +32,8 @@ export const Search: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="w-full h-[calc(100vh-120px)] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading your chats...</p>
+      <div className="w-full h-[calc(100vh-120px)]">
+        <ChatListSkeleton />
       </div>
     );
   }
@@ -40,16 +44,18 @@ export const Search: React.FC = () => {
   };
 
   return (
-    <ChatContainer
-      chats={chats}
-      activeChat={activeChat}
-      isSubmitting={isSubmitting}
-      onSetActiveChat={setActiveChat}
-      onCreateNewChat={createNewChat}
-      onDeleteChat={handleDeleteChat}
-      onUpdateTitle={updateChatTitle}
-      onSendMessage={sendMessage}
-    />
+    <ChatErrorBoundary>
+      <ChatContainer
+        chats={chats}
+        activeChat={activeChat}
+        isSubmitting={isSubmitting}
+        onSetActiveChat={setActiveChat}
+        onCreateNewChat={createNewChat}
+        onDeleteChat={handleDeleteChat}
+        onUpdateTitle={updateChatTitle}
+        onSendMessage={sendMessage}
+      />
+    </ChatErrorBoundary>
   );
 };
 
