@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatContainer } from '../ChatContainer';
 import { Chat } from '@/types/chat';
@@ -176,7 +176,7 @@ describe('ChatContainer', () => {
       fireEvent.change(input, { target: { value: 'Hello AI' } });
       fireEvent.submit(form);
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(mockSendMessage).toHaveBeenCalledWith('Hello AI');
       });
     });
@@ -204,7 +204,7 @@ describe('ChatContainer', () => {
       fireEvent.change(input, { target: { value: 'Test message' } });
       fireEvent.submit(form);
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(input.value).toBe('');
       });
     });
