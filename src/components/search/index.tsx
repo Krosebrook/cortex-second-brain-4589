@@ -18,6 +18,7 @@ export const Search: React.FC = () => {
     setActiveChat,
     createNewChat,
     deleteChat,
+    deleteBulkChats,
     updateChatTitle,
     sendMessage
   } = useChat();
@@ -52,6 +53,7 @@ export const Search: React.FC = () => {
         onSetActiveChat={setActiveChat}
         onCreateNewChat={createNewChat}
         onDeleteChat={handleDeleteChat}
+        onDeleteBulkChats={deleteBulkChats}
         onUpdateTitle={updateChatTitle}
         onSendMessage={sendMessage}
       />
