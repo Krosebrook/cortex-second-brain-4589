@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
@@ -13,6 +13,7 @@ import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
+import { VirtualList } from '@/components/ui/virtual-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -208,6 +209,69 @@ export const KnowledgeList: React.FC = () => {
           <Database className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p>No knowledge items found</p>
         </div>
+      ) : filteredItems.length > 50 ? (
+        <VirtualList
+          items={filteredItems}
+          estimateSize={100}
+          className="h-[calc(100vh-16rem)] overflow-auto"
+          renderItem={(item, index) => {
+            const Icon = typeIcons[item.type];
+            const isFocused = focusedIndex === index;
+            const isDragging = draggedId === item.id;
+            const isDropTarget = dragOverId === item.id;
+
+            return (
+              <div key={item.id} className="relative mb-2">
+                <DragIndicator visible={isDropTarget} className="-top-1" />
+                <Card
+                  ref={(el) => setItemRef(index, el)}
+                  draggable={!isMultiSelectMode}
+                  onDragStart={(e) => handleDragStart(e, item)}
+                  onDragOver={(e) => handleDragOver(e, item)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, item)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "p-4 cursor-pointer transition-all",
+                    isSelected(item.id) && "ring-2 ring-primary",
+                    isFocused && "ring-2 ring-primary/50",
+                    isDragging && "opacity-50",
+                    "hover:shadow-md"
+                  )}
+                  onClick={(e) => !isMultiSelectMode && handleItemClick(index, item.id, e)}
+                >
+                  <div className="flex items-start gap-3">
+                    {!isMultiSelectMode && (
+                      <div className="cursor-move pt-1" onMouseDown={(e) => e.stopPropagation()}>
+                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    {isMultiSelectMode && (
+                      <Checkbox checked={isSelected(item.id)} onCheckedChange={() => handleItemClick(index, item.id, {} as any)} onClick={(e) => e.stopPropagation()} />
+                    )}
+                    <Icon className="h-5 w-5 text-muted-foreground mt-1" />
+                    <div className="flex-1">
+                      <h3 className="font-medium">{item.title}</h3>
+                      {item.content && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.content}</p>}
+                      {item.tags && item.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {item.tags.map(tag => (
+                            <span key={tag} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {!isMultiSelectMode && (
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteKnowledgeItem(item.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            );
+          }}
+        />
       ) : (
         <div className="space-y-2">
           {filteredItems.map((item, index) => {
