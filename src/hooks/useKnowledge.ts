@@ -13,6 +13,7 @@ export interface KnowledgeItem {
   tags?: string[];
   created_at: string;
   updated_at: string;
+  version?: number;
 }
 
 export const useKnowledge = () => {
@@ -230,9 +231,19 @@ export const useKnowledge = () => {
     }
   };
 
-  const updateBulkTags = async (itemIds: string[], tagsToAdd: string[], tagsToRemove: string[]) => {
+  const updateBulkTags = async (itemIds: string[], tagsToAdd: string[], tagsToRemove: string[]): Promise<{
+    success: boolean;
+    previousState: { id: string; tags: string[]; version?: number }[];
+  }> => {
     try {
       const itemsToUpdate = items.filter(item => itemIds.includes(item.id));
+      
+      // Capture previous state
+      const previousState = itemsToUpdate.map(item => ({
+        id: item.id,
+        tags: [...(item.tags || [])],
+        version: item.version,
+      }));
       
       const updates = itemsToUpdate.map(async (item) => {
         let updatedTags = [...(item.tags || [])];
@@ -256,9 +267,31 @@ export const useKnowledge = () => {
       
       const action = tagsToAdd.length > 0 ? 'added to' : 'removed from';
       enhancedToast.success('Success', `Tags ${action} ${itemIds.length} items`);
+      
+      return { success: true, previousState };
     } catch (error) {
       console.error('Error updating tags:', error);
       enhancedToast.error('Error', 'Failed to update tags');
+      return { success: false, previousState: [] };
+    }
+  };
+
+  const restoreBulkTags = async (previousState: { id: string; tags: string[] }[]): Promise<boolean> => {
+    try {
+      const updates = previousState.map(({ id, tags }) =>
+        supabase
+          .from('knowledge_base')
+          .update({ tags })
+          .eq('id', id)
+      );
+
+      await Promise.all(updates);
+      await loadKnowledge();
+      
+      return true;
+    } catch (error) {
+      console.error('Error restoring tags:', error);
+      return false;
     }
   };
 
@@ -275,6 +308,7 @@ export const useKnowledge = () => {
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder,
     updateBulkTags,
+    restoreBulkTags,
     refreshKnowledge: loadKnowledge
   };
 };

@@ -12,12 +12,18 @@ import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useRangeSelection } from '@/hooks/useRangeSelection';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { useConflictDetection } from '@/hooks/useConflictDetection';
+import { useShortcutHelp } from '@/hooks/useShortcutHelp';
+import { useShortcutTracking } from '@/hooks/useShortcutTracking';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { ConflictDialog } from '@/components/feedback/ConflictDialog';
+import { ShortcutsHelpDialog } from '@/components/feedback/ShortcutsHelpDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
+import { Conflict, ConflictResolution } from '@/types/conflict';
 
 interface ChatSidebarWithBulkProps {
   chats: Chat[];
@@ -58,7 +64,19 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { handleClick, resetLastClicked } = useRangeSelection<string>();
-  const { addAction, undo, redo, canUndo, canRedo } = useUndoRedo();
+  const { addAction, undo, redo, canUndo, canRedo, undoStack } = useUndoRedo();
+  const { isOpen: shortcutsOpen, toggle: toggleShortcuts } = useShortcutHelp();
+  const { trackShortcut } = useShortcutTracking();
+  
+  const [currentConflict, setCurrentConflict] = useState<Conflict | null>(null);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+
+  // Track items in history for conflict detection
+  const itemsInHistory = React.useMemo(() => {
+    return undoStack.flatMap(action => action.data.itemIds || []);
+  }, [undoStack]);
+
+  const { conflicts } = useConflictDetection('chats', itemsInHistory);
 
   const filteredChats = useMemo(() => {
     if (!searchQuery) return chats;
@@ -84,17 +102,19 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   });
 
   useKeyboardShortcuts([
-    { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredChats.length > 0) { selectAll(filteredChats.map(chat => chat.id)); enhancedToast.info('All Selected', `${filteredChats.length} chats selected`); } } },
-    { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
-    { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
-    { key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
-    { key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
-    { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowDown(); } } },
-    { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowUp(); } } },
-    { key: 'Home', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleHome(); } } },
-    { key: 'End', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleEnd(); } } },
-    { key: 'Enter', callback: () => { if (!isMultiSelectMode && showSidebar) handleEnter(); } },
-  ], { enabled: showSidebar });
+    { id: 'select-all', key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredChats.length > 0) { selectAll(filteredChats.map(chat => chat.id)); enhancedToast.info('All Selected', `${filteredChats.length} chats selected`); } } },
+    { id: 'select-clear', key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
+    { id: 'action-delete', key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { id: 'action-undo', key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
+    { id: 'action-redo', key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
+    { id: 'help-shortcuts', key: '?', callback: toggleShortcuts },
+    { id: 'help-shortcuts-alt', key: '/', ctrlKey: true, callback: toggleShortcuts },
+    { id: 'nav-up', key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowDown(); } } },
+    { id: 'nav-down', key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowUp(); } } },
+    { id: 'nav-home', key: 'Home', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleHome(); } } },
+    { id: 'nav-end', key: 'End', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleEnd(); } } },
+    { id: 'nav-enter', key: 'Enter', callback: () => { if (!isMultiSelectMode && showSidebar) handleEnter(); } },
+  ], { enabled: showSidebar, onShortcutUsed: trackShortcut });
 
   const handleBulkDelete = async () => { 
     if (selectedCount === 0 || !softDeleteBulkChats) return;
@@ -337,7 +357,33 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
         canUndo={canUndo}
         canRedo={canRedo}
       />
-      <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'created_at', 'updated_at', 'messages']} itemCount={selectedCount > 0 ? selectedCount : filteredChats.length} />
+      
+      <ExportDialog 
+        open={exportDialogOpen} 
+        onOpenChange={setExportDialogOpen} 
+        onExport={handleExport} 
+        availableFields={['title', 'created_at', 'updated_at', 'messages']} 
+        itemCount={selectedCount > 0 ? selectedCount : filteredChats.length} 
+      />
+      
+      <ConflictDialog
+        conflict={currentConflict}
+        open={conflictDialogOpen}
+        onResolve={(resolution) => {
+          setConflictDialogOpen(false);
+          setCurrentConflict(null);
+        }}
+      />
+
+      <ShortcutsHelpDialog
+        open={shortcutsOpen}
+        onOpenChange={toggleShortcuts}
+        context={{
+          page: 'chats',
+          hasSelection: selectedCount > 0,
+          bulkMode: isMultiSelectMode,
+        }}
+      />
     </div>
   );
 };

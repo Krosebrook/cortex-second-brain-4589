@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 
 export interface KeyboardShortcut {
+  id?: string;
   key: string;
   ctrlKey?: boolean;
   metaKey?: boolean;
@@ -12,13 +13,14 @@ export interface KeyboardShortcut {
 interface UseKeyboardShortcutsOptions {
   enabled?: boolean;
   ignoreInputs?: boolean;
+  onShortcutUsed?: (shortcutId: string) => void;
 }
 
 export const useKeyboardShortcuts = (
   shortcuts: KeyboardShortcut[],
   options: UseKeyboardShortcutsOptions = {}
 ) => {
-  const { enabled = true, ignoreInputs = true } = options;
+  const { enabled = true, ignoreInputs = true, onShortcutUsed } = options;
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -55,6 +57,12 @@ export const useKeyboardShortcuts = (
         if (matchingShortcut.preventDefault !== false) {
           event.preventDefault();
         }
+        
+        // Track usage
+        if (onShortcutUsed && matchingShortcut.id) {
+          onShortcutUsed(matchingShortcut.id);
+        }
+        
         matchingShortcut.callback(event);
       }
     },
