@@ -11,6 +11,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useRangeSelection } from '@/hooks/useRangeSelection';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
@@ -25,6 +26,8 @@ interface ChatSidebarWithBulkProps {
   createNewChat: () => void;
   deleteChat: (chatId: string, e: React.MouseEvent) => void;
   deleteBulkChats: (chatIds: string[]) => void;
+  softDeleteBulkChats?: (chatIds: string[]) => Promise<Chat[]>;
+  restoreBulkChats?: (chatIds: string[]) => Promise<void>;
   updateChatOrder: (orderedChats: { id: string; order_index: number }[]) => void;
   showSidebar: boolean;
   isEditingTitle: string | null;
@@ -41,6 +44,8 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   createNewChat,
   deleteChat,
   deleteBulkChats,
+  softDeleteBulkChats,
+  restoreBulkChats,
   updateChatOrder,
   showSidebar,
   isEditingTitle,
@@ -53,6 +58,7 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { handleClick, resetLastClicked } = useRangeSelection<string>();
+  const { addAction, undo, redo, canUndo, canRedo } = useUndoRedo();
 
   const filteredChats = useMemo(() => {
     if (!searchQuery) return chats;
@@ -81,6 +87,8 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
     { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredChats.length > 0) { selectAll(filteredChats.map(chat => chat.id)); enhancedToast.info('All Selected', `${filteredChats.length} chats selected`); } } },
     { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
     { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
+    { key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
     { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowDown(); } } },
     { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleArrowUp(); } } },
     { key: 'Home', callback: (e) => { if (!isMultiSelectMode && showSidebar) { e.preventDefault(); handleHome(); } } },
@@ -88,7 +96,26 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
     { key: 'Enter', callback: () => { if (!isMultiSelectMode && showSidebar) handleEnter(); } },
   ], { enabled: showSidebar });
 
-  const handleBulkDelete = () => { deleteBulkChats(selectedIds); clearSelection(); resetLastClicked(); };
+  const handleBulkDelete = async () => { 
+    if (selectedCount === 0 || !softDeleteBulkChats) return;
+    
+    const chatsToDelete = chats.filter(chat => selectedIds.includes(chat.id));
+    const deletedChats = await softDeleteBulkChats(selectedIds);
+    
+    addAction({
+      id: `bulk-delete-chats-${Date.now()}`,
+      type: 'delete',
+      timestamp: Date.now(),
+      data: { itemIds: selectedIds, beforeState: chatsToDelete, afterState: [] },
+      undo: async () => { if (restoreBulkChats) await restoreBulkChats(selectedIds); },
+      redo: async () => { if (softDeleteBulkChats) await softDeleteBulkChats(selectedIds); },
+      description: `Deleted ${selectedIds.length} chat${selectedIds.length > 1 ? 's' : ''}`,
+    });
+    
+    enhancedToast.success('Chats Deleted', `${selectedIds.length} chat${selectedIds.length > 1 ? 's' : ''} deleted. Press Ctrl+Z to undo.`);
+    clearSelection(); 
+    resetLastClicked(); 
+  };
 
   const handleChatClick = (index: number, chat: Chat, e: React.MouseEvent) => {
     if (isMultiSelectMode) {
@@ -300,7 +327,16 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
         )}
       </div>
 
-      <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
+      <BulkActionBar 
+        selectedCount={selectedCount} 
+        onDelete={handleBulkDelete} 
+        onExport={() => setExportDialogOpen(true)} 
+        onCancel={() => { clearSelection(); resetLastClicked(); }}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
       <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'created_at', 'updated_at', 'messages']} itemCount={selectedCount > 0 ? selectedCount : filteredChats.length} />
     </div>
   );

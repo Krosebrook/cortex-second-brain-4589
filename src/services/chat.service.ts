@@ -71,6 +71,26 @@ export class ChatService {
     };
   }
 
+  static async softDeleteChat(chatId: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('chats')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', chatId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  }
+
+  static async restoreChat(chatId: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('chats')
+      .update({ deleted_at: null })
+      .eq('id', chatId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  }
+
   static async deleteChat(chatId: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('chats')

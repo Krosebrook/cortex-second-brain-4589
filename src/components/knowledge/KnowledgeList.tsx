@@ -8,10 +8,12 @@ import { useRangeSelection } from '@/hooks/useRangeSelection';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useSearchFilter } from '@/hooks/useSearchFilter';
 import { useFilterPresets } from '@/hooks/useFilterPresets';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { FilterPresetDialog } from '@/components/feedback/FilterPresetDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { Button } from '@/components/ui/button';
@@ -21,6 +23,7 @@ import { FileText, Globe, Database, File, Trash2, GripVertical } from 'lucide-re
 import { cn } from '@/lib/utils';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
+import { UndoToast } from '@/components/feedback/UndoToast';
 
 const typeIcons = {
   note: FileText,
@@ -31,7 +34,19 @@ const typeIcons = {
 
 export const KnowledgeList: React.FC = () => {
   const { user } = useAuth();
-  const { items, loading, deleteKnowledgeItem, deleteBulkKnowledgeItems, updateKnowledgeOrder, updateBulkTags } = useKnowledge();
+  const { 
+    items, 
+    loading, 
+    deleteKnowledgeItem, 
+    deleteBulkKnowledgeItems, 
+    softDeleteBulkKnowledgeItems,
+    restoreBulkKnowledgeItems,
+    updateKnowledgeOrder, 
+    updateBulkTags 
+  } = useKnowledge();
+  
+  const { addAction, undo, redo, canUndo, canRedo } = useUndoRedo();
+  
   const {
     selectedIds,
     selectedCount,
@@ -93,10 +108,43 @@ export const KnowledgeList: React.FC = () => {
     enabled: !isMultiSelectMode,
   });
 
-  const handleBulkDelete = () => { 
-    deleteBulkKnowledgeItems(selectedIds); 
-    clearSelection(); 
-    resetLastClicked(); 
+  const handleBulkDelete = async () => { 
+    if (selectedIds.length === 0) return;
+    
+    const itemsToDelete = items.filter(item => selectedIds.includes(item.id));
+    
+    try {
+      await softDeleteBulkKnowledgeItems!(selectedIds);
+      
+      // Add undo action
+      addAction({
+        id: `bulk-delete-${Date.now()}`,
+        type: 'delete',
+        timestamp: Date.now(),
+        data: {
+          itemIds: selectedIds,
+          beforeState: itemsToDelete,
+          afterState: [],
+        },
+        undo: async () => {
+          await restoreBulkKnowledgeItems!(selectedIds);
+        },
+        redo: async () => {
+          await softDeleteBulkKnowledgeItems!(selectedIds);
+        },
+        description: `Deleted ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}`,
+      });
+      
+      enhancedToast.success(
+        'Items Deleted',
+        `${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''} deleted. Press Ctrl+Z to undo.`
+      );
+      
+      clearSelection(); 
+      resetLastClicked(); 
+    } catch (error) {
+      enhancedToast.error('Error', 'Failed to delete items');
+    }
   };
 
   const handleSavePreset = async () => {
@@ -128,6 +176,8 @@ export const KnowledgeList: React.FC = () => {
     { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
     { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
     { key: 's', ctrlKey: true, callback: (e) => { if (hasActiveFilters) { e.preventDefault(); handleSavePreset(); } } },
+    { key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
+    { key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
     { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowDown(); } } },
     { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowUp(); } } },
     { key: 'Home', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleHome(); } } },
@@ -334,7 +384,17 @@ export const KnowledgeList: React.FC = () => {
         </div>
       )}
 
-      <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onManageTags={() => setTagDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
+      <BulkActionBar 
+        selectedCount={selectedCount} 
+        onDelete={handleBulkDelete} 
+        onExport={() => setExportDialogOpen(true)} 
+        onManageTags={() => setTagDialogOpen(true)} 
+        onCancel={() => { clearSelection(); resetLastClicked(); }}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
       <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'content', 'type', 'tags', 'source_url', 'created_at', 'updated_at']} itemCount={selectedCount > 0 ? selectedCount : filteredItems.length} />
       <BulkTagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} selectedCount={selectedCount} existingTags={allTags} selectedItemTags={selectedItemTags} onAddTags={handleAddTags} onRemoveTags={handleRemoveTags} />
     </div>
