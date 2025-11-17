@@ -14,25 +14,20 @@ interface ExportItem {
   [key: string]: any;
 }
 
-export const exportToJSON = (items: ExportItem[], filename: string) => {
+export const exportToJSON = (items: ExportItem[]): Blob => {
   const dataStr = JSON.stringify(items, null, 2);
-  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-  downloadBlob(dataBlob, `${filename}.json`);
+  return new Blob([dataStr], { type: 'application/json' });
 };
 
-export const exportToCSV = (items: ExportItem[], filename: string) => {
+export const exportToCSV = (items: ExportItem[], selectedFields: string[]): Blob => {
   if (items.length === 0) {
     throw new Error('No items to export');
   }
 
-  // Get all unique keys from all items
-  const allKeys = new Set<string>();
-  items.forEach(item => {
-    Object.keys(item).forEach(key => allKeys.add(key));
-  });
-
-  // Create headers
-  const headers = Array.from(allKeys);
+  // Use selected fields if provided, otherwise use all keys
+  const headers = selectedFields.length > 0 
+    ? selectedFields 
+    : Array.from(new Set(items.flatMap(item => Object.keys(item))));
   
   // Create CSV content
   const csvRows = [headers.join(',')];
@@ -57,11 +52,10 @@ export const exportToCSV = (items: ExportItem[], filename: string) => {
   });
 
   const csvContent = csvRows.join('\n');
-  const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  downloadBlob(dataBlob, `${filename}.csv`);
+  return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
 };
 
-export const exportToPDF = (items: ExportItem[], filename: string, title: string) => {
+export const exportToPDF = (items: ExportItem[], selectedFields: string[], title: string): Blob => {
   const doc = new jsPDF();
   
   // Add title
@@ -73,17 +67,26 @@ export const exportToPDF = (items: ExportItem[], filename: string, title: string
   doc.text(`Exported: ${new Date().toLocaleString()}`, 14, 28);
   doc.text(`Total items: ${items.length}`, 14, 34);
   
-  // Prepare table data
-  const tableData = items.map(item => [
-    item.title,
-    item.type || '-',
-    item.tags?.join(', ') || '-',
-    new Date(item.created_at).toLocaleDateString(),
-  ]);
+  // Prepare table data based on selected fields
+  const displayFields = selectedFields.length > 0 ? selectedFields : ['title', 'type', 'tags', 'created_at'];
+  const headers = displayFields.map(field => field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+  
+  const tableData = items.map(item => 
+    displayFields.map(field => {
+      const value = item[field];
+      if (Array.isArray(value)) return value.join(', ') || '-';
+      if (value instanceof Date) return value.toLocaleDateString();
+      if (typeof value === 'string' && value.includes('T')) {
+        const date = new Date(value);
+        return !isNaN(date.getTime()) ? date.toLocaleDateString() : value;
+      }
+      return value?.toString() || '-';
+    })
+  );
   
   // Add table
   autoTable(doc, {
-    head: [['Title', 'Type', 'Tags', 'Created']],
+    head: [headers],
     body: tableData,
     startY: 40,
     styles: { fontSize: 9 },
@@ -124,7 +127,7 @@ export const exportToPDF = (items: ExportItem[], filename: string, title: string
     }
   });
   
-  doc.save(`${filename}.pdf`);
+  return doc.output('blob');
 };
 
 const downloadBlob = (blob: Blob, filename: string) => {

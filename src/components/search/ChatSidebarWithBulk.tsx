@@ -100,6 +100,7 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
     const chatsToExport = selectedCount > 0 ? chats.filter(chat => selectedIds.includes(chat.id)) : filteredChats;
     const data = chatsToExport.map(chat => ({
+      id: chat.id,
       title: chat.title,
       created_at: chat.createdAt.toISOString(),
       updated_at: chat.updatedAt.toISOString(),
@@ -118,7 +119,7 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = getExportFilename('chats', format);
+      a.download = `${getExportFilename('chats', format)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -144,11 +145,13 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-4">
-        {Object.entries(groupedChats).map(([date, dateChats]) => (
-          <div key={date}>
-            <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{date}</h3>
-            <div className="space-y-1">
-              {dateChats.map((chat, index) => {
+        {Object.entries(groupedChats).map(([date, dateChatsEntry]) => {
+          const dateChats = Array.isArray(dateChatsEntry) ? dateChatsEntry : [];
+          return (
+            <div key={date}>
+              <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{date}</h3>
+              <div className="space-y-1">
+                {dateChats.map((chat, index) => {
                 const globalIndex = filteredChats.findIndex(c => c.id === chat.id);
                 const isFocused = focusedIndex === globalIndex;
                 const isDragging = draggedId === chat.id;
@@ -213,11 +216,12 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
                       )}
                     </div>
                   </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
