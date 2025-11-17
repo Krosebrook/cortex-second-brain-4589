@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,6 +14,7 @@ import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
+import { VirtualList } from '@/components/ui/virtual-list';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
 
@@ -145,83 +146,158 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-4">
-        {Object.entries(groupedChats).map(([date, dateChatsEntry]) => {
-          const dateChats = Array.isArray(dateChatsEntry) ? dateChatsEntry : [];
-          return (
-            <div key={date}>
-              <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{date}</h3>
-              <div className="space-y-1">
-                {dateChats.map((chat, index) => {
-                const globalIndex = filteredChats.findIndex(c => c.id === chat.id);
-                const isFocused = focusedIndex === globalIndex;
-                const isDragging = draggedId === chat.id;
-                const isDropTarget = dragOverId === chat.id;
+        {filteredChats.length > 50 ? (
+          <VirtualList
+            items={filteredChats}
+            estimateSize={48}
+            className="h-full overflow-auto"
+            renderItem={(chat, index) => {
+              const globalIndex = index;
+              const isFocused = focusedIndex === globalIndex;
+              const isDragging = draggedId === chat.id;
+              const isDropTarget = dragOverId === chat.id;
 
-                return (
-                  <div key={chat.id} className="relative">
-                    <DragIndicator visible={isDropTarget} className="-top-0.5" />
-                    <div
-                      ref={(el) => setItemRef(globalIndex, el)}
-                      draggable={!isMultiSelectMode}
-                      onDragStart={(e) => handleDragStart(e, chat)}
-                      onDragOver={(e) => handleDragOver(e, chat)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, chat)}
-                      onDragEnd={handleDragEnd}
-                      onClick={(e) => handleChatClick(globalIndex, chat, e)}
-                      className={cn(
-                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
-                        activeChat?.id === chat.id && !isMultiSelectMode && "bg-accent",
-                        isSelected(chat.id) && "bg-primary/10 ring-2 ring-primary",
-                        isFocused && "ring-2 ring-primary/50",
-                        isDragging && "opacity-50",
-                        "hover:bg-accent"
-                      )}
-                    >
-                      {!isMultiSelectMode && (
-                        <div className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => e.stopPropagation()}>
-                          <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      {isMultiSelectMode && (
-                        <Checkbox checked={isSelected(chat.id)} onCheckedChange={() => toggleSelect(chat.id)} onClick={(e) => e.stopPropagation()} />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {isEditingTitle === chat.id ? (
-                          <Input
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            onBlur={() => saveTitle(chat.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveTitle(chat.id);
-                              if (e.key === 'Escape') setEditTitle('');
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
-                            className="h-7"
-                          />
-                        ) : (
-                          <p className="text-sm truncate">{chat.title}</p>
-                        )}
+              return (
+                <div key={chat.id} className="relative mb-1">
+                  <DragIndicator visible={isDropTarget} className="-top-0.5" />
+                  <div
+                    ref={(el) => setItemRef(globalIndex, el)}
+                    draggable={!isMultiSelectMode}
+                    onDragStart={(e) => handleDragStart(e, chat)}
+                    onDragOver={(e) => handleDragOver(e, chat)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, chat)}
+                    onDragEnd={handleDragEnd}
+                    onClick={(e) => handleChatClick(globalIndex, chat, e)}
+                    className={cn(
+                      "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
+                      activeChat?.id === chat.id && !isMultiSelectMode && "bg-accent",
+                      isSelected(chat.id) && "bg-primary/10 ring-2 ring-primary",
+                      isFocused && "ring-2 ring-primary/50",
+                      isDragging && "opacity-50",
+                      "hover:bg-accent"
+                    )}
+                  >
+                    {!isMultiSelectMode && (
+                      <div className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => e.stopPropagation()}>
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      {!isMultiSelectMode && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="sm" onClick={(e) => startEditingTitle(chat.id, e)} className="h-7 w-7 p-0">
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={(e) => deleteChat(chat.id, e)} className="h-7 w-7 p-0">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                    )}
+                    {isMultiSelectMode && (
+                      <Checkbox checked={isSelected(chat.id)} onCheckedChange={() => toggleSelect(chat.id)} onClick={(e) => e.stopPropagation()} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {isEditingTitle === chat.id ? (
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onBlur={() => saveTitle(chat.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveTitle(chat.id);
+                            if (e.key === 'Escape') setEditTitle('');
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                          className="h-7"
+                        />
+                      ) : (
+                        <p className="text-sm truncate">{chat.title}</p>
                       )}
                     </div>
+                    {!isMultiSelectMode && (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="sm" onClick={(e) => startEditingTitle(chat.id, e)} className="h-7 w-7 p-0">
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={(e) => deleteChat(chat.id, e)} className="h-7 w-7 p-0">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  );
-                })}
+                </div>
+              );
+            }}
+          />
+        ) : (
+          Object.entries(groupedChats).map(([date, dateChatsEntry]) => {
+            const dateChats = Array.isArray(dateChatsEntry) ? dateChatsEntry : [];
+            return (
+              <div key={date}>
+                <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{date}</h3>
+                <div className="space-y-1">
+                  {dateChats.map((chat, index) => {
+                  const globalIndex = filteredChats.findIndex(c => c.id === chat.id);
+                  const isFocused = focusedIndex === globalIndex;
+                  const isDragging = draggedId === chat.id;
+                  const isDropTarget = dragOverId === chat.id;
+
+                  return (
+                    <div key={chat.id} className="relative">
+                      <DragIndicator visible={isDropTarget} className="-top-0.5" />
+                      <div
+                        ref={(el) => setItemRef(globalIndex, el)}
+                        draggable={!isMultiSelectMode}
+                        onDragStart={(e) => handleDragStart(e, chat)}
+                        onDragOver={(e) => handleDragOver(e, chat)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, chat)}
+                        onDragEnd={handleDragEnd}
+                        onClick={(e) => handleChatClick(globalIndex, chat, e)}
+                        className={cn(
+                          "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all",
+                          activeChat?.id === chat.id && !isMultiSelectMode && "bg-accent",
+                          isSelected(chat.id) && "bg-primary/10 ring-2 ring-primary",
+                          isFocused && "ring-2 ring-primary/50",
+                          isDragging && "opacity-50",
+                          "hover:bg-accent"
+                        )}
+                      >
+                        {!isMultiSelectMode && (
+                          <div className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => e.stopPropagation()}>
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        {isMultiSelectMode && (
+                          <Checkbox checked={isSelected(chat.id)} onCheckedChange={() => toggleSelect(chat.id)} onClick={(e) => e.stopPropagation()} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          {isEditingTitle === chat.id ? (
+                            <Input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onBlur={() => saveTitle(chat.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveTitle(chat.id);
+                                if (e.key === 'Escape') setEditTitle('');
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                              className="h-7"
+                            />
+                          ) : (
+                            <p className="text-sm truncate">{chat.title}</p>
+                          )}
+                        </div>
+                        {!isMultiSelectMode && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="sm" onClick={(e) => startEditingTitle(chat.id, e)} className="h-7 w-7 p-0">
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={(e) => deleteChat(chat.id, e)} className="h-7 w-7 p-0">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <BulkActionBar selectedCount={selectedCount} onDelete={handleBulkDelete} onExport={() => setExportDialogOpen(true)} onCancel={() => { clearSelection(); resetLastClicked(); }} />
