@@ -74,6 +74,18 @@ export const useChat = () => {
     }
   }, [user, chats, isOnline]);
 
+  const softDeleteChat = useCallback(async (chatId: string) => {
+    if (!user) return;
+    await ChatService.softDeleteChat(chatId, user.id);
+    await loadChats();
+  }, [user, loadChats]);
+
+  const restoreChat = useCallback(async (chatId: string) => {
+    if (!user) return;
+    await ChatService.restoreChat(chatId, user.id);
+    await loadChats();
+  }, [user, loadChats]);
+
   const deleteChat = useCallback(async (chatId: string) => {
     if (!user) return;
 
@@ -87,46 +99,40 @@ export const useChat = () => {
 
     confirm({
       title: 'Delete Chat',
-      description: `Are you sure you want to delete "${chatToDelete.title}"? This action cannot be undone.`,
+      description: `Are you sure you want to delete "${chatToDelete.title}"?`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       variant: 'destructive',
       onConfirm: async () => {
-        const previousChats = [...chats];
-        const previousActiveChat = activeChat;
-
-        // Optimistically update UI
-        const updatedChats = chats.filter(chat => chat.id !== chatId);
-        setChats(updatedChats);
-        
-        if (activeChat?.id === chatId) {
-          setActiveChat(updatedChats[0] || null);
-        }
-
         try {
-          await ChatService.deleteChat(chatId, user.id);
-          enhancedToast.destructive(
-            'Chat Deleted',
-            `"${chatToDelete.title}" has been deleted`,
-            async () => {
-              // Undo deletion
-              setChats(previousChats);
-              setActiveChat(previousActiveChat);
-              enhancedToast.success('Chat Restored', 'The chat has been restored');
-            }
-          );
+          await softDeleteChat(chatId);
+          enhancedToast.success('Chat Deleted', `"${chatToDelete.title}" has been deleted`);
         } catch (error) {
           console.error('Error deleting chat:', error);
-          // Revert optimistic update on error
-          setChats(previousChats);
-          setActiveChat(previousActiveChat);
           enhancedToast.error('Error', 'Failed to delete chat');
         }
       },
       successMessage: undefined,
       errorMessage: undefined
     });
-  }, [user, chats, activeChat, isOnline, confirm]);
+  }, [user, chats, isOnline, confirm, softDeleteChat]);
+
+  const softDeleteBulkChats = useCallback(async (chatIds: string[]) => {
+    if (!user) return;
+    await Promise.all(
+      chatIds.map(chatId => ChatService.softDeleteChat(chatId, user.id))
+    );
+    await loadChats();
+    return chats.filter(chat => chatIds.includes(chat.id));
+  }, [user, chats, loadChats]);
+
+  const restoreBulkChats = useCallback(async (chatIds: string[]) => {
+    if (!user) return;
+    await Promise.all(
+      chatIds.map(chatId => ChatService.restoreChat(chatId, user.id))
+    );
+    await loadChats();
+  }, [user, loadChats]);
 
   const deleteBulkChats = useCallback(async (chatIds: string[]) => {
     if (!user) return;
@@ -142,50 +148,26 @@ export const useChat = () => {
     
     confirm({
       title: 'Delete Multiple Chats',
-      description: `Are you sure you want to delete ${chatIds.length} chat${chatIds.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      description: `Are you sure you want to delete ${chatIds.length} chat${chatIds.length > 1 ? 's' : ''}?`,
       confirmText: `Delete ${chatIds.length} Chat${chatIds.length > 1 ? 's' : ''}`,
       cancelText: 'Cancel',
       variant: 'destructive',
       onConfirm: async () => {
-        const previousChats = [...chats];
-        const previousActiveChat = activeChat;
-
-        // Optimistically update UI
-        const updatedChats = chats.filter(chat => !chatIds.includes(chat.id));
-        setChats(updatedChats);
-        
-        if (activeChat && chatIds.includes(activeChat.id)) {
-          setActiveChat(updatedChats[0] || null);
-        }
-
         try {
-          // Delete all chats in parallel
-          await Promise.all(
-            chatIds.map(chatId => ChatService.deleteChat(chatId, user.id))
-          );
-
-          enhancedToast.destructive(
+          await softDeleteBulkChats(chatIds);
+          enhancedToast.success(
             'Chats Deleted',
-            `${chatIds.length} chat${chatIds.length > 1 ? 's have' : ' has'} been deleted`,
-            async () => {
-              // Undo deletion
-              setChats(previousChats);
-              setActiveChat(previousActiveChat);
-              enhancedToast.success('Chats Restored', 'All chats have been restored');
-            }
+            `${chatIds.length} chat${chatIds.length > 1 ? 's have' : ' has'} been deleted`
           );
         } catch (error) {
           console.error('Error deleting chats:', error);
-          // Revert optimistic update on error
-          setChats(previousChats);
-          setActiveChat(previousActiveChat);
-          enhancedToast.error('Error', 'Failed to delete some chats');
+          enhancedToast.error('Error', 'Failed to delete chats');
         }
       },
       successMessage: undefined,
       errorMessage: undefined
     });
-  }, [user, chats, activeChat, isOnline, confirm]);
+  }, [user, chats, isOnline, confirm, softDeleteBulkChats]);
 
   const updateChatTitle = useCallback(async (chatId: string, title: string) => {
     if (!user) return;
@@ -322,6 +304,10 @@ export const useChat = () => {
     createNewChat,
     deleteChat,
     deleteBulkChats,
+    softDeleteChat,
+    restoreChat,
+    softDeleteBulkChats,
+    restoreBulkChats,
     updateChatTitle,
     sendMessage,
     updateChatOrder,

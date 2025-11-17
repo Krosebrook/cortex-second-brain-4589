@@ -100,69 +100,88 @@ export const useKnowledge = () => {
     }
   };
 
+  const softDeleteKnowledgeItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('knowledge_base')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+      await loadKnowledge();
+    } catch (error) {
+      console.error('Error soft deleting knowledge item:', error);
+      throw error;
+    }
+  };
+
+  const restoreKnowledgeItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('knowledge_base')
+        .update({ deleted_at: null })
+        .eq('id', id);
+
+      if (error) throw error;
+      await loadKnowledge();
+    } catch (error) {
+      console.error('Error restoring knowledge item:', error);
+      throw error;
+    }
+  };
+
   const deleteKnowledgeItem = async (id: string) => {
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;
 
     confirm({
       title: 'Delete Knowledge Item',
-      description: `Are you sure you want to delete "${itemToDelete.title}"? This action cannot be undone.`,
+      description: `Are you sure you want to delete "${itemToDelete.title}"?`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       variant: 'destructive',
       onConfirm: async () => {
-        const previousItems = [...items];
-
-        // Optimistically update UI
-        setItems(items.filter(item => item.id !== id));
-
         try {
-          const { error } = await supabase
-            .from('knowledge_base')
-            .delete()
-            .eq('id', id);
-
-          if (error) {
-            console.error('Error deleting knowledge item:', error);
-            setItems(previousItems);
-            enhancedToast.error('Error', 'Failed to delete knowledge item');
-            return;
-          }
-
-          enhancedToast.destructive(
-            'Item Deleted',
-            `"${itemToDelete.title}" has been deleted`,
-            async () => {
-              // Undo deletion - restore the item
-              const { error: restoreError } = await supabase
-                .from('knowledge_base')
-                .insert({
-                  id: itemToDelete.id,
-                  user_id: user?.id,
-                  title: itemToDelete.title,
-                  content: itemToDelete.content,
-                  type: itemToDelete.type,
-                  source_url: itemToDelete.source_url,
-                  tags: itemToDelete.tags
-                });
-
-              if (restoreError) {
-                enhancedToast.error('Error', 'Failed to restore knowledge item');
-              } else {
-                await loadKnowledge();
-                enhancedToast.success('Item Restored', 'The knowledge item has been restored');
-              }
-            }
-          );
+          await softDeleteKnowledgeItem(id);
+          enhancedToast.success('Item Deleted', `"${itemToDelete.title}" has been deleted`);
         } catch (error) {
-          console.error('Error deleting knowledge item:', error);
-          setItems(previousItems);
           enhancedToast.error('Error', 'Failed to delete knowledge item');
         }
       },
       successMessage: undefined,
       errorMessage: undefined
     });
+  };
+
+  const softDeleteBulkKnowledgeItems = async (ids: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('knowledge_base')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids);
+
+      if (error) throw error;
+      await loadKnowledge();
+      return items.filter(item => ids.includes(item.id));
+    } catch (error) {
+      console.error('Error soft deleting knowledge items:', error);
+      throw error;
+    }
+  };
+
+  const restoreBulkKnowledgeItems = async (ids: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('knowledge_base')
+        .update({ deleted_at: null })
+        .in('id', ids);
+
+      if (error) throw error;
+      await loadKnowledge();
+    } catch (error) {
+      console.error('Error restoring knowledge items:', error);
+      throw error;
+    }
   };
 
   const deleteBulkKnowledgeItems = async (ids: string[]) => {
@@ -172,59 +191,19 @@ export const useKnowledge = () => {
 
     confirm({
       title: 'Delete Multiple Items',
-      description: `Are you sure you want to delete ${ids.length} knowledge item${ids.length > 1 ? 's' : ''}? This action cannot be undone.`,
+      description: `Are you sure you want to delete ${ids.length} knowledge item${ids.length > 1 ? 's' : ''}?`,
       confirmText: `Delete ${ids.length} Item${ids.length > 1 ? 's' : ''}`,
       cancelText: 'Cancel',
       variant: 'destructive',
       onConfirm: async () => {
-        const previousItems = [...items];
-
-        // Optimistically update UI
-        setItems(items.filter(item => !ids.includes(item.id)));
-
         try {
-          const { error } = await supabase
-            .from('knowledge_base')
-            .delete()
-            .in('id', ids);
-
-          if (error) {
-            console.error('Error deleting knowledge items:', error);
-            setItems(previousItems);
-            enhancedToast.error('Error', 'Failed to delete knowledge items');
-            return;
-          }
-
-          enhancedToast.destructive(
+          await softDeleteBulkKnowledgeItems(ids);
+          enhancedToast.success(
             'Items Deleted',
-            `${ids.length} knowledge item${ids.length > 1 ? 's have' : ' has'} been deleted`,
-            async () => {
-              // Undo deletion - restore all items
-              const { error: restoreError } = await supabase
-                .from('knowledge_base')
-                .insert(
-                  itemsToDelete.map(item => ({
-                    id: item.id,
-                    user_id: user?.id,
-                    title: item.title,
-                    content: item.content,
-                    type: item.type,
-                    source_url: item.source_url,
-                    tags: item.tags
-                  }))
-                );
-
-              if (restoreError) {
-                enhancedToast.error('Error', 'Failed to restore knowledge items');
-              } else {
-                await loadKnowledge();
-                enhancedToast.success('Items Restored', 'All knowledge items have been restored');
-              }
-            }
+            `${ids.length} knowledge item${ids.length > 1 ? 's have' : ' has'} been deleted`
           );
         } catch (error) {
           console.error('Error deleting knowledge items:', error);
-          setItems(previousItems);
           enhancedToast.error('Error', 'Failed to delete knowledge items');
         }
       },
@@ -290,6 +269,10 @@ export const useKnowledge = () => {
     updateKnowledgeItem,
     deleteKnowledgeItem,
     deleteBulkKnowledgeItems,
+    softDeleteKnowledgeItem,
+    restoreKnowledgeItem,
+    softDeleteBulkKnowledgeItems,
+    restoreBulkKnowledgeItems,
     updateKnowledgeOrder,
     updateBulkTags,
     refreshKnowledge: loadKnowledge
