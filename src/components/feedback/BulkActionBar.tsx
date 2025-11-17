@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, X, Download, Tag, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, X, Download, Tag, Undo2, Redo2, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UndoHistoryPanel } from './UndoHistoryPanel';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -14,6 +15,7 @@ interface BulkActionBarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   className?: string;
+  showHistory?: boolean;
 }
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
@@ -26,8 +28,24 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onRedo,
   canUndo = false,
   canRedo = false,
-  className
+  className,
+  showHistory = true,
 }) => {
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+
+  // Keyboard shortcut for history panel (Ctrl+H)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'h' && !e.shiftKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        setHistoryPanelOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   if (selectedCount === 0) return null;
 
   return (
@@ -71,6 +89,17 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               <Redo2 size={16} />
             </Button>
           )}
+          {showHistory && (onUndo || onRedo) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHistoryPanelOpen(true)}
+              title="View history (Ctrl+H)"
+            >
+              <History size={16} className="mr-1" />
+              History
+            </Button>
+          )}
           {onManageTags && (
             <Button
               variant="outline"
@@ -109,6 +138,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           </Button>
         </div>
       </div>
+
+      <UndoHistoryPanel
+        open={historyPanelOpen}
+        onOpenChange={setHistoryPanelOpen}
+      />
     </div>
   );
 };
