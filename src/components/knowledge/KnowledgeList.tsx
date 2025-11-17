@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -6,6 +7,7 @@ import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useRangeSelection } from '@/hooks/useRangeSelection';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useSearchFilter } from '@/hooks/useSearchFilter';
+import { useFilterPresets } from '@/hooks/useFilterPresets';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
@@ -27,6 +29,7 @@ const typeIcons = {
 };
 
 export const KnowledgeList: React.FC = () => {
+  const { user } = useAuth();
   const { items, loading, deleteKnowledgeItem, deleteBulkKnowledgeItems, updateKnowledgeOrder, updateBulkTags } = useKnowledge();
   const {
     selectedIds,
@@ -50,7 +53,17 @@ export const KnowledgeList: React.FC = () => {
     availableTypes,
     availableTags,
     hasActiveFilters,
+    getCurrentFilters,
+    applyFilters,
   } = useSearchFilter(items);
+
+  const {
+    presets,
+    activePresetId,
+    setActivePresetId,
+    createPreset,
+    deletePreset,
+  } = useFilterPresets('knowledge', user?.id);
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
@@ -79,18 +92,47 @@ export const KnowledgeList: React.FC = () => {
     enabled: !isMultiSelectMode,
   });
 
+  const handleBulkDelete = () => { 
+    deleteBulkKnowledgeItems(selectedIds); 
+    clearSelection(); 
+    resetLastClicked(); 
+  };
+
+  const handleSavePreset = async () => {
+    const filters = getCurrentFilters();
+    await createPreset({
+      name: `Filter ${presets.length + 1}`,
+      description: '',
+      filters,
+      scope: 'knowledge',
+      is_default: false,
+    });
+  };
+
+  const handleApplyPreset = (preset: any) => {
+    applyFilters(preset.filters);
+    setActivePresetId(preset.id);
+    enhancedToast.success('Preset Applied', `"${preset.name}" filters applied`);
+  };
+
+  const handleDeletePreset = async (presetId: string) => {
+    await deletePreset(presetId);
+    if (activePresetId === presetId) {
+      setActivePresetId(null);
+    }
+  };
+
   useKeyboardShortcuts([
     { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredItems.length > 0) { selectAll(filteredItems.map(item => item.id)); enhancedToast.info('All Selected', `${filteredItems.length} items selected`); } } },
     { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
     { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { key: 's', ctrlKey: true, callback: (e) => { if (hasActiveFilters) { e.preventDefault(); handleSavePreset(); } } },
     { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowDown(); } } },
     { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowUp(); } } },
     { key: 'Home', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleHome(); } } },
     { key: 'End', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleEnd(); } } },
     { key: 'Enter', callback: () => { if (!isMultiSelectMode) handleEnter(); } },
   ], { enabled: true });
-
-  const handleBulkDelete = () => { deleteBulkKnowledgeItems(selectedIds); clearSelection(); resetLastClicked(); };
 
   const handleItemClick = (index: number, itemId: string, e: React.MouseEvent) => {
     if (isMultiSelectMode) {
@@ -153,6 +195,12 @@ export const KnowledgeList: React.FC = () => {
         hasActiveFilters={hasActiveFilters}
         resultCount={filteredItems.length}
         totalCount={items.length}
+        presets={presets}
+        activePresetId={activePresetId}
+        onApplyPreset={handleApplyPreset}
+        onDeletePreset={handleDeletePreset}
+        onSavePreset={handleSavePreset}
+        currentFilters={getCurrentFilters()}
       />
 
       {filteredItems.length === 0 ? (

@@ -3,8 +3,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, X, Filter, Save, Star } from 'lucide-react';
-import { FilterPreset } from '@/types/filter-preset';
+import { FilterPreset, FilterOptions } from '@/types/filter-preset';
 import { FilterPresetBadge } from './FilterPresetBadge';
+import { FilterPresetDialog } from './FilterPresetDialog';
 import {
   Popover,
   PopoverContent,
@@ -33,7 +34,8 @@ interface SearchFilterBarProps {
   activePresetId?: string | null;
   onApplyPreset?: (preset: FilterPreset) => void;
   onDeletePreset?: (presetId: string) => void;
-  onSavePreset?: () => void;
+  onSavePreset?: (name: string, description: string, icon?: string, color?: string) => void;
+  currentFilters?: FilterOptions;
 }
 
 export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
@@ -56,10 +58,17 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onApplyPreset,
   onDeletePreset,
   onSavePreset,
+  currentFilters,
 }) => {
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const hasTypeFilters = availableTypes.length > 0 && onToggleType;
   const hasTagFilters = availableTags.length > 0 && onToggleTag;
   const showFilters = hasTypeFilters || hasTagFilters;
+
+  const handleSavePreset = (name: string, description: string, icon?: string, color?: string) => {
+    onSavePreset?.(name, description, icon, color);
+    setPresetDialogOpen(false);
+  };
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -100,6 +109,17 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             </button>
           )}
         </div>
+
+        {onSavePreset && hasActiveFilters && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setPresetDialogOpen(true)}
+            title="Save current filters (Ctrl+S)"
+          >
+            <Save className="h-4 w-4" />
+          </Button>
+        )}
 
         {showFilters && (
           <Popover>
@@ -168,6 +188,16 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           </Button>
         )}
       </div>
+
+      {/* Filter Preset Dialog */}
+      {onSavePreset && currentFilters && (
+        <FilterPresetDialog
+          open={presetDialogOpen}
+          onOpenChange={setPresetDialogOpen}
+          onSave={handleSavePreset}
+          currentFilters={currentFilters}
+        />
+      )}
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
