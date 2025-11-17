@@ -178,6 +178,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          version: number | null
         }
         Insert: {
           created_at?: string
@@ -187,6 +188,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          version?: number | null
         }
         Update: {
           created_at?: string
@@ -196,6 +198,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          version?: number | null
         }
         Relationships: []
       }
@@ -553,9 +556,12 @@ export type Database = {
           icon: string | null
           id: string
           is_default: boolean | null
+          last_used_at: string | null
           name: string
           scope: string
+          sort_order: number | null
           updated_at: string | null
+          usage_count: number | null
           user_id: string
         }
         Insert: {
@@ -566,9 +572,12 @@ export type Database = {
           icon?: string | null
           id?: string
           is_default?: boolean | null
+          last_used_at?: string | null
           name: string
           scope: string
+          sort_order?: number | null
           updated_at?: string | null
+          usage_count?: number | null
           user_id: string
         }
         Update: {
@@ -579,9 +588,12 @@ export type Database = {
           icon?: string | null
           id?: string
           is_default?: boolean | null
+          last_used_at?: string | null
           name?: string
           scope?: string
+          sort_order?: number | null
           updated_at?: string | null
+          usage_count?: number | null
           user_id?: string
         }
         Relationships: []
@@ -599,6 +611,7 @@ export type Database = {
           type: string | null
           updated_at: string
           user_id: string
+          version: number | null
         }
         Insert: {
           content?: string | null
@@ -612,6 +625,7 @@ export type Database = {
           type?: string | null
           updated_at?: string
           user_id: string
+          version?: number | null
         }
         Update: {
           content?: string | null
@@ -625,6 +639,7 @@ export type Database = {
           type?: string | null
           updated_at?: string
           user_id?: string
+          version?: number | null
         }
         Relationships: []
       }
@@ -1218,6 +1233,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_preset_usage: {
+        Args: { preset_id: string }
+        Returns: undefined
       }
       is_claims_admin: { Args: never; Returns: boolean }
       log_security_event: {
