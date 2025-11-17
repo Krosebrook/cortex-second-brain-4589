@@ -9,11 +9,16 @@ import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useSearchFilter } from '@/hooks/useSearchFilter';
 import { useFilterPresets } from '@/hooks/useFilterPresets';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { useConflictDetection } from '@/hooks/useConflictDetection';
+import { useShortcutHelp } from '@/hooks/useShortcutHelp';
+import { useShortcutTracking } from '@/hooks/useShortcutTracking';
 import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
 import { FilterPresetDialog } from '@/components/feedback/FilterPresetDialog';
+import { ConflictDialog } from '@/components/feedback/ConflictDialog';
+import { ShortcutsHelpDialog } from '@/components/feedback/ShortcutsHelpDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { Button } from '@/components/ui/button';
@@ -24,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
 import { UndoToast } from '@/components/feedback/UndoToast';
+import { ConflictResolver } from '@/lib/conflict-resolver';
+import { Conflict, ConflictResolution, ConflictError } from '@/types/conflict';
 
 const typeIcons = {
   note: FileText,
@@ -42,10 +49,16 @@ export const KnowledgeList: React.FC = () => {
     softDeleteBulkKnowledgeItems,
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder, 
-    updateBulkTags 
+    updateBulkTags,
+    restoreBulkTags
   } = useKnowledge();
   
-  const { addAction, undo, redo, canUndo, canRedo } = useUndoRedo();
+  const { addAction, undo, redo, canUndo, canRedo, undoStack } = useUndoRedo();
+  const { isOpen: shortcutsOpen, toggle: toggleShortcuts } = useShortcutHelp();
+  const { trackShortcut } = useShortcutTracking();
+  
+  const [currentConflict, setCurrentConflict] = useState<Conflict | null>(null);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   
   const {
     selectedIds,
@@ -85,6 +98,13 @@ export const KnowledgeList: React.FC = () => {
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   
   const { handleClick, resetLastClicked } = useRangeSelection();
+
+  // Track items in history for conflict detection
+  const itemsInHistory = React.useMemo(() => {
+    return undoStack.flatMap(action => action.data.itemIds || []);
+  }, [undoStack]);
+
+  const { conflicts } = useConflictDetection('knowledge_base', itemsInHistory);
 
   const { draggedId, dragOverId, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
     items: filteredItems,
@@ -172,18 +192,21 @@ export const KnowledgeList: React.FC = () => {
   };
 
   useKeyboardShortcuts([
-    { key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredItems.length > 0) { selectAll(filteredItems.map(item => item.id)); enhancedToast.info('All Selected', `${filteredItems.length} items selected`); } } },
-    { key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
-    { key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
-    { key: 's', ctrlKey: true, callback: (e) => { if (hasActiveFilters) { e.preventDefault(); handleSavePreset(); } } },
-    { key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
-    { key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
-    { key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowDown(); } } },
-    { key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowUp(); } } },
-    { key: 'Home', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleHome(); } } },
-    { key: 'End', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleEnd(); } } },
-    { key: 'Enter', callback: () => { if (!isMultiSelectMode) handleEnter(); } },
-  ], { enabled: true });
+    { id: 'select-all', key: 'a', ctrlKey: true, callback: (e) => { e.preventDefault(); if (filteredItems.length > 0) { selectAll(filteredItems.map(item => item.id)); enhancedToast.info('All Selected', `${filteredItems.length} items selected`); } } },
+    { id: 'select-clear', key: 'Escape', callback: () => { if (isMultiSelectMode) { clearSelection(); resetLastClicked(); enhancedToast.info('Selection Cleared', 'Multi-select mode deactivated'); } } },
+    { id: 'action-delete', key: 'Delete', callback: () => { if (selectedCount > 0) handleBulkDelete(); } },
+    { id: 'action-save-filter', key: 's', ctrlKey: true, callback: (e) => { if (hasActiveFilters) { e.preventDefault(); handleSavePreset(); } } },
+    { id: 'action-undo', key: 'z', ctrlKey: true, shiftKey: false, callback: async (e) => { e.preventDefault(); if (canUndo) { await undo(); enhancedToast.success('Undo', 'Action undone'); } } },
+    { id: 'action-redo', key: 'z', ctrlKey: true, shiftKey: true, callback: async (e) => { e.preventDefault(); if (canRedo) { await redo(); enhancedToast.success('Redo', 'Action redone'); } } },
+    { id: 'action-tag', key: 't', callback: () => { if (selectedCount > 0) { setTagDialogOpen(true); } } },
+    { id: 'help-shortcuts', key: '?', callback: toggleShortcuts },
+    { id: 'help-shortcuts-alt', key: '/', ctrlKey: true, callback: toggleShortcuts },
+    { id: 'nav-up', key: 'ArrowDown', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowDown(); } } },
+    { id: 'nav-down', key: 'ArrowUp', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleArrowUp(); } } },
+    { id: 'nav-home', key: 'Home', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleHome(); } } },
+    { id: 'nav-end', key: 'End', callback: (e) => { if (!isMultiSelectMode) { e.preventDefault(); handleEnd(); } } },
+    { id: 'nav-enter', key: 'Enter', callback: () => { if (!isMultiSelectMode) handleEnter(); } },
+  ], { enabled: true, onShortcutUsed: trackShortcut });
 
   const handleItemClick = (index: number, itemId: string, e: React.MouseEvent) => {
     if (isMultiSelectMode) {
@@ -223,8 +246,91 @@ export const KnowledgeList: React.FC = () => {
     }
   };
 
-  const handleAddTags = async (tags: string[]) => { await updateBulkTags(selectedIds, tags, []); setTagDialogOpen(false); clearSelection(); };
-  const handleRemoveTags = async (tags: string[]) => { await updateBulkTags(selectedIds, [], tags); setTagDialogOpen(false); clearSelection(); };
+  const handleAddTags = async (tags: string[]) => {
+    const itemsToUpdate = items.filter(item => selectedIds.includes(item.id));
+    
+    // Capture before state
+    const beforeState = itemsToUpdate.map(item => ({
+      id: item.id,
+      title: item.title,
+      tags: [...(item.tags || [])],
+      version: item.version,
+    }));
+    
+    const result = await updateBulkTags(selectedIds, tags, []);
+    
+    if (result.success) {
+      // Add to undo stack
+      addAction({
+        id: crypto.randomUUID(),
+        type: 'tag_add',
+        timestamp: Date.now(),
+        description: `Added ${tags.length} tag${tags.length > 1 ? 's' : ''} to ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}`,
+        data: {
+          itemIds: selectedIds,
+          beforeState: { items: beforeState },
+          afterState: { tagsAdded: tags },
+        },
+        undo: async () => {
+          await restoreBulkTags(result.previousState);
+        },
+        redo: async () => {
+          await updateBulkTags(selectedIds, tags, []);
+        },
+      });
+      
+      enhancedToast.success(
+        'Tags Added',
+        `Added ${tags.join(', ')} to ${selectedIds.length} items. Press Ctrl+Z to undo.`
+      );
+    }
+    
+    setTagDialogOpen(false);
+    clearSelection();
+  };
+  
+  const handleRemoveTags = async (tags: string[]) => {
+    const itemsToUpdate = items.filter(item => selectedIds.includes(item.id));
+    
+    // Capture before state
+    const beforeState = itemsToUpdate.map(item => ({
+      id: item.id,
+      title: item.title,
+      tags: [...(item.tags || [])],
+      version: item.version,
+    }));
+    
+    const result = await updateBulkTags(selectedIds, [], tags);
+    
+    if (result.success) {
+      // Add to undo stack
+      addAction({
+        id: crypto.randomUUID(),
+        type: 'tag_remove',
+        timestamp: Date.now(),
+        description: `Removed ${tags.length} tag${tags.length > 1 ? 's' : ''} from ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}`,
+        data: {
+          itemIds: selectedIds,
+          beforeState: { items: beforeState },
+          afterState: { tagsRemoved: tags },
+        },
+        undo: async () => {
+          await restoreBulkTags(result.previousState);
+        },
+        redo: async () => {
+          await updateBulkTags(selectedIds, [], tags);
+        },
+      });
+      
+      enhancedToast.success(
+        'Tags Removed',
+        `Removed ${tags.join(', ')} from ${selectedIds.length} items. Press Ctrl+Z to undo.`
+      );
+    }
+    
+    setTagDialogOpen(false);
+    clearSelection();
+  };
 
   const allTags = items.flatMap(item => item.tags || []);
   const selectedItemTags = items.filter(item => selectedIds.includes(item.id)).map(item => item.tags || []);
@@ -252,6 +358,7 @@ export const KnowledgeList: React.FC = () => {
         onDeletePreset={handleDeletePreset}
         onSavePreset={handleSavePreset}
         currentFilters={getCurrentFilters()}
+        scope="knowledge"
       />
 
       {filteredItems.length === 0 ? (
@@ -395,8 +502,43 @@ export const KnowledgeList: React.FC = () => {
         canUndo={canUndo}
         canRedo={canRedo}
       />
-      <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} onExport={handleExport} availableFields={['title', 'content', 'type', 'tags', 'source_url', 'created_at', 'updated_at']} itemCount={selectedCount > 0 ? selectedCount : filteredItems.length} />
-      <BulkTagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} selectedCount={selectedCount} existingTags={allTags} selectedItemTags={selectedItemTags} onAddTags={handleAddTags} onRemoveTags={handleRemoveTags} />
+      
+      <ExportDialog 
+        open={exportDialogOpen} 
+        onOpenChange={setExportDialogOpen} 
+        onExport={handleExport} 
+        availableFields={['title', 'content', 'type', 'tags', 'source_url', 'created_at', 'updated_at']} 
+        itemCount={selectedCount > 0 ? selectedCount : filteredItems.length} 
+      />
+      
+      <BulkTagDialog 
+        open={tagDialogOpen} 
+        onOpenChange={setTagDialogOpen} 
+        selectedCount={selectedCount} 
+        existingTags={allTags} 
+        selectedItemTags={selectedItemTags} 
+        onAddTags={handleAddTags} 
+        onRemoveTags={handleRemoveTags} 
+      />
+      
+      <ConflictDialog
+        conflict={currentConflict}
+        open={conflictDialogOpen}
+        onResolve={(resolution) => {
+          setConflictDialogOpen(false);
+          setCurrentConflict(null);
+        }}
+      />
+
+      <ShortcutsHelpDialog
+        open={shortcutsOpen}
+        onOpenChange={toggleShortcuts}
+        context={{
+          page: 'knowledge',
+          hasSelection: selectedCount > 0,
+          bulkMode: isMultiSelectMode,
+        }}
+      />
     </div>
   );
 };

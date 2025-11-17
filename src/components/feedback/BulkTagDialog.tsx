@@ -100,7 +100,8 @@ export const BulkTagDialog: React.FC<BulkTagDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Manage Tags</DialogTitle>
           <DialogDescription>
-            Add or remove tags from {selectedCount} selected {selectedCount === 1 ? 'item' : 'items'}
+            Add or remove tags from {selectedCount} selected {selectedCount === 1 ? 'item' : 'items'}.
+            You can undo tag changes with Ctrl+Z.
           </DialogDescription>
         </DialogHeader>
 
