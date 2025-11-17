@@ -91,5 +91,7 @@ export function useUndoRedo() {
     canRedo: redoStack.length > 0,
     undoDescription: undoStack[undoStack.length - 1]?.description,
     redoDescription: redoStack[redoStack.length - 1]?.description,
+    undoStack,
+    redoStack,
   };
 }

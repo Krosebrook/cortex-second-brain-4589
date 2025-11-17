@@ -185,6 +185,41 @@ export function useFilterPresets(scope: 'knowledge' | 'chats', userId?: string) 
     }
   }, [userId, scope]);
 
+  const duplicatePreset = useCallback(async (id: string) => {
+    const preset = presets.find(p => p.id === id);
+    if (!preset || !userId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('filter_presets')
+        .insert({
+          user_id: userId,
+          name: `${preset.name} (Copy)`,
+          description: preset.description,
+          filters: preset.filters as any,
+          scope: preset.scope,
+          is_default: false,
+          icon: preset.icon,
+          color: preset.color,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPresets(prev => [{
+        ...data,
+        scope: data.scope as 'knowledge' | 'chats',
+        filters: data.filters as FilterOptions,
+      }, ...prev]);
+      
+      return data;
+    } catch (error) {
+      console.error('Error duplicating preset:', error);
+      return null;
+    }
+  }, [presets, userId]);
+
   return {
     presets,
     loading,
@@ -193,6 +228,7 @@ export function useFilterPresets(scope: 'knowledge' | 'chats', userId?: string) 
     createPreset,
     updatePreset,
     deletePreset,
+    duplicatePreset,
     setDefaultPreset,
     refetch: fetchPresets,
   };

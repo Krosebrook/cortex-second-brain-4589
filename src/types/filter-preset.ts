@@ -16,8 +16,11 @@ export interface FilterPreset {
   is_default: boolean;
   icon?: string;
   color?: string;
+  sort_order: number;
+  usage_count?: number;
+  last_used_at?: string;
   created_at: string;
   updated_at: string;
 }
 
-export type FilterPresetInput = Omit<FilterPreset, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type FilterPresetInput = Omit<FilterPreset, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'sort_order' | 'usage_count' | 'last_used_at'>;
