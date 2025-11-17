@@ -24,8 +24,10 @@ export const useChat = () => {
     
     try {
       const formattedChats = await ChatService.loadChats(user.id);
+      // Filter out soft-deleted chats
+      const activeChats = formattedChats.filter(chat => !chat.deleted_at);
       // Sort by order_index first, then by updatedAt
-      const sortedChats = formattedChats.sort((a, b) => {
+      const sortedChats = activeChats.sort((a, b) => {
         if (a.order_index !== b.order_index) {
           return (a.order_index || 0) - (b.order_index || 0);
         }

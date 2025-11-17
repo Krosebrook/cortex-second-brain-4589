@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useShortcutHelp } from "@/hooks/useShortcutHelp";
+import { ShortcutsHelpDialog } from "@/components/feedback/ShortcutsHelpDialog";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -53,6 +55,7 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => {
   const { open, setOpen, search, setSearch, filteredCommands, executeCommand, toggle } = useCommandPalette();
+  const { isOpen: helpOpen, open: openHelp, close: closeHelp } = useShortcutHelp();
 
   useKeyboardShortcuts([
     {
@@ -61,6 +64,21 @@ const AppRoutes = () => {
       callback: (e) => {
         e.preventDefault();
         toggle();
+      },
+    },
+    {
+      key: '?',
+      callback: (e) => {
+        e.preventDefault();
+        openHelp();
+      },
+    },
+    {
+      key: '/',
+      ctrlKey: true,
+      callback: (e) => {
+        e.preventDefault();
+        openHelp();
       },
     },
   ]);
@@ -74,6 +92,10 @@ const AppRoutes = () => {
         onSearchChange={setSearch}
         commands={filteredCommands}
         onExecute={executeCommand}
+      />
+      <ShortcutsHelpDialog
+        open={helpOpen}
+        onOpenChange={closeHelp}
       />
       <Routes>
         <Route path="/" element={<PageTransition><Index /></PageTransition>} />

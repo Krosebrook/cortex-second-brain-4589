@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 
 export interface FilterOptions {
-  searchQuery: string;
+  searchQuery?: string;
   types?: string[];
   tags?: string[];
-  dateFrom?: Date;
-  dateTo?: Date;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export const useSearchFilter = <T extends { 
@@ -97,6 +97,22 @@ export const useSearchFilter = <T extends {
   const hasActiveFilters = !!searchQuery || selectedTypes.length > 0 || 
     selectedTags.length > 0 || !!dateFrom || !!dateTo;
 
+  const getCurrentFilters = useCallback((): FilterOptions => ({
+    searchQuery,
+    types: selectedTypes,
+    tags: selectedTags,
+    dateFrom: dateFrom?.toISOString(),
+    dateTo: dateTo?.toISOString(),
+  }), [searchQuery, selectedTypes, selectedTags, dateFrom, dateTo]);
+
+  const applyFilters = useCallback((filters: FilterOptions) => {
+    setSearchQuery(filters.searchQuery || '');
+    setSelectedTypes(filters.types || []);
+    setSelectedTags(filters.tags || []);
+    setDateFrom(filters.dateFrom ? new Date(filters.dateFrom) : undefined);
+    setDateTo(filters.dateTo ? new Date(filters.dateTo) : undefined);
+  }, []);
+
   return {
     searchQuery,
     setSearchQuery,
@@ -113,5 +129,7 @@ export const useSearchFilter = <T extends {
     availableTypes,
     availableTags,
     hasActiveFilters,
+    getCurrentFilters,
+    applyFilters,
   };
 };

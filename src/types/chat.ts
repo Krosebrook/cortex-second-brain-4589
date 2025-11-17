@@ -13,4 +13,5 @@ export interface Chat {
   createdAt: Date;
   updatedAt: Date;
   order_index?: number;
+  deleted_at?: Date | null;
 }

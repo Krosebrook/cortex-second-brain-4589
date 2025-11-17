@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, Filter } from 'lucide-react';
+import { Search, X, Filter, Save, Star } from 'lucide-react';
+import { FilterPreset } from '@/types/filter-preset';
+import { FilterPresetBadge } from './FilterPresetBadge';
 import {
   Popover,
   PopoverContent,
@@ -27,6 +29,11 @@ interface SearchFilterBarProps {
   totalCount: number;
   placeholder?: string;
   className?: string;
+  presets?: FilterPreset[];
+  activePresetId?: string | null;
+  onApplyPreset?: (preset: FilterPreset) => void;
+  onDeletePreset?: (presetId: string) => void;
+  onSavePreset?: () => void;
 }
 
 export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
@@ -44,6 +51,11 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   totalCount,
   placeholder = 'Search...',
   className,
+  presets = [],
+  activePresetId,
+  onApplyPreset,
+  onDeletePreset,
+  onSavePreset,
 }) => {
   const hasTypeFilters = availableTypes.length > 0 && onToggleType;
   const hasTagFilters = availableTags.length > 0 && onToggleTag;
@@ -51,6 +63,24 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
 
   return (
     <div className={cn('space-y-3', className)}>
+      {/* Filter Presets */}
+      {presets.length > 0 && onApplyPreset && onDeletePreset && (
+        <div className="flex flex-wrap items-center gap-2">
+          {presets.map((preset) => (
+            <FilterPresetBadge
+              key={preset.id}
+              preset={preset}
+              isActive={activePresetId === preset.id}
+              onClick={() => onApplyPreset(preset)}
+              onDelete={(e) => {
+                e.stopPropagation();
+                onDeletePreset(preset.id);
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
