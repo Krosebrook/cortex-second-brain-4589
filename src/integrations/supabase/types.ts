@@ -172,6 +172,7 @@ export type Database = {
       chats: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           order_index: number | null
           title: string
@@ -180,6 +181,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           order_index?: number | null
           title: string
@@ -188,6 +190,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           order_index?: number | null
           title?: string
@@ -541,10 +544,53 @@ export type Database = {
         }
         Relationships: []
       }
+      filter_presets: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          filters: Json
+          icon: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          scope: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          filters: Json
+          icon?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          scope: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          filters?: Json
+          icon?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          scope?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           content: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           order_index: number | null
           source_url: string | null
@@ -557,6 +603,7 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           order_index?: number | null
           source_url?: string | null
@@ -569,6 +616,7 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           order_index?: number | null
           source_url?: string | null

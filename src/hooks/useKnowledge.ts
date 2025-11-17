@@ -36,6 +36,7 @@ export const useKnowledge = () => {
         .from('knowledge_base')
         .select('*')
         .eq('user_id', user?.id)
+        .is('deleted_at', null)
         .order('order_index', { ascending: true })
         .order('updated_at', { ascending: false });
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, X, Download, Tag } from 'lucide-react';
+import { Trash2, X, Download, Tag, Undo2, Redo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BulkActionBarProps {
@@ -9,6 +9,10 @@ interface BulkActionBarProps {
   onExport?: () => void;
   onManageTags?: () => void;
   onCancel: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   className?: string;
 }
 
@@ -18,6 +22,10 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onExport,
   onManageTags,
   onCancel,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   className
 }) => {
   if (selectedCount === 0) return null;
@@ -41,6 +49,28 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         </div>
         
         <div className="flex gap-2">
+          {onUndo && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 size={16} />
+            </Button>
+          )}
+          {onRedo && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <Redo2 size={16} />
+            </Button>
+          )}
           {onManageTags && (
             <Button
               variant="outline"
