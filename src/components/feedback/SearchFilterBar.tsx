@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, Filter, Save, Star } from 'lucide-react';
+import { Search, X, Filter, Save, Star, Settings2 } from 'lucide-react';
 import { FilterPreset, FilterOptions } from '@/types/filter-preset';
 import { FilterPresetBadge } from './FilterPresetBadge';
 import { FilterPresetDialog } from './FilterPresetDialog';
+import { PresetManagementDialog } from './PresetManagementDialog';
 import {
   Popover,
   PopoverContent,
@@ -36,6 +37,7 @@ interface SearchFilterBarProps {
   onDeletePreset?: (presetId: string) => void;
   onSavePreset?: (name: string, description: string, icon?: string, color?: string) => void;
   currentFilters?: FilterOptions;
+  scope?: 'knowledge' | 'chats';
 }
 
 export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
@@ -59,8 +61,10 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onDeletePreset,
   onSavePreset,
   currentFilters,
+  scope = 'knowledge',
 }) => {
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
+  const [managePresetsOpen, setManagePresetsOpen] = useState(false);
   const hasTypeFilters = availableTypes.length > 0 && onToggleType;
   const hasTagFilters = availableTags.length > 0 && onToggleTag;
   const showFilters = hasTypeFilters || hasTagFilters;
@@ -118,6 +122,17 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
             title="Save current filters (Ctrl+S)"
           >
             <Save className="h-4 w-4" />
+          </Button>
+        )}
+
+        {presets.length > 0 && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setManagePresetsOpen(true)}
+            title="Manage presets"
+          >
+            <Settings2 className="h-4 w-4" />
           </Button>
         )}
 
@@ -198,6 +213,12 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           currentFilters={currentFilters}
         />
       )}
+
+      <PresetManagementDialog
+        open={managePresetsOpen}
+        onOpenChange={setManagePresetsOpen}
+        scope={scope}
+      />
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
