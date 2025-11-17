@@ -94,8 +94,8 @@ export const useSearchFilter = <T extends {
     setDateTo(undefined);
   }, []);
 
-  const hasActiveFilters = searchQuery || selectedTypes.length > 0 || 
-    selectedTags.length > 0 || dateFrom || dateTo;
+  const hasActiveFilters = !!searchQuery || selectedTypes.length > 0 || 
+    selectedTags.length > 0 || !!dateFrom || !!dateTo;
 
   return {
     searchQuery,

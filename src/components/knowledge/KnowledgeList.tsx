@@ -103,8 +103,10 @@ export const KnowledgeList: React.FC = () => {
   const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
     const itemsToExport = selectedCount > 0 ? items.filter(item => selectedIds.includes(item.id)) : filteredItems;
     const data = itemsToExport.map(item => {
-      const filtered: any = {};
-      selectedFields.forEach(field => { filtered[field] = item[field as keyof typeof item]; });
+      const filtered: any = { id: item.id };
+      selectedFields.forEach(field => { 
+        filtered[field] = item[field as keyof typeof item]; 
+      });
       return filtered;
     });
 
@@ -117,7 +119,7 @@ export const KnowledgeList: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = getExportFilename('knowledge', format);
+      a.download = `${getExportFilename('knowledge', format)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -149,6 +151,8 @@ export const KnowledgeList: React.FC = () => {
         onToggleTag={toggleTag}
         onClearFilters={clearFilters}
         hasActiveFilters={hasActiveFilters}
+        resultCount={filteredItems.length}
+        totalCount={items.length}
       />
 
       {filteredItems.length === 0 ? (
