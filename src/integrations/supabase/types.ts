@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          details: Json
+          id: string
+          target_ip: unknown
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_ip?: unknown
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_ip?: unknown
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       agent_executions: {
         Row: {
           agent_id: string | null
@@ -168,6 +198,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      blocked_ips: {
+        Row: {
+          blocked_by_user_id: string | null
+          blocked_until: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          permanent: boolean
+          reason: string
+        }
+        Insert: {
+          blocked_by_user_id?: string | null
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          ip_address: unknown
+          permanent?: boolean
+          reason: string
+        }
+        Update: {
+          blocked_by_user_id?: string | null
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          permanent?: boolean
+          reason?: string
+        }
+        Relationships: []
       }
       chats: {
         Row: {
@@ -598,6 +658,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ip_geolocation: {
+        Row: {
+          cached_at: string
+          city: string | null
+          country: string | null
+          country_code: string | null
+          ip_address: unknown
+          latitude: number | null
+          longitude: number | null
+          region: string | null
+        }
+        Insert: {
+          cached_at?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          ip_address: unknown
+          latitude?: number | null
+          longitude?: number | null
+          region?: string | null
+        }
+        Update: {
+          cached_at?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          ip_address?: unknown
+          latitude?: number | null
+          longitude?: number | null
+          region?: string | null
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           content: string | null
@@ -899,6 +992,117 @@ export type Database = {
           },
         ]
       }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          filters: Json
+          frequency: string
+          id: string
+          last_run_at: string | null
+          next_run_at: string | null
+          recipients: Json
+          report_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          filters?: Json
+          frequency: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          recipients?: Json
+          report_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          filters?: Json
+          frequency?: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          recipients?: Json
+          report_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      security_alert_rules: {
+        Row: {
+          alert_type: string
+          created_at: string
+          enabled: boolean
+          id: string
+          last_triggered_at: string | null
+          notification_emails: Json
+          threshold: number
+          time_window_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_triggered_at?: string | null
+          notification_emails?: Json
+          threshold?: number
+          time_window_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_triggered_at?: string | null
+          notification_emails?: Json
+          threshold?: number
+          time_window_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          email_sent: boolean
+          email_sent_at: string | null
+          event_data: Json
+          id: string
+          ip_address: unknown
+          severity: string
+          triggered_at: string
+          user_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          email_sent?: boolean
+          email_sent_at?: string | null
+          event_data?: Json
+          id?: string
+          ip_address?: unknown
+          severity: string
+          triggered_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          email_sent?: boolean
+          email_sent_at?: string | null
+          event_data?: Json
+          id?: string
+          ip_address?: unknown
+          severity?: string
+          triggered_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
@@ -920,6 +1124,33 @@ export type Database = {
           event_type?: string
           id?: string
           severity?: string
+        }
+        Relationships: []
+      }
+      security_whitelist: {
+        Row: {
+          added_by_user_id: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          reason: string
+          user_id: string | null
+        }
+        Insert: {
+          added_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          reason: string
+          user_id?: string | null
+        }
+        Update: {
+          added_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          reason?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -999,6 +1230,83 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threat_response_rules: {
+        Row: {
+          actions: Json
+          cooldown_minutes: number
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: string
+          priority: number
+          rule_name: string
+          trigger_condition: Json
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          cooldown_minutes?: number
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          priority?: number
+          rule_name: string
+          trigger_condition: Json
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          cooldown_minutes?: number
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          priority?: number
+          rule_name?: string
+          trigger_condition?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      threat_responses: {
+        Row: {
+          action_taken: string
+          event_id: string | null
+          executed_at: string
+          id: string
+          reversed_at: string | null
+          rule_id: string | null
+          success: boolean
+        }
+        Insert: {
+          action_taken: string
+          event_id?: string | null
+          executed_at?: string
+          id?: string
+          reversed_at?: string | null
+          rule_id?: string | null
+          success?: boolean
+        }
+        Update: {
+          action_taken?: string
+          event_id?: string | null
+          executed_at?: string
+          id?: string
+          reversed_at?: string | null
+          rule_id?: string | null
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threat_responses_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "threat_response_rules"
             referencedColumns: ["id"]
           },
         ]
