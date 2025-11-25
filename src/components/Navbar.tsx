@@ -33,6 +33,15 @@ interface NavItemProps {
 const NavItem = ({ to, icon, label, active, onClick, hasSubmenu, children }: NavItemProps) => {
   const handleRipple = useRippleEffect();
   
+  // Prefetch handler for route optimization
+  const handlePrefetch = () => {
+    if (to === '/dashboard') {
+      import('@/pages/Dashboard');
+    } else if (to === '/search') {
+      import('@/pages/SearchPage');
+    }
+  };
+  
   if (hasSubmenu) {
     return (
       <NavigationMenu>
@@ -75,6 +84,7 @@ const NavItem = ({ to, icon, label, active, onClick, hasSubmenu, children }: Nav
             "overflow-hidden",
             active ? "bg-primary/10 text-primary" : "text-foreground/80"
           )}
+          onMouseEnter={handlePrefetch}
           onClick={(e) => {
             handleRipple(e);
             onClick();
