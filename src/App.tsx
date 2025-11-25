@@ -36,6 +36,7 @@ const TessaPage = lazy(() => import("./pages/TessaPage"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -114,6 +115,7 @@ const AppRoutes = () => {
           <Route path="/tessa" element={<PageTransition><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition>} />
           <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
+          <Route path="/install" element={<PageTransition><Install /></PageTransition>} />
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </Suspense>
