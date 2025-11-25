@@ -15,6 +15,7 @@ import { OfflineBanner } from "@/components/connection/OfflineBanner";
 import { ReconnectionBanner } from "@/components/connection/ReconnectionBanner";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { SyncStatus } from "@/components/feedback/SyncStatus";
+import { InstallPromptBanner } from "@/components/pwa/InstallPromptBanner";
 import { initializeCachePolicies } from "@/config/cache-policies";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
@@ -37,6 +38,7 @@ const StatusPage = lazy(() => import("./pages/StatusPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Install = lazy(() => import("./pages/Install"));
+const Offline = lazy(() => import("./pages/Offline"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -116,6 +118,7 @@ const AppRoutes = () => {
           <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
           <Route path="/settings" element={<PageTransition><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
           <Route path="/install" element={<PageTransition><Install /></PageTransition>} />
+          <Route path="/offline" element={<PageTransition><Offline /></PageTransition>} />
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </Suspense>
@@ -136,6 +139,7 @@ const App = () => (
                   <OfflineBanner />
                   <ReconnectionBanner />
                   <SyncStatus />
+                  <InstallPromptBanner />
                   <div className="min-h-screen bg-background">
                     <Navbar />
                     <AppRoutes />
