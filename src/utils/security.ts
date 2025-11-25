@@ -1,4 +1,20 @@
 import DOMPurify from 'dompurify';
+import { z } from 'zod';
+
+// Tag validation schema
+export const tagSchema = z.string()
+  .trim()
+  .min(1, "Tag cannot be empty")
+  .max(50, "Tag too long (max 50 characters)")
+  .regex(/^[a-zA-Z0-9\s\-_]+$/, "Only letters, numbers, spaces, hyphens, and underscores allowed");
+
+export const validateTag = (tag: string): { isValid: boolean; error?: string } => {
+  const result = tagSchema.safeParse(tag);
+  if (!result.success) {
+    return { isValid: false, error: result.error.errors[0].message };
+  }
+  return { isValid: true };
+};
 
 // Enhanced XSS protection with DOMPurify
 export const sanitizeContent = (content: string): string => {
