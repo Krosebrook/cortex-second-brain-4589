@@ -16,6 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Plus, X, Tag } from 'lucide-react';
 import { useTagAutocomplete } from '@/hooks/useTagAutocomplete';
 import { cn } from '@/lib/utils';
+import { validateTag } from '@/utils/security';
+import { useToast } from '@/hooks/use-toast';
 
 interface BulkTagDialogProps {
   open: boolean;
@@ -39,6 +41,7 @@ export const BulkTagDialog: React.FC<BulkTagDialogProps> = ({
   const [newTags, setNewTags] = useState<string[]>([]);
   const [tagsToRemove, setTagsToRemove] = useState<string[]>([]);
   const [mode, setMode] = useState<'add' | 'remove'>('add');
+  const { toast } = useToast();
 
   const { inputValue, setInputValue, suggestions, commonTags, getTagFrequency, clearInput } =
     useTagAutocomplete({
@@ -48,7 +51,19 @@ export const BulkTagDialog: React.FC<BulkTagDialogProps> = ({
 
   const handleAddTag = (tag: string) => {
     const trimmedTag = tag.trim();
-    if (trimmedTag && !newTags.includes(trimmedTag)) {
+    
+    // Validate tag
+    const validation = validateTag(trimmedTag);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid Tag",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!newTags.includes(trimmedTag)) {
       setNewTags([...newTags, trimmedTag]);
       clearInput();
     }

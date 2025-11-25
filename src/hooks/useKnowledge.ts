@@ -236,6 +236,17 @@ export const useKnowledge = () => {
     previousState: { id: string; tags: string[]; version?: number }[];
   }> => {
     try {
+      // Validate all tags before processing
+      const { validateTag } = await import('@/utils/security');
+      
+      for (const tag of tagsToAdd) {
+        const validation = validateTag(tag);
+        if (!validation.isValid) {
+          enhancedToast.error('Invalid Tag', validation.error || 'Tag validation failed');
+          return { success: false, previousState: [] };
+        }
+      }
+      
       const itemsToUpdate = items.filter(item => itemIds.includes(item.id));
       
       // Capture previous state
