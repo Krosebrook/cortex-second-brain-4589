@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { StoresService, Store, StoreInsert, StoreUpdate, StoreWithoutApiKey } from '@/services/stores.service';
+import { StoresService, Store, StoreInsert, StoreUpdate, StoreWithoutApiKey, SyncResult } from '@/services/stores.service';
 import { toast } from '@/hooks/use-toast';
 
 export interface UseStoresReturn {
@@ -22,7 +22,7 @@ export interface UseStoresReturn {
   updateStore: (storeId: string, updates: StoreUpdate) => Promise<Store | null>;
   updateStoreApiKey: (storeId: string, encryptedApiKey: string) => Promise<Store | null>;
   deleteStore: (storeId: string) => Promise<boolean>;
-  syncStore: (storeId: string) => Promise<Store | null>;
+  syncStore: (storeId: string, syncTypes?: ('products' | 'orders' | 'customers' | 'inventory')[]) => Promise<SyncResult | null>;
   selectStore: (store: Store | null) => void;
   checkUnusualAccess: () => Promise<{
     is_unusual: boolean;
@@ -30,6 +30,10 @@ export interface UseStoresReturn {
     unique_stores_accessed: number;
   } | null>;
   refreshStores: () => Promise<void>;
+  getSyncLogs: (storeId: string) => Promise<any[] | null>;
+  getSyncedProducts: (storeId: string) => Promise<any[] | null>;
+  getSyncedOrders: (storeId: string) => Promise<any[] | null>;
+  getSyncedCustomers: (storeId: string) => Promise<any[] | null>;
 }
 
 export function useStores(): UseStoresReturn {
@@ -171,22 +175,60 @@ export function useStores(): UseStoresReturn {
     return result === true;
   }, [executeAction, selectedStore?.id]);
 
-  // Sync a store
-  const syncStore = useCallback(async (storeId: string): Promise<Store | null> => {
+  // Sync a store with real e-commerce platform data
+  const syncStore = useCallback(async (
+    storeId: string,
+    syncTypes?: ('products' | 'orders' | 'customers' | 'inventory')[]
+  ): Promise<SyncResult | null> => {
     return executeAction(async () => {
-      const result = await StoresService.syncStore(storeId);
-      if (result) {
-        // Update local state
-        const { api_key_encrypted, ...storeWithoutKey } = result;
-        setStores(prev => prev.map(s => s.id === storeId ? storeWithoutKey : s));
-        
+      const result = await StoresService.syncStore(storeId, syncTypes);
+      
+      // Refresh stores to get updated last_sync_at
+      await loadStores();
+      
+      if (result.success) {
         toast({
-          title: 'Store synced',
-          description: `${result.store_name} has been synchronized.`
+          title: 'Sync completed',
+          description: `Synced ${result.summary.total_synced} items${result.summary.total_failed > 0 ? `, ${result.summary.total_failed} failed` : ''}.`
+        });
+      } else {
+        toast({
+          title: 'Sync completed with errors',
+          description: `${result.summary.total_failed} items failed to sync.`,
+          variant: 'destructive'
         });
       }
+      
       return result;
     });
+  }, [executeAction, loadStores]);
+
+  // Get sync logs for a store
+  const getSyncLogs = useCallback(async (storeId: string): Promise<any[] | null> => {
+    return executeAction(async () => {
+      return await StoresService.getSyncLogs(storeId);
+    }, false);
+  }, [executeAction]);
+
+  // Get synced products for a store
+  const getSyncedProducts = useCallback(async (storeId: string): Promise<any[] | null> => {
+    return executeAction(async () => {
+      return await StoresService.getSyncedProducts(storeId);
+    }, false);
+  }, [executeAction]);
+
+  // Get synced orders for a store
+  const getSyncedOrders = useCallback(async (storeId: string): Promise<any[] | null> => {
+    return executeAction(async () => {
+      return await StoresService.getSyncedOrders(storeId);
+    }, false);
+  }, [executeAction]);
+
+  // Get synced customers for a store
+  const getSyncedCustomers = useCallback(async (storeId: string): Promise<any[] | null> => {
+    return executeAction(async () => {
+      return await StoresService.getSyncedCustomers(storeId);
+    }, false);
   }, [executeAction]);
 
   // Select a store
@@ -217,7 +259,7 @@ export function useStores(): UseStoresReturn {
         return result;
       }
       return null;
-    }, false); // Don't show loading state for background checks
+    }, false);
   }, [executeAction]);
 
   // Alias for loadStores
@@ -229,13 +271,10 @@ export function useStores(): UseStoresReturn {
   }, [loadStores]);
 
   return {
-    // State
     stores,
     selectedStore,
     loading,
     error,
-    
-    // Actions
     loadStores,
     getStore,
     getStoreWithApiKey,
@@ -246,6 +285,10 @@ export function useStores(): UseStoresReturn {
     syncStore,
     selectStore,
     checkUnusualAccess,
-    refreshStores
+    refreshStores,
+    getSyncLogs,
+    getSyncedProducts,
+    getSyncedOrders,
+    getSyncedCustomers
   };
 }

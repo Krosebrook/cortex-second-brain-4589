@@ -1240,6 +1240,53 @@ export type Database = {
         }
         Relationships: []
       }
+      store_sync_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          items_failed: number | null
+          items_synced: number | null
+          metadata: Json | null
+          started_at: string
+          status: string
+          store_id: string
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          items_failed?: number | null
+          items_synced?: number | null
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          store_id: string
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          items_failed?: number | null
+          items_synced?: number | null
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          store_id?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_sync_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           api_key_encrypted: string | null
@@ -1316,6 +1363,285 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      synced_customers: {
+        Row: {
+          created_at: string
+          default_address: Json | null
+          email: string | null
+          external_id: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          orders_count: number | null
+          phone: string | null
+          raw_data: Json | null
+          store_id: string
+          synced_at: string
+          tags: string[] | null
+          total_spent: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_address?: Json | null
+          email?: string | null
+          external_id: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          orders_count?: number | null
+          phone?: string | null
+          raw_data?: Json | null
+          store_id: string
+          synced_at?: string
+          tags?: string[] | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_address?: Json | null
+          email?: string | null
+          external_id?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          orders_count?: number | null
+          phone?: string | null
+          raw_data?: Json | null
+          store_id?: string
+          synced_at?: string
+          tags?: string[] | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "synced_customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      synced_inventory: {
+        Row: {
+          created_at: string
+          external_product_id: string
+          external_variant_id: string | null
+          id: string
+          location: string | null
+          product_id: string | null
+          quantity: number | null
+          raw_data: Json | null
+          sku: string | null
+          store_id: string
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_product_id: string
+          external_variant_id?: string | null
+          id?: string
+          location?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          raw_data?: Json | null
+          sku?: string | null
+          store_id: string
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_product_id?: string
+          external_variant_id?: string | null
+          id?: string
+          location?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          raw_data?: Json | null
+          sku?: string | null
+          store_id?: string
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "synced_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "synced_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "synced_inventory_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      synced_orders: {
+        Row: {
+          billing_address: Json | null
+          created_at: string
+          currency: string | null
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          external_id: string
+          financial_status: string | null
+          fulfillment_status: string | null
+          id: string
+          line_items: Json | null
+          order_date: string | null
+          order_number: string | null
+          raw_data: Json | null
+          shipping_address: Json | null
+          store_id: string
+          subtotal_price: number | null
+          synced_at: string
+          total_price: number | null
+          total_shipping: number | null
+          total_tax: number | null
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: Json | null
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          external_id: string
+          financial_status?: string | null
+          fulfillment_status?: string | null
+          id?: string
+          line_items?: Json | null
+          order_date?: string | null
+          order_number?: string | null
+          raw_data?: Json | null
+          shipping_address?: Json | null
+          store_id: string
+          subtotal_price?: number | null
+          synced_at?: string
+          total_price?: number | null
+          total_shipping?: number | null
+          total_tax?: number | null
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: Json | null
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          external_id?: string
+          financial_status?: string | null
+          fulfillment_status?: string | null
+          id?: string
+          line_items?: Json | null
+          order_date?: string | null
+          order_number?: string | null
+          raw_data?: Json | null
+          shipping_address?: Json | null
+          store_id?: string
+          subtotal_price?: number | null
+          synced_at?: string
+          total_price?: number | null
+          total_shipping?: number | null
+          total_tax?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "synced_orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      synced_products: {
+        Row: {
+          created_at: string
+          description: string | null
+          external_id: string
+          external_url: string | null
+          id: string
+          images: Json | null
+          inventory_quantity: number | null
+          price_max: number | null
+          price_min: number | null
+          product_type: string | null
+          raw_data: Json | null
+          status: string | null
+          store_id: string
+          synced_at: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          variants: Json | null
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          external_id: string
+          external_url?: string | null
+          id?: string
+          images?: Json | null
+          inventory_quantity?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          store_id: string
+          synced_at?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          variants?: Json | null
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          external_id?: string
+          external_url?: string | null
+          id?: string
+          images?: Json | null
+          inventory_quantity?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          store_id?: string
+          synced_at?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          variants?: Json | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "synced_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
