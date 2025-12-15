@@ -1,94 +1,237 @@
+/**
+ * Cortex Design System
+ * =====================
+ * Semantic tokens for consistent theming
+ */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
+    /* Core Colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
+    /* Surface Colors */
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
- 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
- 
+
+    /* Brand Colors */
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
- 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
- 
+
+    /* Semantic Colors */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222.2 84% 4.9%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
 
+    /* Border & Input */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
- 
+
+    /* Radius */
     --radius: 0.5rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    /* Spacing Scale */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
   }
- 
+
   .dark {
+    /* Core Colors */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
- 
+
+    /* Surface Colors */
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
- 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
+
+    /* Brand Colors */
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
- 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
- 
+
+    /* Semantic Colors */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
+    --success: 142 70% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222.2 84% 4.9%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+
+    /* Border & Input */
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* Shadows (darker for dark mode) */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
   }
 }
 
+/* ============================================
+   Utility Classes
+   ============================================ */
+
 @layer utilities {
+  /* Animation Utilities */
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
+  /* Focus Ring Utility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* Transition Utilities */
+  .transition-base {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Text Utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Scrollbar Utilities */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
- 
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
 @layer base {
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Accessible focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-.glass-panel {
-  @apply backdrop-blur-md bg-card/80 border border-border/50 shadow-sm;
+/* ============================================
+   Component Classes
+   ============================================ */
+
+@layer components {
+  /* Glass Panel Effect */
+  .glass-panel {
+    @apply backdrop-blur-md bg-card/80 border border-border/50;
+    box-shadow: var(--shadow);
+  }
+
+  /* Neural Node Style */
+  .neural-node {
+    @apply bg-gradient-to-br from-primary/20 to-primary/10 rounded-full;
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Card Hover Effect */
+  .card-interactive {
+    @apply transition-base hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  /* Skip Link for Accessibility */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground;
+  }
+
+  /* Loading Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
 }
 
-.neural-node {
-  @apply bg-gradient-to-br from-primary/20 to-primary/10 rounded-full shadow-lg;
-}
+/* ============================================
+   Keyframes
+   ============================================ */
 
 @keyframes pulse {
   0%, 100% {
