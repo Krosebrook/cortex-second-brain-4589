@@ -13,6 +13,12 @@ export type StoreUpdate = TablesUpdate<'stores'>;
 
 export interface StoreWithoutApiKey extends Omit<Store, 'api_key_encrypted'> {}
 
+export interface SyncResult {
+  success: boolean;
+  results: Record<string, { synced: number; failed: number; errors: string[] }>;
+  summary: { total_synced: number; total_failed: number };
+}
+
 export interface StoreService {
   getStores(): Promise<StoreWithoutApiKey[]>;
   getStore(storeId: string): Promise<StoreWithoutApiKey>;
@@ -21,7 +27,7 @@ export interface StoreService {
   updateStore(storeId: string, updates: StoreUpdate): Promise<Store>;
   updateStoreApiKey(storeId: string, encryptedApiKey: string): Promise<Store>;
   deleteStore(storeId: string): Promise<void>;
-  syncStore(storeId: string): Promise<Store>;
+  syncStore(storeId: string, syncTypes?: ('products' | 'orders' | 'customers' | 'inventory')[]): Promise<SyncResult>;
 }
 
 class StoresServiceImpl extends BaseService implements StoreService {
@@ -208,21 +214,92 @@ class StoresServiceImpl extends BaseService implements StoreService {
   }
 
   /**
-   * Mark a store as synced (update last_sync_at)
+   * Sync store data from the e-commerce platform
    */
-  async syncStore(storeId: string): Promise<Store> {
+  async syncStore(
+    storeId: string,
+    syncTypes: ('products' | 'orders' | 'customers' | 'inventory')[] = ['products', 'orders', 'customers', 'inventory']
+  ): Promise<{
+    success: boolean;
+    results: Record<string, { synced: number; failed: number; errors: string[] }>;
+    summary: { total_synced: number; total_failed: number };
+  }> {
     return this.executeWithRetry('syncStore', async () => {
-      const result = await supabase
-        .from('stores')
-        .update({ 
-          last_sync_at: new Date().toISOString(),
-          is_connected: true
-        })
-        .eq('id', storeId)
-        .select()
-        .single();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Authentication required');
+      }
 
-      return handleSupabaseResult(result);
+      const response = await supabase.functions.invoke('sync-store', {
+        body: { storeId, syncTypes },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      return response.data;
+    });
+  }
+
+  /**
+   * Get sync logs for a store
+   */
+  async getSyncLogs(storeId: string, limit: number = 10): Promise<any[]> {
+    return this.executeWithRetry('getSyncLogs', async () => {
+      const result = await supabase
+        .from('store_sync_logs')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('started_at', { ascending: false })
+        .limit(limit);
+
+      return handleSupabaseArrayResult(result);
+    });
+  }
+
+  /**
+   * Get synced products for a store
+   */
+  async getSyncedProducts(storeId: string): Promise<any[]> {
+    return this.executeWithRetry('getSyncedProducts', async () => {
+      const result = await supabase
+        .from('synced_products')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('title');
+
+      return handleSupabaseArrayResult(result);
+    });
+  }
+
+  /**
+   * Get synced orders for a store
+   */
+  async getSyncedOrders(storeId: string): Promise<any[]> {
+    return this.executeWithRetry('getSyncedOrders', async () => {
+      const result = await supabase
+        .from('synced_orders')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('order_date', { ascending: false });
+
+      return handleSupabaseArrayResult(result);
+    });
+  }
+
+  /**
+   * Get synced customers for a store
+   */
+  async getSyncedCustomers(storeId: string): Promise<any[]> {
+    return this.executeWithRetry('getSyncedCustomers', async () => {
+      const result = await supabase
+        .from('synced_customers')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('last_name');
+
+      return handleSupabaseArrayResult(result);
     });
   }
 
