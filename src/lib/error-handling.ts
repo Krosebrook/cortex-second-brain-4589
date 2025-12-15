@@ -6,28 +6,69 @@
 import { ERROR_MESSAGES } from '@/constants';
 
 // ============================================
+// Error Codes
+// ============================================
+
+export enum ErrorCode {
+  // General errors
+  UNKNOWN = 'UNKNOWN',
+  VALIDATION = 'VALIDATION',
+  NOT_FOUND = 'NOT_FOUND',
+  
+  // Auth errors
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  FORBIDDEN = 'FORBIDDEN',
+  
+  // Network errors
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  TIMEOUT = 'TIMEOUT',
+  
+  // Database errors
+  DATABASE = 'DATABASE',
+  CONFLICT = 'CONFLICT',
+  
+  // Service errors
+  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+  RATE_LIMITED = 'RATE_LIMITED',
+}
+
+// ============================================
 // Error Types
 // ============================================
 
 export interface AppError {
   message: string;
-  code?: string;
+  code: ErrorCode;
   status?: number;
+  details?: Record<string, unknown>;
   originalError?: unknown;
 }
 
-export class ApplicationError extends Error {
-  code?: string;
+export class ApplicationError extends Error implements AppError {
+  code: ErrorCode;
   status?: number;
+  details?: Record<string, unknown>;
   originalError?: unknown;
 
-  constructor(message: string, options?: Omit<AppError, 'message'>) {
+  constructor(code: ErrorCode, message: string, options?: Omit<AppError, 'message' | 'code'>) {
     super(message);
     this.name = 'ApplicationError';
-    this.code = options?.code;
+    this.code = code;
     this.status = options?.status;
+    this.details = options?.details;
     this.originalError = options?.originalError;
   }
+}
+
+/**
+ * Create a standardized AppError
+ */
+export function createAppError(
+  code: ErrorCode,
+  message: string,
+  details?: Record<string, unknown>
+): ApplicationError {
+  return new ApplicationError(code, message, { details });
 }
 
 // ============================================
@@ -71,6 +112,7 @@ export function parseError(error: unknown): AppError {
       message: error.message,
       code: error.code,
       status: error.status,
+      details: error.details,
       originalError: error.originalError,
     };
   }
@@ -78,12 +120,14 @@ export function parseError(error: unknown): AppError {
   if (error instanceof Error) {
     return {
       message: error.message,
+      code: ErrorCode.UNKNOWN,
       originalError: error,
     };
   }
 
   return {
     message: getErrorMessage(error),
+    code: ErrorCode.UNKNOWN,
     originalError: error,
   };
 }
