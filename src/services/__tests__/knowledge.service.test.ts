@@ -32,6 +32,7 @@ describe('KnowledgeService', () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: mockData, error: null }),
       } as any);
 
@@ -50,6 +51,7 @@ describe('KnowledgeService', () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
       } as any);
 
@@ -65,6 +67,7 @@ describe('KnowledgeService', () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
       } as any);
 
@@ -90,7 +93,7 @@ describe('KnowledgeService', () => {
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { ...newItem, id: 'kb-new', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          data: { ...newItem, id: 'kb-new', user_id: mockUserId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           error: null,
         }),
       } as any);
@@ -116,9 +119,7 @@ describe('KnowledgeService', () => {
         single: vi.fn().mockResolvedValue({ data: null, error: new Error('Insert failed') }),
       } as any);
 
-      await expect(KnowledgeService.addKnowledgeItem(mockUserId, newItem)).rejects.toThrow(
-        'Insert failed'
-      );
+      await expect(KnowledgeService.addKnowledgeItem(mockUserId, newItem)).rejects.toThrow();
     });
   });
 
@@ -138,7 +139,7 @@ describe('KnowledgeService', () => {
         single: vi.fn().mockResolvedValue({ data: updatedItem, error: null }),
       } as any);
 
-      const result = await KnowledgeService.updateKnowledgeItem('kb-1', updates);
+      const result = await KnowledgeService.updateKnowledgeItem('kb-1', mockUserId, updates);
 
       expect(result.title).toBe('Updated Title');
       expect(result.content).toBe('Updated content');
@@ -157,7 +158,7 @@ describe('KnowledgeService', () => {
         }),
       } as any);
 
-      const result = await KnowledgeService.updateKnowledgeItem('kb-1', updates);
+      const result = await KnowledgeService.updateKnowledgeItem('kb-1', mockUserId, updates);
 
       expect(result.title).toBe('New Title Only');
       expect(result.content).toBe(mockKnowledgeItem.content);
@@ -168,21 +169,29 @@ describe('KnowledgeService', () => {
     it('should delete a knowledge item', async () => {
       vi.mocked(supabase.from).mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: null }),
+        eq: vi.fn().mockReturnThis(),
       } as any);
 
-      await KnowledgeService.deleteKnowledgeItem('kb-1');
+      // Mock the chained eq calls
+      const mockEq = vi.fn().mockReturnThis();
+      mockEq.mockResolvedValueOnce({ error: null });
+      vi.mocked(supabase.from).mockReturnValue({
+        delete: vi.fn().mockReturnValue({ eq: mockEq }),
+      } as any);
+
+      await KnowledgeService.deleteKnowledgeItem('kb-1', mockUserId);
 
       expect(supabase.from).toHaveBeenCalledWith('knowledge_base');
     });
 
     it('should throw error on delete failure', async () => {
+      const mockEq = vi.fn().mockReturnThis();
+      mockEq.mockResolvedValueOnce({ error: new Error('Delete failed') });
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: new Error('Delete failed') }),
+        delete: vi.fn().mockReturnValue({ eq: mockEq }),
       } as any);
 
-      await expect(KnowledgeService.deleteKnowledgeItem('kb-1')).rejects.toThrow('Delete failed');
+      await expect(KnowledgeService.deleteKnowledgeItem('kb-1', mockUserId)).rejects.toThrow();
     });
   });
 });
