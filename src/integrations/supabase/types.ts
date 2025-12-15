@@ -199,6 +199,47 @@ export type Database = {
           },
         ]
       }
+      api_key_access_logs: {
+        Row: {
+          access_type: string
+          created_at: string
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          store_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          store_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          store_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_key_access_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_ips: {
         Row: {
           blocked_by_user_id: string | null
@@ -1572,7 +1613,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      api_key_access_stats: {
+        Row: {
+          access_count: number | null
+          access_hour: string | null
+          access_type: string | null
+          store_id: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_key_access_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       bootstrap_admin: { Args: { target_user: string }; Returns: undefined }
@@ -1580,6 +1638,20 @@ export type Database = {
       current_tenant_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
+      detect_unusual_api_key_access: {
+        Args: {
+          p_access_threshold?: number
+          p_time_window_minutes?: number
+          p_user_id: string
+        }
+        Returns: {
+          access_count: number
+          first_access: string
+          is_unusual: boolean
+          last_access: string
+          unique_stores_accessed: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1592,6 +1664,16 @@ export type Database = {
         Returns: undefined
       }
       is_claims_admin: { Args: never; Returns: boolean }
+      log_api_key_access: {
+        Args: {
+          p_access_type: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_store_id: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: { p_event_data?: Json; p_event_type: string; p_severity?: string }
         Returns: string
