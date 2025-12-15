@@ -28,6 +28,7 @@ export const ROUTES = {
   TESSA: '/tessa',
   STATUS: '/status',
   SETTINGS: '/settings',
+  STORES: '/stores',
   INSTALL: '/install',
   OFFLINE: '/offline',
 } as const;
@@ -50,6 +51,7 @@ export const PROTECTED_ROUTES = [
   ROUTES.SEARCH,
   ROUTES.TESSA,
   ROUTES.SETTINGS,
+  ROUTES.STORES,
 ] as const;
 
 // ============================================
