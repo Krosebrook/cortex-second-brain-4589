@@ -15,6 +15,7 @@ import {
   Code,
   Activity,
   Download,
+  Store,
 } from 'lucide-react';
 import { ROUTES } from './index';
 import type { NavItem } from '@/types';
@@ -96,6 +97,13 @@ export const AUTH_NAV_ITEMS: NavItem[] = [
     icon: <Settings size={20} />,
     label: 'Settings',
     id: 'settings',
+    protected: true,
+  },
+  {
+    to: ROUTES.STORES,
+    icon: <Store size={20} />,
+    label: 'Stores',
+    id: 'stores',
     protected: true,
   },
 ];
