@@ -33,12 +33,12 @@ serve(async (req) => {
         lastCheck: new Date().toISOString(),
         error: authError?.message,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       services.push({
         service: 'Supabase Auth',
         status: 'down',
         lastCheck: new Date().toISOString(),
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
 
@@ -56,12 +56,12 @@ serve(async (req) => {
         lastCheck: new Date().toISOString(),
         error: dbError?.message,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       services.push({
         service: 'Supabase Database',
         status: 'down',
         lastCheck: new Date().toISOString(),
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
 
@@ -95,10 +95,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in system-status function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
