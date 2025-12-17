@@ -566,7 +566,7 @@ Deno.serve(async (req) => {
         store_id: storeId,
         sync_type: syncTypes.join(','),
         status: 'in_progress',
-        metadata: { user_id: user.id, sync_types: syncTypes },
+        metadata: { user_id: user.id, sync_types: syncTypes, current_phase: syncTypes[0], phase_progress: 0 },
       })
       .select()
       .single();
@@ -574,6 +574,28 @@ Deno.serve(async (req) => {
     if (logError) {
       console.error('[sync-store] Failed to create sync log:', logError);
     }
+
+    // Helper to update progress
+    const updateProgress = async (phase: string, progress: number, currentItem?: number, totalItems?: number) => {
+      if (syncLog) {
+        const phaseIndex = syncTypes.indexOf(phase);
+        await supabase
+          .from('store_sync_logs')
+          .update({
+            metadata: {
+              ...syncLog.metadata,
+              current_phase: phase,
+              phase_progress: progress,
+              total_phases: syncTypes.length,
+              phase_index: phaseIndex,
+              current_item: currentItem,
+              total_items: totalItems,
+              results,
+            },
+          })
+          .eq('id', syncLog.id);
+      }
+    };
 
     const adapter = getAdapter(store.platform);
     const results: Record<string, { synced: number; failed: number; errors: string[] }> = {};
@@ -583,6 +605,7 @@ Deno.serve(async (req) => {
     // Sync Products
     if (syncTypes.includes('products')) {
       console.log('[sync-store] Syncing products...');
+      await updateProgress('products', 0);
       try {
         const products = await adapter.fetchProducts(store.store_url, store.api_key_encrypted);
         console.log(`[sync-store] Fetched ${products.length} products`);
@@ -591,7 +614,8 @@ Deno.serve(async (req) => {
         let failed = 0;
         const errors: string[] = [];
 
-        for (const product of products) {
+        for (let i = 0; i < products.length; i++) {
+          const product = products[i];
           try {
             const normalized = adapter.normalizeProduct(product);
             const { error } = await supabase
@@ -612,6 +636,12 @@ Deno.serve(async (req) => {
             failed++;
             errors.push(`Product processing error: ${e.message}`);
           }
+          
+          // Update progress every 10 items or at the end
+          if ((i + 1) % 10 === 0 || i === products.length - 1) {
+            const progress = ((i + 1) / products.length) * 100;
+            await updateProgress('products', progress, i + 1, products.length);
+          }
         }
 
         results.products = { synced, failed, errors: errors.slice(0, 5) };
@@ -626,6 +656,7 @@ Deno.serve(async (req) => {
     // Sync Orders
     if (syncTypes.includes('orders')) {
       console.log('[sync-store] Syncing orders...');
+      await updateProgress('orders', 0);
       try {
         const orders = await adapter.fetchOrders(store.store_url, store.api_key_encrypted);
         console.log(`[sync-store] Fetched ${orders.length} orders`);
@@ -634,7 +665,8 @@ Deno.serve(async (req) => {
         let failed = 0;
         const errors: string[] = [];
 
-        for (const order of orders) {
+        for (let i = 0; i < orders.length; i++) {
+          const order = orders[i];
           try {
             const normalized = adapter.normalizeOrder(order);
             const { error } = await supabase
@@ -655,6 +687,11 @@ Deno.serve(async (req) => {
             failed++;
             errors.push(`Order processing error: ${e.message}`);
           }
+          
+          if ((i + 1) % 10 === 0 || i === orders.length - 1) {
+            const progress = ((i + 1) / orders.length) * 100;
+            await updateProgress('orders', progress, i + 1, orders.length);
+          }
         }
 
         results.orders = { synced, failed, errors: errors.slice(0, 5) };
@@ -669,6 +706,7 @@ Deno.serve(async (req) => {
     // Sync Customers
     if (syncTypes.includes('customers')) {
       console.log('[sync-store] Syncing customers...');
+      await updateProgress('customers', 0);
       try {
         const customers = await adapter.fetchCustomers(store.store_url, store.api_key_encrypted);
         console.log(`[sync-store] Fetched ${customers.length} customers`);
@@ -677,7 +715,8 @@ Deno.serve(async (req) => {
         let failed = 0;
         const errors: string[] = [];
 
-        for (const customer of customers) {
+        for (let i = 0; i < customers.length; i++) {
+          const customer = customers[i];
           try {
             const normalized = adapter.normalizeCustomer(customer);
             const { error } = await supabase
@@ -698,6 +737,11 @@ Deno.serve(async (req) => {
             failed++;
             errors.push(`Customer processing error: ${e.message}`);
           }
+          
+          if ((i + 1) % 10 === 0 || i === customers.length - 1) {
+            const progress = ((i + 1) / customers.length) * 100;
+            await updateProgress('customers', progress, i + 1, customers.length);
+          }
         }
 
         results.customers = { synced, failed, errors: errors.slice(0, 5) };
@@ -712,6 +756,7 @@ Deno.serve(async (req) => {
     // Sync Inventory
     if (syncTypes.includes('inventory')) {
       console.log('[sync-store] Syncing inventory...');
+      await updateProgress('inventory', 0);
       try {
         const inventory = await adapter.fetchInventory(store.store_url, store.api_key_encrypted);
         console.log(`[sync-store] Fetched ${inventory.length} inventory items`);
@@ -720,7 +765,8 @@ Deno.serve(async (req) => {
         let failed = 0;
         const errors: string[] = [];
 
-        for (const item of inventory) {
+        for (let i = 0; i < inventory.length; i++) {
+          const item = inventory[i];
           try {
             const normalized = adapter.normalizeInventoryItem(item, item.inventory_item_id || item.id);
             const { error } = await supabase
@@ -740,6 +786,11 @@ Deno.serve(async (req) => {
           } catch (e) {
             failed++;
             errors.push(`Inventory processing error: ${e.message}`);
+          }
+          
+          if ((i + 1) % 10 === 0 || i === inventory.length - 1) {
+            const progress = ((i + 1) / inventory.length) * 100;
+            await updateProgress('inventory', progress, i + 1, inventory.length);
           }
         }
 

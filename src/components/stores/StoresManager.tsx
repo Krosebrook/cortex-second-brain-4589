@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StoreCard } from './StoreCard';
 import { StoreFormDialog } from './StoreFormDialog';
 import { ApiKeyRotationDialog } from './ApiKeyRotationDialog';
+import { SyncProgressIndicator } from './SyncProgressIndicator';
 import type { StoreWithoutApiKey, StoreInsert, StoreUpdate } from '@/services/stores.service';
 
 interface StoresManagerProps {
@@ -202,6 +203,19 @@ export function StoresManager({ className }: StoresManagerProps) {
             </Button>
           </CardHeader>
         </Card>
+      )}
+
+      {/* Sync Progress Indicators */}
+      {stores.length > 0 && (
+        <div className="space-y-2">
+          {stores.map((store) => (
+            <SyncProgressIndicator
+              key={`progress-${store.id}`}
+              storeId={store.id}
+              onComplete={() => refreshStores()}
+            />
+          ))}
+        </div>
       )}
 
       {/* Stores List */}

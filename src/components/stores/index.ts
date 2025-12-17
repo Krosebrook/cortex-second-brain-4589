@@ -10,3 +10,4 @@ export { ApiKeyRotationDialog } from './ApiKeyRotationDialog';
 export { SyncDashboard } from './SyncDashboard';
 export { SyncStatsCards } from './SyncStatsCards';
 export { SyncCharts } from './SyncCharts';
+export { SyncProgressIndicator } from './SyncProgressIndicator';
