@@ -2,8 +2,8 @@ import { PageWrapper } from '@/components/layout/PageWrapper';
 import { Container } from '@/components/ui/container';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StoresManager, SyncDashboard } from '@/components/stores';
-import { Store, BarChart3 } from 'lucide-react';
+import { StoresManager, SyncDashboard, SyncedProductsTable } from '@/components/stores';
+import { Store, BarChart3, Package } from 'lucide-react';
 
 const StoresPage = () => {
   return (
@@ -19,6 +19,10 @@ const StoresPage = () => {
               <Store className="h-4 w-4" />
               Stores
             </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2">
+              <Package className="h-4 w-4" />
+              Products
+            </TabsTrigger>
             <TabsTrigger value="dashboard" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -26,6 +30,9 @@ const StoresPage = () => {
           </TabsList>
           <TabsContent value="stores">
             <StoresManager />
+          </TabsContent>
+          <TabsContent value="products">
+            <SyncedProductsTable />
           </TabsContent>
           <TabsContent value="dashboard">
             <SyncDashboard />
