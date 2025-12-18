@@ -1,4 +1,4 @@
-project_id = "nxosqzkzfayjwqdhijrp"
+project_id = "gcqfqzhgludrzkfajljp"
 
 [functions.sync-store]
 verify_jwt = false
