@@ -40,6 +40,29 @@ This roadmap outlines the strategic development plan for Cortex, the AI-powered 
 
 ---
 
+## Recent Changes
+
+### December 2024: E-Commerce Feature Removal
+The e-commerce/store management functionality has been removed to maintain focus on the core knowledge management mission. This cleanup included:
+
+**Removed Components:**
+- Store management UI (StoresManager, StoreCard, StoreFormDialog)
+- API key rotation and sync dashboard
+- Synced products table and sync progress indicators
+
+**Removed Database Tables:**
+- `stores` - E-commerce store connections
+- `synced_products`, `synced_orders`, `synced_customers`, `synced_inventory` - Sync data
+- `store_sync_logs` - Sync operation logs
+- `api_key_access_logs`, `api_key_access_stats` - API key monitoring
+
+**Removed Backend:**
+- `sync-store` edge function
+
+**Rationale:** Cortex is focused on being an AI-powered knowledge management platform. The e-commerce integration was scope creep that diluted the core value proposition.
+
+---
+
 ## Roadmap Phases
 
 ## Phase 1: Foundation Strengthening
