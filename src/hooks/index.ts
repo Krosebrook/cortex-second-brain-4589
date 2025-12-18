@@ -34,7 +34,7 @@ export { useCommandPalette } from './useCommandPalette';
 export { useChat } from './useChat';
 export { useKnowledge } from './useKnowledge';
 export { useProfile } from './useProfile';
-export { useStores } from './useStores';
+
 
 // Filter and search hooks
 export { useSearchFilter } from './useSearchFilter';

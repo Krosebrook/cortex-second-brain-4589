@@ -1,8 +1,5 @@
 project_id = "gcqfqzhgludrzkfajljp"
 
-[functions.sync-store]
-verify_jwt = false
-
 [functions.chat-with-tessa]
 verify_jwt = false
 
