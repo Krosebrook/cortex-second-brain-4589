@@ -1,0 +1,132 @@
+# CODEOWNERS - Automatic Review Assignment
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# This file defines code ownership and automatically assigns reviewers
+# when pull requests modify matching file patterns.
+#
+# IMPORTANT: Code owners are responsible for maintaining code quality
+# and ensuring contributions align with our CODE_OF_CONDUCT.md
+#
+# Format: <pattern> <owner1> <owner2> ...
+# Owners can be @usernames, @org/team-names, or email addresses
+
+# ============================================================================
+# DEFAULT OWNERS
+# ============================================================================
+# These owners will be requested for review when someone opens a PR
+# that modifies any file in the repository (unless overridden below)
+
+*                                   @your-username
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+# Documentation owners ensure clarity, accuracy, and adherence to
+# contribution guidelines
+
+*.md                                @your-username @docs-team
+/docs/                              @your-username @docs-team
+README.md                           @your-username
+CONTRIBUTING.md                     @your-username
+CODE_OF_CONDUCT.md                  @your-username
+CHANGELOG.md                        @your-username
+LICENSE                             @your-username
+
+# ============================================================================
+# GITHUB CONFIGURATION
+# ============================================================================
+# GitHub-specific files require maintainer approval
+
+/.github/                           @your-username
+/.github/workflows/                 @your-username @devops-team
+/.github/ISSUE_TEMPLATE/            @your-username
+/.github/CODEOWNERS                 @your-username
+
+# ============================================================================
+# CORE APPLICATION
+# ============================================================================
+# Core application code and configuration
+
+/src/App.tsx                        @your-username @frontend-lead
+/src/main.tsx                       @your-username @frontend-lead
+/src/index.css                      @your-username @design-team
+
+# ============================================================================
+# COMPONENTS
+# ============================================================================
+# UI Components ownership by feature area
+
+/src/components/ui/                 @your-username @design-team
+/src/components/landing/            @your-username @frontend-team
+/src/components/search/             @your-username @frontend-team
+/src/components/feedback/           @your-username @frontend-team
+/src/components/error/              @your-username @frontend-team
+/src/components/layout/             @your-username @frontend-team
+
+# ============================================================================
+# PAGES
+# ============================================================================
+# Page components and routing
+
+/src/pages/                         @your-username @frontend-team
+
+# ============================================================================
+# HOOKS & STATE MANAGEMENT
+# ============================================================================
+# Custom hooks and state logic
+
+/src/hooks/                         @your-username @frontend-lead
+/src/contexts/                      @your-username @frontend-lead
+
+# ============================================================================
+# SERVICES & API
+# ============================================================================
+# API clients and business logic
+
+/src/services/                      @your-username @backend-team
+/src/lib/                           @your-username @backend-team
+
+# ============================================================================
+# TYPES & INTERFACES
+# ============================================================================
+# TypeScript type definitions
+
+/src/types/                         @your-username @frontend-lead
+/src/integrations/supabase/         @your-username @backend-team
+
+# ============================================================================
+# SUPABASE & BACKEND
+# ============================================================================
+# Edge functions and database configuration
+
+/supabase/                          @your-username @backend-team
+/supabase/functions/                @your-username @backend-team
+/supabase/migrations/               @your-username @backend-team
+
+# ============================================================================
+# TESTING
+# ============================================================================
+# Test files and configuration
+
+/src/__tests__/                     @your-username @qa-team
+/src/**/*.test.ts                   @your-username @qa-team
+/src/**/*.test.tsx                  @your-username @qa-team
+vitest.setup.ts                     @your-username @qa-team
+
+# ============================================================================
+# BUILD & CONFIGURATION
+# ============================================================================
+# Build tools and project configuration
+
+vite.config.ts                      @your-username @devops-team
+tailwind.config.ts                  @your-username @design-team
+tsconfig*.json                      @your-username @frontend-lead
+eslint.config.js                    @your-username @frontend-lead
+
+# ============================================================================
+# SECURITY-SENSITIVE FILES
+# ============================================================================
+# These files require security review
+
+/src/utils/security.ts              @your-username @security-team
+/docs/SECURITY.md                   @your-username @security-team
