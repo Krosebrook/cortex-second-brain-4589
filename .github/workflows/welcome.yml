@@ -1,0 +1,325 @@
+# =============================================================================
+# FIRST-TIME CONTRIBUTOR WELCOME
+# =============================================================================
+# Automatically welcomes first-time contributors with helpful information
+# Documentation: https://github.com/actions/first-interaction
+# =============================================================================
+
+name: Welcome New Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ===========================================================================
+  # Welcome First-Time Contributors
+  # ===========================================================================
+  welcome:
+    name: Welcome
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Welcome first-time contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          issue-message: |
+            👋 **Welcome to TESSA, @${{ github.actor }}!**
+            
+            Thank you for opening your first issue! We're excited to have you here. 🎉
+            
+            ### Before We Begin
+            
+            Please make sure you've:
+            - [ ] Searched [existing issues](../issues) to avoid duplicates
+            - [ ] Read our [Code of Conduct](../blob/main/CODE_OF_CONDUCT.md)
+            - [ ] Provided all requested information in the issue template
+            
+            ### What Happens Next?
+            
+            1. **Triage**: A maintainer will review and label your issue
+            2. **Discussion**: We may ask clarifying questions
+            3. **Resolution**: We'll work together toward a solution
+            
+            ### Helpful Resources
+            
+            | Resource | Description |
+            |----------|-------------|
+            | 📖 [Documentation](../blob/main/docs/README.md) | Project documentation |
+            | 💬 [Discussions](../discussions) | Ask questions and share ideas |
+            | 🤝 [Contributing Guide](../blob/main/CONTRIBUTING.md) | How to contribute |
+            | 🔒 [Security Policy](../blob/main/.github/SECURITY.md) | Report vulnerabilities |
+            
+            ### Want to Contribute?
+            
+            If you'd like to help fix this issue, let us know! Comment below and we'll guide you through the process.
+            
+            ---
+            
+            *Thank you for helping make TESSA better! 💜*
+          
+          pr-message: |
+            👋 **Welcome to TESSA, @${{ github.actor }}!**
+            
+            Thank you for your first pull request! We're thrilled to have you contributing. 🎉
+            
+            ### Checklist for Your PR
+            
+            Before we review, please ensure:
+            
+            - [ ] Your PR title follows [Conventional Commits](https://www.conventionalcommits.org/) format
+            - [ ] You've read our [Contributing Guide](../blob/main/CONTRIBUTING.md)
+            - [ ] All automated checks pass (lint, build, tests)
+            - [ ] You've added tests for new functionality
+            - [ ] Documentation is updated if needed
+            
+            ### What Happens Next?
+            
+            1. **Automated Checks**: Our CI will run tests and quality checks
+            2. **Review**: A maintainer will review your code
+            3. **Feedback**: We may suggest changes or improvements
+            4. **Merge**: Once approved, we'll merge your contribution! 🚀
+            
+            ### Helpful Tips
+            
+            - 💡 Keep your PR focused on a single change
+            - 📝 Describe your changes clearly in the PR description
+            - 🔄 Rebase on `main` if there are conflicts
+            - 💬 Ask questions if you're unsure about anything
+            
+            ### Need Help?
+            
+            Don't hesitate to ask questions! We're here to help you succeed.
+            
+            | Resource | Description |
+            |----------|-------------|
+            | 📖 [Coding Standards](../blob/main/CONTRIBUTING.md#coding-standards) | Code style guide |
+            | 🧪 [Testing Guidelines](../blob/main/CONTRIBUTING.md#testing-guidelines) | How to write tests |
+            | 💬 [Discussions](../discussions) | Ask questions |
+            
+            ---
+            
+            *Thank you for contributing to TESSA! Your effort makes a difference. 💜*
+
+  # ===========================================================================
+  # Label First-Time Contributors
+  # ===========================================================================
+  label-first-timers:
+    name: Label First-Timer PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target'
+    
+    steps:
+      - name: Check if first-time contributor
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const creator = context.payload.pull_request.user.login;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: creator,
+              state: 'all'
+            });
+            
+            // Filter to only PRs (issues API returns both)
+            const prs = issues.filter(issue => issue.pull_request);
+            
+            // First PR if only one exists (the current one)
+            const isFirstPR = prs.length === 1;
+            
+            console.log(`User ${creator} has ${prs.length} PR(s). First-timer: ${isFirstPR}`);
+            
+            return isFirstPR;
+
+      - name: Add first-timer label
+        if: steps.check.outputs.result == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['first-contribution']
+            });
+            
+            console.log('Added first-contribution label');
+
+  # ===========================================================================
+  # Celebrate Merged First PRs
+  # ===========================================================================
+  celebrate-merge:
+    name: Celebrate First Merged PR
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request_target' && 
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true
+    
+    steps:
+      - name: Check if first merged PR
+        id: check-first-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const creator = context.payload.pull_request.user.login;
+            
+            // Get all merged PRs by this user
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'created',
+              direction: 'asc'
+            });
+            
+            const mergedPRs = prs.filter(pr => 
+              pr.user.login === creator && pr.merged_at !== null
+            );
+            
+            // First merged PR if only one exists
+            const isFirstMerge = mergedPRs.length === 1;
+            
+            console.log(`User ${creator} has ${mergedPRs.length} merged PR(s). First merge: ${isFirstMerge}`);
+            
+            return isFirstMerge;
+
+      - name: Post celebration comment
+        if: steps.check-first-merge.outputs.result == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const creator = context.payload.pull_request.user.login;
+            
+            const celebrationMessage = `
+            # 🎉 Congratulations, @${creator}!
+            
+            Your first pull request to TESSA has been merged! 
+            
+            ![Celebration](https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif)
+            
+            ## You're Now a TESSA Contributor! 🏆
+            
+            Thank you for taking the time to contribute. Your effort helps make TESSA better for everyone.
+            
+            ### What's Next?
+            
+            - ⭐ **Star the repository** if you haven't already
+            - 👀 **Watch for updates** to stay informed
+            - 🔍 **Find more issues** to work on: [Good First Issues](../issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+            - 📣 **Share your contribution** on social media!
+            
+            ### You're Listed!
+            
+            You'll be added to our [CONTRIBUTORS.md](../blob/main/CONTRIBUTORS.md) file. 
+            
+            ---
+            
+            *Welcome to the team! We look forward to your future contributions. 💜*
+            `;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: celebrationMessage
+            });
+
+  # ===========================================================================
+  # Thank Issue Reporters
+  # ===========================================================================
+  thank-reporter:
+    name: Thank Issue Reporter on Close
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'closed'
+    
+    steps:
+      - name: Check if issue was resolved by PR
+        id: check-resolved
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            
+            // Check if issue has any linked PRs
+            const timeline = await github.rest.issues.listEventsForTimeline({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number
+            });
+            
+            const crossReferences = timeline.data.filter(event => 
+              event.event === 'cross-referenced' && 
+              event.source?.issue?.pull_request
+            );
+            
+            return crossReferences.length > 0;
+
+      - name: Thank first-time issue reporter
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const creator = issue.user.login;
+            
+            // Check if this is their first issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: creator,
+              state: 'all'
+            });
+            
+            // Filter to only issues (not PRs)
+            const onlyIssues = issues.filter(i => !i.pull_request);
+            
+            if (onlyIssues.length === 1) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `
+            Thank you for reporting this issue, @${creator}! 🙏
+            
+            Your contribution helps improve TESSA for everyone. We appreciate you taking the time to provide feedback.
+            
+            If you'd like to continue contributing, check out our [Contributing Guide](../blob/main/CONTRIBUTING.md) or look for [issues labeled "good first issue"](../issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+            
+            *Thanks for being part of our community! 💜*
+                `
+              });
+            }
+
+# =============================================================================
+# CONFIGURATION NOTES
+# =============================================================================
+#
+# This workflow:
+# 1. Welcomes first-time issue creators with helpful resources
+# 2. Welcomes first-time PR authors with contribution guidelines
+# 3. Labels first-time PRs for maintainer awareness
+# 4. Celebrates when a first PR is merged
+# 5. Thanks first-time issue reporters when their issue is closed
+#
+# Customization:
+# - Edit the welcome messages to match your project's tone
+# - Add or remove labels as needed
+# - Adjust the celebration GIF URL
+# - Modify the resources and links
+#
+# Note: This uses pull_request_target for security with forked PRs
+# See: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+#
+# =============================================================================
