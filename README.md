@@ -1,147 +1,325 @@
-# Cortex - AI-Powered Knowledge Management
+# Tessa AI Platform
 
-Cortex is an AI-powered second brain platform that helps you capture, organize, and retrieve knowledge effortlessly.
+<div align="center">
 
-## 🚀 Getting Started
+**An intelligent knowledge management and AI assistant platform**
 
-### Quick Start (5 minutes)
+[![Built with Lovable](https://img.shields.io/badge/Built%20with-Lovable-ff69b4)](https://lovable.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3-61dafb)](https://react.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ecf8e)](https://supabase.com/)
 
-1. **Visit the App**: Go to the [live application](https://lovable.dev/projects/513db1a2-0fcc-4643-bd43-f10d076dfa80) or your deployed URL
-2. **Create an Account**: Sign up with email or use social authentication
-3. **Start Adding Knowledge**: 
-   - Click "Import" to add notes, documents, or web pages
-   - Use the AI chat (Tessa) to ask questions about your knowledge base
-   - Organize with tags and views (Table, Grid, List, Kanban)
+[Demo](https://lovable.dev/projects/513db1a2-0fcc-4643-bd43-f10d076dfa80) · [Documentation](docs/) · [Report Bug](https://github.com/your-repo/issues) · [Request Feature](https://github.com/your-repo/issues)
 
-### First Steps
-
-| Step | Action | Result |
-|------|--------|--------|
-| 1 | Create your first note | Add a knowledge item manually |
-| 2 | Import a webpage | Save content from any URL |
-| 3 | Ask Tessa a question | Get AI-powered insights |
-| 4 | Organize with tags | Categorize your knowledge |
-| 5 | Try different views | Find your preferred layout |
-
-### Key Features
-
-- **📝 Knowledge Management**: Notes, documents, web clippings with multi-view support
-- **🤖 AI Chat (Tessa)**: Intelligent assistant for knowledge queries
-- **📥 Import System**: Multiple methods to capture information
-- **🔍 Search & Filter**: Find anything quickly with powerful filters
-- **📱 PWA Support**: Install as an app on any device
-- **🔒 Offline-First**: Works without internet, syncs when connected
+</div>
 
 ---
 
-## 🛠️ Development Setup
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Quick Start Guide](#quick-start-guide)
+- [Documentation](#documentation)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [Troubleshooting & FAQ](#troubleshooting--faq)
+- [Changelog](#changelog)
+- [License](#license)
+
+---
+
+## Project Overview
+
+Tessa AI is a comprehensive knowledge management and AI assistant platform designed to help users organize, search, and interact with their knowledge base through natural language conversations. Built with modern web technologies, it provides a seamless experience for managing information, collaborating on projects, and leveraging AI capabilities.
+
+### Key Objectives
+
+- **Intelligent Knowledge Management**: Organize and retrieve information efficiently
+- **Conversational AI Interface**: Natural language interactions powered by advanced AI models
+- **Real-time Collaboration**: Multi-user support with conflict resolution
+- **Offline-First Architecture**: Work seamlessly even without internet connectivity
+- **Enterprise Security**: Role-based access control with Row Level Security
+
+### Technology Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 18, TypeScript, Tailwind CSS, Shadcn/UI |
+| **State Management** | TanStack Query, React Context |
+| **Backend** | Supabase (PostgreSQL, Auth, Edge Functions) |
+| **AI Integration** | OpenAI, Anthropic Claude, Google Gemini |
+| **Build Tools** | Vite, ESLint, Vitest |
+| **Deployment** | Vercel, Netlify, Docker |
+
+---
+
+## Features
+
+### Core Capabilities
+
+- 🤖 **AI-Powered Chat** - Conversational interface with context-aware responses
+- 📚 **Knowledge Base** - Organize documents, notes, and resources
+- 🔍 **Smart Search** - Full-text search with filters and presets
+- 📊 **Dashboard Analytics** - Visualize usage and insights
+- 🔐 **Authentication** - Secure login with multiple providers
+- 📱 **PWA Support** - Install as a native-like app
+- 🌙 **Dark Mode** - System-aware theme switching
+- ⌨️ **Keyboard Shortcuts** - Power-user productivity features
+
+### Technical Features
+
+- Optimistic updates with conflict resolution
+- Virtual scrolling for large datasets
+- Comprehensive error handling and recovery
+- Real-time synchronization
+- Offline data persistence
+
+---
+
+## Quick Start Guide
 
 ### Prerequisites
 
-- Node.js 18+ ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
-- npm or bun package manager
+Before you begin, ensure you have the following installed:
 
-### Local Development
+- **Node.js** (v18.0 or higher) - [Download](https://nodejs.org/)
+- **npm** (v9.0 or higher) or **bun** - Comes with Node.js
+- **Git** - [Download](https://git-scm.com/)
 
-```sh
-# Clone the repository
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Navigate to project directory
-cd <YOUR_PROJECT_NAME>
+1. **Clone the repository**
 
-# Install dependencies
+```bash
+git clone https://github.com/your-username/tessa-ai.git
+cd tessa-ai
+```
+
+2. **Install dependencies**
+
+```bash
 npm install
+# or
+bun install
+```
 
-# Start development server
+3. **Start the development server**
+
+```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+4. **Open your browser**
 
-### Environment Variables
+Navigate to `http://localhost:8080` to see the application.
 
-Create a `.env` file based on `.env.example`:
+### Build for Production
 
-```env
-# Supabase (required for backend features)
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+```bash
+# Create production build
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
 ---
 
-## 📁 Project Structure
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### Core Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/ARCHITECTURE.md) | System design, component relationships, and data flow |
+| [API Reference](docs/API.md) | Edge function endpoints with request/response examples |
+| [Deployment Guide](docs/DEPLOYMENT.md) | Instructions for Vercel, Netlify, and self-hosting |
+| [Testing Guide](docs/TESTING.md) | Testing strategies, examples, and best practices |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and debugging solutions |
+
+### Additional Resources
+
+| Document | Description |
+|----------|-------------|
+| [Contributing](CONTRIBUTING.md) | Guidelines for code contributions |
+| [Changelog](CHANGELOG.md) | Version history and release notes |
+| [Technical Whitepaper](docs/TECHNICAL_WHITEPAPER.md) | In-depth technical specifications |
+| [Roadmap](docs/ROADMAP.md) | Planned features and improvements |
+
+---
+
+## Architecture
 
 ```
-src/
-├── components/     # Reusable UI components
-├── pages/          # Route pages
-├── hooks/          # Custom React hooks
-├── services/       # API and business logic
-├── contexts/       # React context providers
-├── lib/            # Utility functions
-├── types/          # TypeScript type definitions
-└── integrations/   # Third-party integrations (Supabase)
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │   Pages     │  │ Components  │  │   Hooks & Context   │ │
+│  │  (Routes)   │  │  (UI/Logic) │  │  (State Management) │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘ │
+│         └────────────────┼────────────────────┘            │
+│                          ▼                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Services Layer (API Clients)            │   │
+│  └──────────────────────────┬──────────────────────────┘   │
+└─────────────────────────────┼───────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Supabase Backend                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │  PostgreSQL  │  │  Auth/Users  │  │  Edge Functions  │  │
+│  │  (Database)  │  │   (Auth)     │  │  (Serverless)    │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 🔧 Tech Stack
-
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **Backend**: Supabase (Auth, Database, Edge Functions)
-- **State Management**: TanStack Query
-- **Routing**: React Router v6
+For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## 📝 Available Scripts
+## Contributing
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
-| `npm run test` | Run tests |
-| `npm run lint` | Lint codebase |
+We welcome contributions from the community! Here's how you can help:
 
----
+### Ways to Contribute
 
-## 🚢 Deployment
+- 🐛 **Report Bugs** - Submit detailed bug reports with reproduction steps
+- 💡 **Suggest Features** - Share ideas for new functionality
+- 📝 **Improve Documentation** - Fix typos, add examples, clarify explanations
+- 🔧 **Submit Code** - Fix bugs or implement new features
 
-### Via Lovable (Recommended)
-Open [Lovable](https://lovable.dev/projects/513db1a2-0fcc-4643-bd43-f10d076dfa80) and click Share → Publish.
-
-### Self-Hosting
-See [Self-hosting documentation](https://docs.lovable.dev/tips-tricks/self-hosting) for deploying to your own infrastructure.
-
-### Custom Domain
-Visit [Custom domains documentation](https://docs.lovable.dev/tips-tricks/custom-domain/) for setup instructions.
-
----
-
-## 🤝 Contributing
+### Quick Contribution Steps
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with proper tests
+4. Commit with conventional commits (`git commit -m 'feat: add amazing feature'`)
+5. Push to your branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+For detailed guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-## 📚 Documentation
+## Troubleshooting & FAQ
 
-- [Technical Whitepaper](docs/TECHNICAL_WHITEPAPER.md)
-- [Product Roadmap](docs/ROADMAP.md)
-- [Lovable Documentation](https://docs.lovable.dev/)
+### Common Issues
+
+<details>
+<summary><strong>Application won't start</strong></summary>
+
+```bash
+# Clear cache and reinstall dependencies
+rm -rf node_modules
+rm package-lock.json
+npm install
+npm run dev
+```
+</details>
+
+<details>
+<summary><strong>Data not showing (RLS issues)</strong></summary>
+
+Ensure Row Level Security policies are correctly configured. Check that:
+- User is authenticated
+- `user_id` column is properly set in insert statements
+- RLS policies allow the current operation
+</details>
+
+<details>
+<summary><strong>Build failures</strong></summary>
+
+```bash
+# Check for TypeScript errors
+npx tsc --noEmit
+
+# Check for linting issues
+npm run lint -- --fix
+```
+</details>
+
+<details>
+<summary><strong>Authentication redirect issues</strong></summary>
+
+Configure URL settings in Supabase Dashboard:
+1. Go to Authentication → URL Configuration
+2. Set Site URL to your app URL
+3. Add redirect URLs for preview and production domains
+</details>
+
+### FAQ
+
+**Q: Can I use this with my own AI provider?**  
+A: Yes! The AI integration is modular. Configure your provider's API key in Supabase Edge Function secrets.
+
+**Q: Is offline mode fully supported?**  
+A: Yes, the app uses IndexedDB for offline storage with automatic sync when connectivity returns.
+
+**Q: How do I reset my local development environment?**  
+A: Run `rm -rf node_modules .vite && npm install && npm run dev`
+
+For comprehensive troubleshooting, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ---
 
-## 📄 License
+## Changelog
 
-This project is private. All rights reserved.
+### Recent Releases
+
+#### v0.3.0 (Latest)
+- Added filter presets with persistence
+- Implemented keyboard shortcuts system
+- Added bulk operations for knowledge items
+- Performance optimizations with virtual scrolling
+
+#### v0.2.0
+- Knowledge base management
+- Real-time sync with conflict resolution
+- Offline support with background sync
+- Toast notifications with undo support
+
+#### v0.1.0
+- Initial release
+- Core chat functionality
+- User authentication
+- Basic dashboard
+
+For complete version history, see [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- Built with [Lovable](https://lovable.dev) - AI-powered web development
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Backend powered by [Supabase](https://supabase.com/)
+- Icons from [Lucide](https://lucide.dev/)
+
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#tessa-ai-platform)**
+
+Made with ❤️ by the Tessa AI Team
+
+</div>
