@@ -951,6 +951,45 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_access_logs: {
+        Row: {
+          access_type: string
+          accessed_profile_id: string
+          accessor_user_id: string | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          access_type: string
+          accessed_profile_id: string
+          accessor_user_id?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          access_type?: string
+          accessed_profile_id?: string
+          accessor_user_id?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           api_calls_limit: number | null
@@ -1553,6 +1592,16 @@ export type Database = {
         Returns: undefined
       }
       is_claims_admin: { Args: never; Returns: boolean }
+      log_profile_access: {
+        Args: {
+          p_access_type: string
+          p_accessed_profile_id: string
+          p_failure_reason?: string
+          p_metadata?: Json
+          p_success?: boolean
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: { p_event_data?: Json; p_event_type: string; p_severity?: string }
         Returns: string
