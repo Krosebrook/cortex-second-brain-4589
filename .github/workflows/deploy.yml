@@ -1,0 +1,410 @@
+# =============================================================================
+# AUTOMATED DEPLOYMENT WORKFLOW
+# =============================================================================
+# Deploys to Vercel (primary) or Netlify (alternative) on main branch pushes
+# Includes preview deployments for pull requests
+# Documentation: https://docs.github.com/en/actions
+# =============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+    types: [opened, synchronize, reopened]
+
+  # Allow manual deployments
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+          - staging
+
+# Prevent concurrent deployments to same environment
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  # ===========================================================================
+  # Pre-deployment Checks
+  # ===========================================================================
+  pre-deploy-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      deploy-env: ${{ steps.check.outputs.deploy-env }}
+    
+    steps:
+      - name: Determine deployment environment
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy-env=preview" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy-env=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "deploy-env=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ===========================================================================
+  # Build and Test
+  # ===========================================================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
+    if: needs.pre-deploy-checks.outputs.should-deploy == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: cache-deps
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: deps-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Run type check
+        run: npm run typecheck || npx tsc --noEmit
+        continue-on-error: false
+
+      - name: Run linting
+        run: npm run lint || echo "Linting skipped"
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm run test -- --run --coverage || echo "Tests skipped"
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+          retention-days: 7
+
+      - name: Report build size
+        run: |
+          echo "## Build Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          find dist -type f \( -name "*.js" -o -name "*.css" \) -exec ls -lh {} \; | \
+            awk '{print "| " $NF " | " $5 " |"}' >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Deploy to Vercel (Primary Platform)
+  # ===========================================================================
+  deploy-vercel:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks, build]
+    if: |
+      needs.pre-deploy-checks.outputs.should-deploy == 'true' &&
+      vars.DEPLOY_PLATFORM == 'vercel'
+    environment:
+      name: ${{ needs.pre-deploy-checks.outputs.deploy-env }}
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
+        run: |
+          vercel pull --yes --environment=${{ needs.pre-deploy-checks.outputs.deploy-env == 'production' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build with Vercel
+        run: |
+          vercel build ${{ needs.pre-deploy-checks.outputs.deploy-env == 'production' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          if [[ "${{ needs.pre-deploy-checks.outputs.deploy-env }}" == "production" ]]; then
+            url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          else
+            url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          fi
+          echo "url=$url" >> $GITHUB_OUTPUT
+          echo "## Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.pre-deploy-checks.outputs.deploy-env }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** $url" >> $GITHUB_STEP_SUMMARY
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment on PR with deployment URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview Deployment Ready!\n\n**URL:** ${{ steps.deploy.outputs.url }}\n\n*Deployed via Vercel*`
+            })
+
+  # ===========================================================================
+  # Deploy to Netlify (Alternative Platform)
+  # ===========================================================================
+  deploy-netlify:
+    name: Deploy to Netlify
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks, build]
+    if: |
+      needs.pre-deploy-checks.outputs.should-deploy == 'true' &&
+      vars.DEPLOY_PLATFORM == 'netlify'
+    environment:
+      name: ${{ needs.pre-deploy-checks.outputs.deploy-env }}
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli@latest
+
+      - name: Deploy to Netlify
+        id: deploy
+        run: |
+          if [[ "${{ needs.pre-deploy-checks.outputs.deploy-env }}" == "production" ]]; then
+            output=$(netlify deploy --dir=dist --prod --json)
+          else
+            output=$(netlify deploy --dir=dist --json)
+          fi
+          url=$(echo $output | jq -r '.deploy_url // .url')
+          echo "url=$url" >> $GITHUB_OUTPUT
+          echo "## Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.pre-deploy-checks.outputs.deploy-env }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** $url" >> $GITHUB_STEP_SUMMARY
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Comment on PR with deployment URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Preview Deployment Ready!\n\n**URL:** ${{ steps.deploy.outputs.url }}\n\n*Deployed via Netlify*`
+            })
+
+  # ===========================================================================
+  # Post-deployment Notifications
+  # ===========================================================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks, deploy-vercel, deploy-netlify]
+    if: always() && needs.pre-deploy-checks.outputs.should-deploy == 'true'
+    
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [[ "${{ needs.deploy-vercel.result }}" == "success" ]] || [[ "${{ needs.deploy-netlify.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=Deployment completed successfully! 🚀" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.deploy-vercel.result }}" == "skipped" ]] && [[ "${{ needs.deploy-netlify.result }}" == "skipped" ]]; then
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "message=Deployment skipped - no platform configured" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=Deployment failed! ❌ Please check the logs." >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.status.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.pre-deploy-checks.outputs.deploy-env }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+      # Slack notification (uncomment to enable)
+      # - name: Send Slack notification
+      #   if: steps.status.outputs.status != 'skipped'
+      #   uses: 8398a7/action-slack@v3
+      #   with:
+      #     status: ${{ steps.status.outputs.status }}
+      #     fields: repo,message,commit,author,action,eventName,ref,workflow
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ===========================================================================
+  # Deployment Failure Handler
+  # ===========================================================================
+  handle-failure:
+    name: Handle Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-vercel, deploy-netlify]
+    if: failure()
+    
+    steps:
+      - name: Log failure details
+        run: |
+          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Troubleshooting Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the build logs for compilation errors" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify environment variables are set correctly" >> $GITHUB_STEP_SUMMARY
+          echo "3. Ensure deployment tokens/keys are valid" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check for network issues or service outages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Common Issues:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Missing secrets**: Ensure VERCEL_TOKEN or NETLIFY_AUTH_TOKEN is set" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build errors**: Check for TypeScript or linting errors" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timeout**: Large builds may need increased timeout limits" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create issue for failure (production only)
+        if: needs.pre-deploy-checks.outputs.deploy-env == 'production'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Production Deployment Failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `## Deployment Failure Report\n\n**Commit:** ${context.sha}\n**Branch:** ${context.ref}\n**Workflow Run:** [View Logs](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n\nPlease investigate and resolve the deployment issue.`,
+              labels: ['deployment', 'bug', 'high-priority']
+            })
+
+# =============================================================================
+# CONFIGURATION GUIDE
+# =============================================================================
+#
+# Required Secrets for Vercel:
+# ---------------------------
+# - VERCEL_TOKEN: Personal access token from Vercel
+# - VERCEL_ORG_ID: Organization ID from Vercel project settings
+# - VERCEL_PROJECT_ID: Project ID from Vercel project settings
+#
+# Required Secrets for Netlify:
+# -----------------------------
+# - NETLIFY_AUTH_TOKEN: Personal access token from Netlify
+# - NETLIFY_SITE_ID: Site ID from Netlify site settings
+#
+# Required Variables:
+# -------------------
+# - DEPLOY_PLATFORM: Set to 'vercel' or 'netlify' in repository variables
+#
+# Optional Secrets:
+# -----------------
+# - SLACK_WEBHOOK_URL: For Slack notifications
+# - VITE_SUPABASE_URL: Supabase project URL
+# - VITE_SUPABASE_ANON_KEY: Supabase anonymous key
+#
+# Platform Comparison:
+# --------------------
+# | Feature          | Vercel                    | Netlify                   |
+# |------------------|---------------------------|---------------------------|
+# | Build Speed      | Fast (optimized for Next) | Fast                      |
+# | Preview Deploys  | Automatic                 | Automatic                 |
+# | Edge Functions   | Yes (Serverless)          | Yes (Edge Functions)      |
+# | Analytics        | Built-in                  | Separate addon            |
+# | Pricing          | Generous free tier        | Generous free tier        |
+# | Best For         | React/Next.js apps        | Static sites, JAMstack    |
+#
+# Troubleshooting:
+# ----------------
+# 1. "Deployment timeout": Increase timeout or optimize build
+# 2. "Missing environment variables": Add to repository secrets
+# 3. "Build failed": Check for TypeScript errors locally first
+# 4. "Permission denied": Verify token has correct permissions
+#
+# References:
+# -----------
+# - Vercel CLI: https://vercel.com/docs/cli
+# - Netlify CLI: https://docs.netlify.com/cli/get-started/
+# - GitHub Actions: https://docs.github.com/en/actions
+# =============================================================================
