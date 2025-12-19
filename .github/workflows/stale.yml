@@ -1,0 +1,308 @@
+# =============================================================================
+# STALE ISSUE AND PR MANAGEMENT
+# =============================================================================
+# Automatically labels and closes stale issues and pull requests
+# Documentation: https://github.com/actions/stale
+# =============================================================================
+
+name: Stale Issue Management
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run in dry-run mode (no changes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ===========================================================================
+  # Stale Issues Management
+  # ===========================================================================
+  stale-issues:
+    name: Manage Stale Issues
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Mark and close stale issues
+        uses: actions/stale@v9
+        with:
+          # Authentication
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Only process issues in this run
+          only-issues: true
+          
+          # Timing configuration
+          days-before-stale: 60
+          days-before-close: 14
+          
+          # Labels
+          stale-issue-label: 'stale'
+          close-issue-label: 'closed-stale'
+          
+          # Exempt labels - issues with these labels won't go stale
+          exempt-issue-labels: >-
+            pinned,
+            security,
+            bug,
+            critical,
+            in-progress,
+            help-wanted,
+            good-first-issue,
+            discussion,
+            awaiting-response,
+            blocked
+          
+          # Exempt assignees - assigned issues won't go stale
+          exempt-all-issue-assignees: true
+          
+          # Exempt milestones - issues in milestones won't go stale
+          exempt-all-issue-milestones: true
+          
+          # Messages
+          stale-issue-message: |
+            👋 Hello! This issue has been automatically marked as **stale** because it has not had any activity in the last 60 days.
+            
+            ### What happens next?
+            - If no further activity occurs, this issue will be **closed in 14 days**
+            - Any new comment or activity will remove the stale label
+            - If this issue is still relevant, please comment to keep it open
+            
+            ### Is this issue still needed?
+            - ✅ **Yes, still relevant**: Please comment with an update or add the `pinned` label
+            - ❌ **No longer needed**: You can close this issue
+            - 🔄 **Needs more info**: Add details to help us understand the issue better
+            
+            Thank you for your contributions to TESSA! 💜
+          
+          close-issue-message: |
+            🔒 This issue has been automatically closed due to inactivity.
+            
+            ### Why was this closed?
+            This issue was marked as stale 14 days ago and has had no further activity.
+            
+            ### Can I reopen this?
+            Absolutely! If this issue is still relevant:
+            1. Comment on this issue with additional context
+            2. A maintainer will review and may reopen it
+            
+            Thank you for your understanding! 🙏
+          
+          # Remove stale label when updated
+          remove-stale-when-updated: true
+          
+          # Processing limits
+          operations-per-run: 100
+          
+          # Dry run mode
+          debug-only: ${{ github.event.inputs.dry-run == 'true' }}
+
+  # ===========================================================================
+  # Stale Pull Requests Management
+  # ===========================================================================
+  stale-prs:
+    name: Manage Stale Pull Requests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Mark and close stale PRs
+        uses: actions/stale@v9
+        with:
+          # Authentication
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Only process PRs in this run
+          only-pr: true
+          
+          # Timing configuration (shorter for PRs)
+          days-before-stale: 30
+          days-before-close: 7
+          
+          # Labels
+          stale-pr-label: 'stale'
+          close-pr-label: 'closed-stale'
+          
+          # Exempt labels
+          exempt-pr-labels: >-
+            pinned,
+            security,
+            work-in-progress,
+            wip,
+            do-not-close,
+            awaiting-review,
+            blocked,
+            dependencies
+          
+          # Exempt assignees
+          exempt-all-pr-assignees: true
+          
+          # Exempt milestones
+          exempt-all-pr-milestones: true
+          
+          # Exempt draft PRs
+          exempt-draft-pr: true
+          
+          # Messages
+          stale-pr-message: |
+            👋 Hello! This pull request has been automatically marked as **stale** because it has not had any activity in the last 30 days.
+            
+            ### What happens next?
+            - If no further activity occurs, this PR will be **closed in 7 days**
+            - Any new commit, comment, or review will remove the stale label
+            
+            ### Options
+            - 🔄 **Still working on it?** Push a new commit or comment with an update
+            - ⏸️ **Need more time?** Add the `work-in-progress` label
+            - 🗑️ **No longer needed?** Feel free to close this PR
+            - 🔀 **Merge conflicts?** Please rebase against the latest main branch
+            
+            ### Need Help?
+            If you're stuck or need guidance, don't hesitate to ask! We're here to help.
+            
+            Thank you for your contribution to TESSA! 💜
+          
+          close-pr-message: |
+            🔒 This pull request has been automatically closed due to inactivity.
+            
+            ### Why was this closed?
+            This PR was marked as stale 7 days ago and has had no further activity.
+            
+            ### Can I reopen this?
+            Yes! If you'd like to continue working on this:
+            1. Reopen this PR or create a new one
+            2. Rebase against the latest main branch
+            3. Address any review comments
+            
+            We appreciate your contribution and hope to see it completed! 🙏
+          
+          # Remove stale label when updated
+          remove-stale-when-updated: true
+          
+          # Delete branch when closing (optional - disabled by default)
+          delete-branch: false
+          
+          # Processing limits
+          operations-per-run: 50
+          
+          # Dry run mode
+          debug-only: ${{ github.event.inputs.dry-run == 'true' }}
+
+  # ===========================================================================
+  # Lock Old Closed Issues
+  # ===========================================================================
+  lock-threads:
+    name: Lock Old Threads
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Lock old closed issues and PRs
+        uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Issue configuration
+          issue-inactive-days: 365
+          issue-lock-reason: 'resolved'
+          issue-comment: |
+            🔐 This issue has been automatically locked since it has been closed for over a year.
+            
+            If you have a related issue, please open a new one and reference this issue if relevant.
+          
+          # PR configuration
+          pr-inactive-days: 365
+          pr-lock-reason: 'resolved'
+          pr-comment: |
+            🔐 This pull request has been automatically locked since it has been closed for over a year.
+            
+            If you'd like to continue this work, please open a new pull request.
+          
+          # Processing limits
+          process-only: 'issues, prs'
+
+  # ===========================================================================
+  # Summary Report
+  # ===========================================================================
+  summary:
+    name: Generate Summary
+    runs-on: ubuntu-latest
+    needs: [stale-issues, stale-prs, lock-threads]
+    if: always()
+    
+    steps:
+      - name: Create workflow summary
+        run: |
+          echo "## 📊 Stale Management Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Stale Issues | ${{ needs.stale-issues.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Stale PRs | ${{ needs.stale-prs.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lock Threads | ${{ needs.lock-threads.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Issues | PRs |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Days before stale | 60 | 30 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Days before close | 14 | 7 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Days before lock | 365 | 365 |" >> $GITHUB_STEP_SUMMARY
+
+# =============================================================================
+# CONFIGURATION GUIDE
+# =============================================================================
+#
+# Exempt Labels:
+# --------------
+# Add these labels to issues/PRs to prevent them from going stale:
+# - pinned: Permanently important items
+# - security: Security-related issues
+# - bug: Confirmed bugs
+# - critical: Critical issues
+# - in-progress: Actively being worked on
+# - help-wanted: Looking for contributors
+# - good-first-issue: Beginner-friendly issues
+# - discussion: Open discussions
+# - awaiting-response: Waiting for user response
+# - blocked: Blocked by external factors
+# - work-in-progress / wip: PRs still being developed
+# - do-not-close: Explicitly marked to stay open
+# - awaiting-review: PRs waiting for review
+# - dependencies: Dependabot PRs
+#
+# Timeline:
+# ---------
+# Issues:
+#   Day 0: Issue created
+#   Day 60: Marked as stale (if no activity)
+#   Day 74: Closed (if still no activity)
+#   Day 439: Locked (1 year after close)
+#
+# Pull Requests:
+#   Day 0: PR created
+#   Day 30: Marked as stale (if no activity)
+#   Day 37: Closed (if still no activity)
+#   Day 402: Locked (1 year after close)
+#
+# Manual Trigger:
+# ---------------
+# You can manually run this workflow with dry-run mode:
+# 1. Go to Actions > Stale Issue Management
+# 2. Click "Run workflow"
+# 3. Enable "dry-run" to test without making changes
+#
+# =============================================================================
