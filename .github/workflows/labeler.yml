@@ -1,0 +1,262 @@
+# =============================================================================
+# AUTOMATIC PULL REQUEST LABELER
+# =============================================================================
+# Automatically labels PRs based on file paths and changes
+# Documentation: https://github.com/actions/labeler
+# =============================================================================
+
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ===========================================================================
+  # Label Based on File Paths
+  # ===========================================================================
+  label-files:
+    name: Label by Files Changed
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Label PR based on file paths
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  # ===========================================================================
+  # Label Based on PR Size
+  # ===========================================================================
+  label-size:
+    name: Label by Size
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Label PR size
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: 10
+          s_label: 'size/S'
+          s_max_size: 100
+          m_label: 'size/M'
+          m_max_size: 500
+          l_label: 'size/L'
+          l_max_size: 1000
+          xl_label: 'size/XL'
+          fail_if_xl: false
+          message_if_xl: |
+            ⚠️ This PR is quite large with over 1000 lines changed.
+            
+            Consider breaking it into smaller, more focused PRs for easier review.
+          files_to_ignore: |
+            package-lock.json
+            pnpm-lock.yaml
+            yarn.lock
+            *.lock
+            *.snap
+
+  # ===========================================================================
+  # Label Based on Conventional Commit Title
+  # ===========================================================================
+  label-conventional:
+    name: Label by Commit Type
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Parse PR title and add labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const labels = [];
+            
+            // Conventional commit patterns
+            const patterns = {
+              'type: feature': /^feat(\(.+\))?[!]?:/i,
+              'type: bug': /^fix(\(.+\))?[!]?:/i,
+              'type: documentation': /^docs(\(.+\))?[!]?:/i,
+              'type: refactor': /^refactor(\(.+\))?[!]?:/i,
+              'type: performance': /^perf(\(.+\))?[!]?:/i,
+              'type: test': /^test(\(.+\))?[!]?:/i,
+              'type: build': /^build(\(.+\))?[!]?:/i,
+              'type: ci': /^ci(\(.+\))?[!]?:/i,
+              'type: chore': /^chore(\(.+\))?[!]?:/i,
+              'type: style': /^style(\(.+\))?[!]?:/i,
+              'breaking-change': /^[a-z]+(\(.+\))?!:/i
+            };
+            
+            for (const [label, pattern] of Object.entries(patterns)) {
+              if (pattern.test(title)) {
+                labels.push(label);
+              }
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: labels
+              });
+              
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }
+
+  # ===========================================================================
+  # Label Draft PRs
+  # ===========================================================================
+  label-draft:
+    name: Label Draft Status
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Add/remove draft label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const isDraft = pr.draft;
+            const draftLabel = 'status: draft';
+            
+            // Get current labels
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+            
+            const hasLabel = labels.some(l => l.name === draftLabel);
+            
+            if (isDraft && !hasLabel) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: [draftLabel]
+              });
+              console.log('Added draft label');
+            } else if (!isDraft && hasLabel) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                name: draftLabel
+              });
+              console.log('Removed draft label');
+            }
+
+  # ===========================================================================
+  # Add Review Hints
+  # ===========================================================================
+  review-hints:
+    name: Add Review Hints
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze changes and add hints
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            
+            // Get changed files
+            const base = context.payload.pull_request.base.sha;
+            const head = context.payload.pull_request.head.sha;
+            
+            let changedFiles;
+            try {
+              changedFiles = execSync(`git diff --name-only ${base}...${head}`)
+                .toString()
+                .trim()
+                .split('\n')
+                .filter(f => f);
+            } catch (e) {
+              console.log('Could not get changed files');
+              return;
+            }
+            
+            const hints = [];
+            const labels = [];
+            
+            // Security-sensitive files
+            const securityFiles = changedFiles.filter(f => 
+              f.includes('auth') || 
+              f.includes('security') || 
+              f.includes('supabase/functions') ||
+              f.includes('.env') ||
+              f.includes('middleware')
+            );
+            
+            if (securityFiles.length > 0) {
+              hints.push('🔒 **Security Review Required**: This PR modifies security-sensitive files.');
+              labels.push('needs: security-review');
+            }
+            
+            // Database changes
+            const dbFiles = changedFiles.filter(f => 
+              f.includes('migrations') || 
+              f.includes('supabase') ||
+              f.includes('.sql')
+            );
+            
+            if (dbFiles.length > 0) {
+              hints.push('🗄️ **Database Changes**: This PR includes database migrations or schema changes.');
+              labels.push('database');
+            }
+            
+            // UI changes
+            const uiFiles = changedFiles.filter(f => 
+              f.includes('components/') || 
+              f.includes('.css') ||
+              f.includes('index.css') ||
+              f.includes('tailwind')
+            );
+            
+            if (uiFiles.length > 0) {
+              hints.push('🎨 **UI Changes**: Consider testing on multiple screen sizes and browsers.');
+              labels.push('needs: visual-review');
+            }
+            
+            // Add labels
+            if (labels.length > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  labels: labels
+                });
+              } catch (e) {
+                console.log('Could not add labels:', e.message);
+              }
+            }
+            
+            // Add comment with hints
+            if (hints.length > 0) {
+              const body = `## 📋 Review Hints\n\n${hints.join('\n\n')}\n\n---\n*This is an automated message to help reviewers.*`;
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: body
+              });
+            }
