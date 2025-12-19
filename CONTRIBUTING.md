@@ -1,6 +1,6 @@
-# Contributing to Cortex
+# Contributing to TESSA
 
-Thank you for your interest in contributing to Cortex! This guide will help you get started with the development workflow and coding standards.
+Thank you for your interest in contributing to TESSA! 🎉 This comprehensive guide will help you get started with the development workflow, coding standards, and contribution process.
 
 ## Table of Contents
 
@@ -11,10 +11,13 @@ Thank you for your interest in contributing to Cortex! This guide will help you 
 - [Pull Request Process](#pull-request-process)
 - [Testing Guidelines](#testing-guidelines)
 - [Documentation](#documentation)
+- [Community](#community)
 
 ---
 
 ## Code of Conduct
+
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
 We are committed to providing a welcoming and inclusive environment. Please be respectful and considerate in all interactions.
 
@@ -24,41 +27,86 @@ We are committed to providing a welcoming and inclusive environment. Please be r
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Git
-- A code editor (VS Code recommended)
-- Supabase account (for backend features)
+Before you begin, ensure you have the following installed:
+
+| Tool | Version | Download |
+|------|---------|----------|
+| Node.js | 18.0.0+ | [nodejs.org](https://nodejs.org/) |
+| npm | 9.0.0+ | Included with Node.js |
+| Git | 2.30.0+ | [git-scm.com](https://git-scm.com/) |
+| Code Editor | - | [VS Code](https://code.visualstudio.com/) (recommended) |
+
+### Recommended VS Code Extensions
+
+Create `.vscode/extensions.json` for team consistency:
+
+```json
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "formulahendry.auto-rename-tag",
+    "dsznajder.es7-react-js-snippets",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}
+```
 
 ### Setting Up Your Development Environment
 
-1. **Fork the repository** on GitHub
+#### 1. Fork the Repository
 
-2. **Clone your fork**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/cortex.git
-   cd cortex
-   ```
+Click the "Fork" button at the top right of the [TESSA repository](https://github.com/tessa/tessa).
 
-3. **Add the upstream remote**
-   ```bash
-   git remote add upstream https://github.com/ORIGINAL_OWNER/cortex.git
-   ```
+#### 2. Clone Your Fork
 
-4. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+git clone https://github.com/YOUR_USERNAME/tessa.git
+cd tessa
+```
 
-5. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Supabase credentials
-   ```
+#### 3. Add the Upstream Remote
 
-6. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+```bash
+git remote add upstream https://github.com/tessa/tessa.git
+```
+
+#### 4. Install Dependencies
+
+```bash
+npm install
+```
+
+#### 5. Set Up Environment Variables
+
+```bash
+cp .env.example .env.local
+# Edit .env.local with your configuration
+```
+
+#### 6. Start the Development Server
+
+```bash
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`.
+
+#### 7. Verify Your Setup
+
+```bash
+# Run linting
+npm run lint
+
+# Run type checking
+npm run typecheck
+
+# Run tests
+npm run test
+```
 
 ---
 
@@ -70,11 +118,14 @@ Use descriptive branch names with prefixes:
 
 | Prefix | Purpose | Example |
 |--------|---------|---------|
-| `feature/` | New features | `feature/knowledge-export` |
+| `feat/` | New features | `feat/knowledge-export` |
 | `fix/` | Bug fixes | `fix/chat-scroll-issue` |
 | `docs/` | Documentation | `docs/api-examples` |
 | `refactor/` | Code refactoring | `refactor/auth-context` |
 | `test/` | Test additions | `test/chat-service` |
+| `perf/` | Performance improvements | `perf/virtualized-list` |
+| `style/` | Code style changes | `style/consistent-formatting` |
+| `chore/` | Maintenance tasks | `chore/update-deps` |
 
 ### Commit Message Format
 
@@ -88,30 +139,73 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 [optional footer]
 ```
 
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
+#### Types
 
-**Examples:**
+| Type | Description | Triggers Release |
+|------|-------------|------------------|
+| `feat` | New feature | Minor ↑ |
+| `fix` | Bug fix | Patch ↑ |
+| `docs` | Documentation changes | - |
+| `style` | Code style changes (formatting) | - |
+| `refactor` | Code refactoring | - |
+| `perf` | Performance improvements | Patch ↑ |
+| `test` | Adding or updating tests | - |
+| `build` | Build system changes | - |
+| `ci` | CI/CD changes | - |
+| `chore` | Maintenance tasks | - |
+
+#### Breaking Changes
+
+Add `!` after type or include `BREAKING CHANGE:` in footer:
+
 ```bash
+feat(api)!: change response format for user endpoint
+
+BREAKING CHANGE: The user endpoint now returns `userId` instead of `id`
+```
+
+#### Examples
+
+```bash
+# Feature with scope
 feat(chat): add message search functionality
+
+# Bug fix
 fix(auth): resolve session persistence issue
+
+# Documentation
 docs(readme): add installation instructions
+
+# Refactoring
 refactor(hooks): extract useDebounce from useSearchFilter
+
+# Multi-line with body
+fix(chat): prevent message duplication
+
+Messages were being duplicated when the user sent rapidly.
+Added debounce to the send function to prevent this.
+
+Closes #123
 ```
 
 ### Keeping Your Fork Updated
 
 ```bash
+# Fetch upstream changes
 git fetch upstream
+
+# Switch to main branch
 git checkout main
+
+# Merge upstream changes
 git merge upstream/main
+
+# Push to your fork
 git push origin main
+
+# Rebase your feature branch (if working on one)
+git checkout feature/your-feature
+git rebase main
 ```
 
 ---
@@ -120,48 +214,88 @@ git push origin main
 
 ### TypeScript Guidelines
 
-- Use TypeScript for all new code
-- Define explicit types for function parameters and return values
-- Avoid `any` type; use `unknown` if type is truly unknown
-- Use interfaces for object shapes, types for unions/primitives
+#### Do's and Don'ts
 
 ```typescript
-// ✅ Good
+// ✅ Good: Use explicit types
 interface KnowledgeItem {
   id: string;
   title: string;
   content: string | null;
   tags: string[];
+  createdAt: Date;
 }
 
 function processItem(item: KnowledgeItem): ProcessedItem {
+  // Implementation
+}
+
+// ✅ Good: Use const assertions for constants
+const ROLES = ['admin', 'user', 'guest'] as const;
+type Role = typeof ROLES[number];
+
+// ✅ Good: Prefer interfaces for object shapes
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message: string;
+}
+
+// ❌ Avoid: any type
+function processItem(item: any) {
   // ...
 }
 
-// ❌ Avoid
-function processItem(item: any) {
-  // ...
+// ✅ Good: Use unknown and type guards
+function processData(data: unknown) {
+  if (isValidData(data)) {
+    // data is now typed
+  }
+}
+
+// ✅ Good: Use generics for reusability
+function createService<T extends BaseEntity>(config: ServiceConfig<T>): Service<T> {
+  // Implementation
 }
 ```
 
 ### React Component Guidelines
 
-1. **Use functional components** with hooks
-2. **Keep components focused** - single responsibility
-3. **Extract reusable logic** into custom hooks
-4. **Use semantic HTML** elements
+#### Component Structure
 
 ```typescript
-// ✅ Good - Small, focused component
+// ✅ Good - Well-structured component
+import { FC, useState, useCallback, memo } from 'react';
+import { cn } from '@/lib/utils';
+
 interface ChatMessageProps {
   content: string;
   role: 'user' | 'assistant';
   timestamp: Date;
+  onEdit?: (content: string) => void;
 }
 
-export const ChatMessage = ({ content, role, timestamp }: ChatMessageProps) => {
+export const ChatMessage: FC<ChatMessageProps> = memo(({
+  content,
+  role,
+  timestamp,
+  onEdit,
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleEdit = useCallback((newContent: string) => {
+    onEdit?.(newContent);
+    setIsEditing(false);
+  }, [onEdit]);
+
   return (
-    <article className="flex gap-3 p-4">
+    <article 
+      className={cn(
+        'flex gap-3 p-4 rounded-lg',
+        role === 'user' && 'bg-muted',
+        role === 'assistant' && 'bg-background'
+      )}
+    >
       <Avatar role={role} />
       <div className="flex-1">
         <p className="text-foreground">{content}</p>
@@ -171,28 +305,53 @@ export const ChatMessage = ({ content, role, timestamp }: ChatMessageProps) => {
       </div>
     </article>
   );
-};
+});
+
+ChatMessage.displayName = 'ChatMessage';
 ```
+
+#### Component Best Practices
+
+1. **Use functional components** with hooks
+2. **Keep components focused** - single responsibility
+3. **Extract reusable logic** into custom hooks
+4. **Use semantic HTML** elements
+5. **Memoize expensive components** with `memo()`
+6. **Use `useCallback`** for handler functions passed as props
 
 ### Styling Guidelines
 
-1. **Use Tailwind CSS** for styling
-2. **Use design system tokens** - never use raw colors
-3. **All colors must be HSL** format
-4. **Use semantic class names** from the design system
+#### Design System Tokens
 
 ```tsx
 // ✅ Good - Using design tokens
 <div className="bg-background text-foreground border-border">
-  <h1 className="text-primary">Title</h1>
+  <h1 className="text-primary font-heading">Title</h1>
   <p className="text-muted-foreground">Description</p>
+  <button className="bg-primary text-primary-foreground hover:bg-primary/90">
+    Action
+  </button>
 </div>
 
 // ❌ Avoid - Raw colors
 <div className="bg-white text-black border-gray-200">
   <h1 className="text-blue-500">Title</h1>
 </div>
+
+// ✅ Good - Conditional classes with cn()
+<div className={cn(
+  'base-class rounded-lg p-4',
+  isActive && 'ring-2 ring-primary',
+  variant === 'large' && 'p-6 text-lg',
+  className
+)} />
 ```
+
+#### Color Requirements
+
+- All colors **MUST be HSL** format
+- Use semantic tokens from `index.css`
+- Never use hardcoded colors in components
 
 ### File Organization
 
@@ -202,6 +361,7 @@ src/
 │   ├── ui/              # Reusable UI primitives (shadcn)
 │   ├── feedback/        # Feedback-related components
 │   ├── search/          # Search/chat components
+│   ├── landing/         # Landing page components
 │   └── [feature]/       # Feature-specific components
 ├── hooks/               # Custom React hooks
 ├── services/            # API service layers
@@ -209,7 +369,8 @@ src/
 ├── pages/               # Route pages
 ├── types/               # TypeScript type definitions
 ├── lib/                 # Utility functions
-└── utils/               # Helper utilities
+├── utils/               # Helper utilities
+└── constants/           # Application constants
 ```
 
 ### Naming Conventions
@@ -218,10 +379,12 @@ src/
 |------|------------|---------|
 | Components | PascalCase | `ChatMessage.tsx` |
 | Hooks | camelCase with `use` prefix | `useChat.ts` |
+| Services | camelCase with `.service` suffix | `chat.service.ts` |
 | Utilities | camelCase | `formatDate.ts` |
 | Types/Interfaces | PascalCase | `ChatMessage` |
 | Constants | SCREAMING_SNAKE_CASE | `MAX_MESSAGE_LENGTH` |
 | CSS classes | kebab-case | `chat-container` |
+| Event handlers | handle + Event | `handleClick`, `handleSubmit` |
 
 ---
 
@@ -229,32 +392,38 @@ src/
 
 ### Before Submitting
 
-1. **Update your branch** with the latest upstream changes
-2. **Run the linter** and fix any issues
-   ```bash
-   npm run lint
-   ```
-3. **Run tests** and ensure they pass
-   ```bash
-   npm run test
-   ```
-4. **Build the project** to check for errors
-   ```bash
-   npm run build
-   ```
+- [ ] Fork the repository and create your branch from `main`
+- [ ] Update your branch with the latest upstream changes
+- [ ] Run `npm run lint` and fix any errors
+- [ ] Run `npm run typecheck` and fix any errors
+- [ ] Run `npm run test` and ensure all tests pass
+- [ ] Run `npm run build` to check for build errors
+- [ ] Add tests for new functionality
+- [ ] Update documentation if needed
+- [ ] Ensure your commits follow our commit guidelines
 
 ### Creating the Pull Request
 
-1. **Push your branch** to your fork
+1. **Push your branch** to your fork:
    ```bash
    git push origin feature/your-feature
    ```
 
 2. **Create a Pull Request** on GitHub with:
-   - Clear, descriptive title
+   - Clear, descriptive title following conventional commits
    - Description of changes
    - Screenshots for UI changes
    - Link to related issues
+
+### PR Title Format
+
+Follow the same format as commit messages:
+
+```
+feat(scope): add new feature
+fix(scope): resolve bug
+docs: update documentation
+```
 
 ### PR Description Template
 
@@ -263,21 +432,34 @@ src/
 Brief description of the changes.
 
 ## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Refactoring
+- [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
+- [ ] ✨ New feature (non-breaking change that adds functionality)
+- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to change)
+- [ ] 📚 Documentation update
+- [ ] 🔧 Refactoring (no functional changes)
+- [ ] ⚡ Performance improvement
+- [ ] 🧪 Test addition or update
 
 ## Changes Made
 - Change 1
 - Change 2
 
 ## Screenshots (if applicable)
-[Add screenshots here]
+| Before | After |
+|--------|-------|
+| [screenshot] | [screenshot] |
 
 ## Testing
 - [ ] I have tested these changes locally
 - [ ] I have added/updated tests as needed
+- [ ] All existing tests pass
+
+## Checklist
+- [ ] My code follows the project's coding standards
+- [ ] I have performed a self-review
+- [ ] I have commented my code where necessary
+- [ ] I have updated the documentation
+- [ ] My changes don't introduce new warnings
 
 ## Related Issues
 Closes #123
@@ -285,10 +467,21 @@ Closes #123
 
 ### Review Process
 
-1. **Automated checks** must pass (lint, build, tests)
+1. **Automated checks** must pass (lint, build, tests, security)
 2. **Code review** by at least one maintainer
-3. **Address feedback** with additional commits
-4. **Squash and merge** when approved
+3. **Address feedback** with additional commits or discussions
+4. **Approval** from required reviewers
+5. **Squash and merge** when approved
+
+### After Merge
+
+- Delete your feature branch
+- Update your local main branch:
+  ```bash
+  git checkout main
+  git pull upstream main
+  git push origin main
+  ```
 
 ---
 
@@ -296,8 +489,7 @@ Closes #123
 
 ### Test File Location
 
-- Place tests next to the code they test
-- Use `.test.ts` or `.test.tsx` extension
+Place tests next to the code they test using `__tests__` directories:
 
 ```
 src/
@@ -305,15 +497,38 @@ src/
 │   ├── chat.service.ts
 │   └── __tests__/
 │       └── chat.service.test.ts
+├── components/
+│   └── search/
+│       ├── ChatMessage.tsx
+│       └── __tests__/
+│           └── ChatMessage.test.tsx
+```
+
+### Test Naming
+
+```typescript
+describe('ComponentName or FunctionName', () => {
+  describe('methodName or scenario', () => {
+    it('should [expected behavior] when [condition]', () => {
+      // Test implementation
+    });
+  });
+});
 ```
 
 ### Writing Tests
 
+#### Unit Tests
+
 ```typescript
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { chatService } from '../chat.service';
 
 describe('ChatService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('sendMessage', () => {
     it('should send a message and return response', async () => {
       const message = 'Hello, Tessa!';
@@ -324,7 +539,9 @@ describe('ChatService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.spyOn(supabase.functions, 'invoke').mockRejectedValue(new Error('Network error'));
+      vi.spyOn(supabase.functions, 'invoke').mockRejectedValue(
+        new Error('Network error')
+      );
       
       await expect(chatService.sendMessage('test', 'chat-123'))
         .rejects.toThrow('Network error');
@@ -333,15 +550,62 @@ describe('ChatService', () => {
 });
 ```
 
+#### Component Tests
+
+```typescript
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ChatMessage } from '../ChatMessage';
+
+describe('ChatMessage', () => {
+  const defaultProps = {
+    content: 'Hello world',
+    role: 'user' as const,
+    timestamp: new Date(),
+  };
+
+  it('renders message content', () => {
+    render(<ChatMessage {...defaultProps} />);
+    expect(screen.getByText('Hello world')).toBeInTheDocument();
+  });
+
+  it('applies correct styling for user role', () => {
+    render(<ChatMessage {...defaultProps} />);
+    expect(screen.getByRole('article')).toHaveClass('bg-muted');
+  });
+
+  it('calls onEdit when edit is triggered', async () => {
+    const handleEdit = vi.fn();
+    render(<ChatMessage {...defaultProps} onEdit={handleEdit} />);
+    
+    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    // ... complete edit flow
+    
+    expect(handleEdit).toHaveBeenCalledWith('new content');
+  });
+});
+```
+
+### Test Coverage
+
+Aim for meaningful coverage:
+- **Statements:** 80%+
+- **Branches:** 75%+
+- **Functions:** 80%+
+- **Lines:** 80%+
+
+Run coverage report:
+```bash
+npm run test:coverage
+```
+
 ---
 
 ## Documentation
 
 ### Code Documentation
 
-- Add JSDoc comments for public functions and components
-- Document complex logic with inline comments
-- Keep README and docs up to date
+Add JSDoc comments for public functions and components:
 
 ```typescript
 /**
@@ -349,32 +613,101 @@ describe('ChatService', () => {
  * 
  * @param message - The user's message text
  * @param chatId - The ID of the current chat session
+ * @param options - Optional configuration for the request
  * @returns The assistant's response message
- * @throws {Error} If the API call fails
+ * @throws {NetworkError} If the API call fails
+ * @throws {ValidationError} If the message is invalid
  * 
  * @example
+ * ```typescript
  * const response = await chatService.sendMessage('Hello!', 'chat-123');
  * console.log(response.content);
+ * ```
  */
-async function sendMessage(message: string, chatId: string): Promise<Message> {
-  // ...
+async function sendMessage(
+  message: string,
+  chatId: string,
+  options?: SendMessageOptions
+): Promise<Message> {
+  // Implementation
 }
 ```
 
 ### Updating Documentation
 
 When your changes affect:
-- **Features**: Update `docs/ROADMAP.md`
-- **API**: Update `docs/API.md`
-- **Setup**: Update `README.md`
+
+| Change Type | Update Location |
+|-------------|-----------------|
+| Features | `docs/ROADMAP.md`, `README.md` |
+| API | `docs/API.md` |
+| Setup/Installation | `README.md`, `docs/DEPLOYMENT.md` |
+| Security | `docs/SECURITY.md`, `.github/SECURITY.md` |
+| Architecture | `docs/ARCHITECTURE.md` |
 
 ---
 
-## Questions?
+## Community
 
-If you have questions, feel free to:
-- Open a GitHub Discussion
-- Check existing issues
-- Review the documentation in `/docs`
+### Getting Help
 
-Thank you for contributing to Cortex! 🚀
+- 📖 [Documentation](./docs/README.md)
+- 💬 [GitHub Discussions](https://github.com/tessa/tessa/discussions)
+- 🐛 [Issue Tracker](https://github.com/tessa/tessa/issues)
+- 💼 [Discord Community](https://discord.gg/tessa)
+
+### Finding Issues to Work On
+
+1. Check the [Issues](https://github.com/tessa/tessa/issues) page
+2. Look for issues labeled:
+   - `good first issue` - Great for newcomers
+   - `help wanted` - We need your help!
+   - `up-for-grabs` - Anyone can work on these
+3. Comment on the issue to claim it
+
+### Recognition
+
+We value all contributions! Contributors are recognized in:
+- Release notes
+- [CONTRIBUTORS.md](CONTRIBUTORS.md) (if exists)
+- Our website's contributors page
+
+---
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Development
+npm run dev           # Start dev server
+npm run build         # Build for production
+npm run preview       # Preview production build
+
+# Quality
+npm run lint          # Run ESLint
+npm run lint:fix      # Fix ESLint errors
+npm run typecheck     # Run TypeScript check
+npm run format        # Format with Prettier
+
+# Testing
+npm run test          # Run tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Run tests with coverage
+```
+
+### Useful Links
+
+- [React Documentation](https://react.dev/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Vitest Documentation](https://vitest.dev/)
+- [Testing Library](https://testing-library.com/docs/)
+
+---
+
+Thank you for contributing to TESSA! 💜
+
+Your contributions help make this project better for everyone. We appreciate your time and effort in helping us build something amazing.

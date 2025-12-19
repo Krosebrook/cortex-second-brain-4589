@@ -1,0 +1,179 @@
+# =============================================================================
+# FILE PATH TO LABEL MAPPING
+# =============================================================================
+# Configuration for actions/labeler
+# Used by .github/workflows/labeler.yml
+# =============================================================================
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
+          - 'README*'
+          - 'CHANGELOG*'
+          - 'CONTRIBUTING*'
+          - 'LICENSE*'
+
+# Frontend - Components
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/**/*'
+          - 'src/pages/**/*'
+          - 'src/App.tsx'
+
+# UI Components
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/ui/**/*'
+          - 'src/index.css'
+          - 'tailwind.config.*'
+
+# Hooks
+hooks:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/hooks/**/*'
+
+# Services & API
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/services/**/*'
+          - 'src/lib/api-*'
+          - 'supabase/functions/**/*'
+
+# Database
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/migrations/**/*'
+          - 'supabase/config.toml'
+          - 'src/integrations/supabase/**/*'
+
+# Authentication
+authentication:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/contexts/AuthContext.*'
+          - 'src/components/auth/**/*'
+          - 'src/pages/Auth*'
+          - 'supabase/functions/**/auth*'
+
+# Testing
+testing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/**/*.test.*'
+          - 'src/**/*.spec.*'
+          - 'src/__tests__/**/*'
+          - 'vitest.*'
+          - 'vitest.setup.*'
+
+# Configuration
+configuration:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'vite.config.*'
+          - 'tsconfig*.json'
+          - 'eslint.config.*'
+          - '.eslintrc*'
+          - '.prettierrc*'
+          - 'postcss.config.*'
+
+# Dependencies
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'package-lock.json'
+          - 'pnpm-lock.yaml'
+          - 'yarn.lock'
+
+# CI/CD
+ci-cd:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**/*'
+          - '.github/actions/**/*'
+
+# GitHub Configuration
+github:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**/*'
+          - '!.github/workflows/**/*'
+
+# Security
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/utils/security.*'
+          - 'src/lib/security*'
+          - '.github/SECURITY.md'
+          - 'docs/SECURITY.md'
+          - 'supabase/functions/**/security*'
+
+# Accessibility
+accessibility:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/ui/visually-hidden.*'
+          - '**/*a11y*'
+          - '**/*accessibility*'
+
+# Types
+types:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/types/**/*'
+          - 'src/**/*.d.ts'
+
+# Styling
+styling:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/**/*.css'
+          - 'src/index.css'
+          - 'tailwind.config.*'
+
+# PWA
+pwa:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'public/pwa-*'
+          - 'src/components/pwa/**/*'
+          - 'vite.config.*'
+
+# Landing Page
+landing-page:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/landing/**/*'
+          - 'src/pages/Index.*'
+
+# Chat/Search Features
+chat:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/search/**/*'
+          - 'src/hooks/useChat.*'
+          - 'src/services/chat.*'
+          - 'supabase/functions/chat-*/**/*'
+
+# Error Handling
+error-handling:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/components/error/**/*'
+          - 'src/lib/error-*'
+
+# State Management
+state:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/contexts/**/*'
+          - 'src/hooks/useLocalStorage.*'
