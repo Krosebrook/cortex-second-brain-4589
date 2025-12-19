@@ -1,0 +1,37 @@
+# GitHub Sponsors and Funding Configuration
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# GitHub Sponsors username
+github: [your-github-username]
+
+# Patreon username
+# patreon: your-patreon-username
+
+# Open Collective username
+# open_collective: tessa-ai
+
+# Ko-fi username
+# ko_fi: your-kofi-username
+
+# Tidelift package identifier
+# tidelift: npm/tessa-ai
+
+# Community bridge organization
+# community_bridge: tessa-ai
+
+# Liberapay username
+# liberapay: your-liberapay-username
+
+# IssueHunt username
+# issuehunt: your-issuehunt-username
+
+# Polar username
+# polar: your-polar-username
+
+# Buy Me a Coffee username
+# buy_me_a_coffee: your-bmac-username
+
+# Custom funding URLs (up to 4)
+custom:
+  - https://lovable.dev
+#  - https://your-funding-page.com
