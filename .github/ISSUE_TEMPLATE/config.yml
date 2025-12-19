@@ -1,0 +1,27 @@
+# Issue Template Chooser Configuration
+# See: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+
+# Disable blank issues to encourage using templates
+blank_issues_enabled: false
+
+# Additional links to display in the issue template chooser
+contact_links:
+  - name: Documentation
+    url: https://github.com/your-username/tessa-ai/tree/main/docs
+    about: Check our documentation for answers to common questions and detailed guides.
+
+  - name: Discussions
+    url: https://github.com/your-username/tessa-ai/discussions
+    about: Ask questions, share ideas, and connect with the community.
+
+  - name: Security Vulnerabilities
+    url: https://github.com/your-username/tessa-ai/security/policy
+    about: Please report security vulnerabilities privately. Do not create public issues for security concerns.
+
+  - name: Lovable Discord
+    url: https://discord.gg/lovable-dev
+    about: Join our Discord community for real-time support and discussions.
+
+  - name: Stack Overflow
+    url: https://stackoverflow.com/questions/tagged/tessa-ai
+    about: Search for existing answers or ask questions on Stack Overflow using the tessa-ai tag.
