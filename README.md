@@ -149,6 +149,7 @@ Comprehensive documentation is available in the `docs/` directory:
 | [Deployment Guide](docs/DEPLOYMENT.md) | Instructions for Vercel, Netlify, and self-hosting |
 | [Testing Guide](docs/TESTING.md) | Testing strategies, examples, and best practices |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and debugging solutions |
+| [Audit Report](docs/AUDIT_REPORT.md) | Comprehensive multi-level audit with recommendations |
 
 ### Additional Resources
 
