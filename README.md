@@ -144,6 +144,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 | Document | Description |
 |----------|-------------|
+| [🚀 Product Audit & Launch Roadmap](PRODUCT_AUDIT_AND_ROADMAP.md) | **Executive guide for 3-month launch plan** |
 | [Architecture](docs/ARCHITECTURE.md) | System design, component relationships, and data flow |
 | [API Reference](docs/API.md) | Edge function endpoints with request/response examples |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Instructions for Vercel, Netlify, and self-hosting |
