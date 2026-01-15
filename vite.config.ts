@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'og-image.png'],
+      includeAssets: ['favicon.ico', 'og-image.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'Cortex - Your Second Brain',
         short_name: 'Cortex',
@@ -60,15 +60,27 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Pre-cache critical assets and route chunks
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,woff2}',
+          'assets/**/*.{js,css}'
+        ],
+        // Navigation routes fallback
         navigateFallback: '/offline',
-        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
+        navigateFallbackDenylist: [/^\/api/, /^\/auth\/callback/],
+        // Skip waiting for new service worker
+        skipWaiting: true,
+        clientsClaim: true,
+        // Clean old caches
+        cleanupOutdatedCaches: true,
+        // Runtime caching strategies
         runtimeCaching: [
+          // Cache Google Fonts stylesheets
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts-cache',
+              cacheName: 'google-fonts-stylesheets',
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
@@ -78,17 +90,115 @@ export default defineConfig(({ mode }) => ({
               }
             }
           },
+          // Cache Google Fonts webfonts
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'gstatic-fonts-cache',
+              cacheName: 'google-fonts-webfonts',
               expiration: {
-                maxEntries: 10,
+                maxEntries: 30,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              }
+            }
+          },
+          // Cache static images with StaleWhileRevalidate
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-images',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
+          },
+          // Cache JS/CSS chunks with StaleWhileRevalidate for fast loads
+          {
+            urlPattern: /\.(?:js|css)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-resources',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
+            }
+          },
+          // Network-first for Supabase API calls with fallback
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 5 // 5 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Cache Supabase auth endpoints
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-auth',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Cache Supabase Edge Functions
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/functions\/v1\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-functions',
+              networkTimeoutSeconds: 15,
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 2 // 2 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Cache uploaded images from Lovable
+          {
+            urlPattern: /^\/lovable-uploads\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'lovable-uploads',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days
+              }
+            }
+          },
+          // Stale-while-revalidate for navigation requests (HTML pages)
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
               }
             }
           }
