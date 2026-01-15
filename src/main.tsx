@@ -3,6 +3,7 @@ import App from './App.tsx'
 import './index.css'
 import { initWebVitals } from './lib/web-vitals'
 import { setupImageLazyLoading, deferExecution } from './lib/performance-optimizations'
+import { backgroundSync } from './lib/background-sync'
 
 // Initialize Web Vitals monitoring
 initWebVitals((metric) => {
@@ -11,6 +12,11 @@ initWebVitals((metric) => {
     // Production: could send to analytics endpoint
     console.log('[Performance]', metric.name, metric.value, metric.rating);
   }
+});
+
+// Initialize background sync for offline operations
+backgroundSync.init().catch(error => {
+  console.warn('[BackgroundSync] Failed to initialize:', error);
 });
 
 // Setup performance optimizations after initial render

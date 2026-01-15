@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Bell, RotateCcw, CheckCircle, MessageSquare, Shield, AlertTriangle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { TOURS } from '@/hooks/useFeatureTour';
+import { CacheManagement } from '@/components/settings/CacheManagement';
 
 interface NotificationPreferences {
   enabled: boolean;
@@ -71,10 +71,11 @@ const Settings = () => {
         
         <div className="max-w-3xl mx-auto">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-8">
+            <TabsList className="grid w-full grid-cols-5 mb-8">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
-              <TabsTrigger value="tours">Feature Tours</TabsTrigger>
+              <TabsTrigger value="storage">Storage</TabsTrigger>
+              <TabsTrigger value="tours">Tours</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
             </TabsList>
             
@@ -194,6 +195,10 @@ const Settings = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="storage">
+              <CacheManagement />
             </TabsContent>
 
             <TabsContent value="tours">
