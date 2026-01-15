@@ -15,6 +15,7 @@ import {
   Code,
   Activity,
   Download,
+  ShieldAlert,
 } from 'lucide-react';
 import { ROUTES } from './index';
 import type { NavItem } from '@/types';
@@ -99,6 +100,15 @@ export const AUTH_NAV_ITEMS: NavItem[] = [
     protected: true,
   },
 ];
+
+// Admin-only navigation item
+export const ADMIN_NAV_ITEM: NavItem = {
+  to: '/admin',
+  icon: <ShieldAlert size={20} />,
+  label: 'Admin',
+  id: 'admin',
+  protected: true,
+};
 
 // ============================================
 // Utility Navigation (always visible)
