@@ -93,7 +93,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+The app will be available at `http://localhost:8080`.
 
 #### 7. Verify Your Setup
 
@@ -101,11 +101,20 @@ The app will be available at `http://localhost:5173`.
 # Run linting
 npm run lint
 
+# Fix linting issues automatically
+npm run lint:fix
+
 # Run type checking
-npm run typecheck
+npm run type-check
 
 # Run tests
 npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
 ```
 
 ---

@@ -85,9 +85,9 @@ Tessa AI is a comprehensive knowledge management and AI assistant platform desig
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** (v18.0 or higher) - [Download](https://nodejs.org/)
-- **npm** (v9.0 or higher) or **bun** - Comes with Node.js
-- **Git** - [Download](https://git-scm.com/)
+- **Node.js** (v18.0 or higher, v20.x recommended) - [Download](https://nodejs.org/)
+- **npm** (v9.0 or higher) - Comes with Node.js
+- **Git** (v2.30 or higher) - [Download](https://git-scm.com/)
 
 ### Installation
 
@@ -106,13 +106,29 @@ npm install
 bun install
 ```
 
-3. **Start the development server**
+3. **Set up environment variables**
+
+Create a `.env` file in the root directory (copy from `.env.example` if available):
+
+```bash
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: AI Provider Keys (configure in Supabase Edge Functions)
+# OPENAI_API_KEY=your_openai_key
+# ANTHROPIC_API_KEY=your_anthropic_key
+```
+
+4. **Start the development server**
 
 ```bash
 npm run dev
+# or
+bun run dev
 ```
 
-4. **Open your browser**
+5. **Open your browser**
 
 Navigate to `http://localhost:8080` to see the application.
 
@@ -124,6 +140,19 @@ npm run build
 
 # Preview production build locally
 npm run preview
+
+# Type check without emitting files
+npm run type-check
+```
+
+### Linting and Code Quality
+
+```bash
+# Run ESLint
+npm run lint
+
+# Auto-fix linting issues
+npm run lint:fix
 ```
 
 ### Running Tests
@@ -132,16 +161,19 @@ npm run preview
 # Run all unit and integration tests
 npm run test
 
-# Run tests in watch mode
+# Run tests in watch mode (for development)
 npm run test:watch
 
 # Run tests with coverage (enforces 70% threshold)
-npm run test -- --coverage
+npm run test:coverage
+
+# Run tests with UI (interactive test viewer)
+npm run test:ui
 
 # Run E2E tests with Playwright
 npx playwright test
 
-# Run E2E tests in UI mode
+# Run E2E tests in UI mode (interactive)
 npx playwright test --ui
 
 # View E2E test report
