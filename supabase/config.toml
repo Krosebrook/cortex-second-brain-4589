@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.system-status]
 verify_jwt = false
+
+[functions.send-backup-email]
+verify_jwt = false
