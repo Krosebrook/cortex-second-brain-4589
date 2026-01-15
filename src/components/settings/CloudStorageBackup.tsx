@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,8 @@ import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { supabase } from '@/integrations/supabase/client';
 
+const SUPABASE_URL = "https://gcqfqzhgludrzkfajljp.supabase.co";
+
 type CloudProvider = 'google-drive' | 'dropbox' | 'onedrive';
 
 interface CloudConnection {
@@ -28,6 +30,8 @@ interface CloudConnection {
   folderId?: string;
   folderName?: string;
   lastBackup?: string;
+  accessToken?: string;
+  tokenExpiry?: number;
 }
 
 interface CloudBackupSettings {
@@ -54,21 +58,24 @@ const cloudProviders = [
     name: 'Google Drive', 
     icon: '🔵',
     color: 'bg-blue-500',
-    description: 'Backup to your Google Drive account'
+    description: 'Backup to your Google Drive account',
+    oauth: true
   },
   { 
     id: 'dropbox' as CloudProvider, 
     name: 'Dropbox', 
     icon: '📦',
     color: 'bg-blue-600',
-    description: 'Sync backups with Dropbox'
+    description: 'Coming soon - Sync backups with Dropbox',
+    oauth: false
   },
   { 
     id: 'onedrive' as CloudProvider, 
     name: 'OneDrive', 
     icon: '☁️',
     color: 'bg-sky-500',
-    description: 'Store backups in Microsoft OneDrive'
+    description: 'Coming soon - Store backups in Microsoft OneDrive',
+    oauth: false
   }
 ];
 
@@ -76,6 +83,85 @@ export const CloudStorageBackup: React.FC = () => {
   const [settings, setSettings] = useLocalStorage<CloudBackupSettings>('cortex-cloud-backup-settings', DEFAULT_SETTINGS);
   const [isConnecting, setIsConnecting] = useState<CloudProvider | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      
+      if (code && state) {
+        try {
+          // Parse state to verify origin
+          JSON.parse(atob(state));
+          
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // Exchange code for tokens
+          setIsConnecting('google-drive');
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            throw new Error('Not authenticated');
+          }
+          
+          const redirectUri = `${window.location.origin}/settings`;
+          
+          // Exchange code for tokens via edge function
+          const exchangeUrl = `${SUPABASE_URL}/functions/v1/google-drive-oauth?action=exchange-code`;
+          
+          const exchangeResponse = await fetch(exchangeUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code, redirect_uri: redirectUri }),
+          });
+
+          if (!exchangeResponse.ok) {
+            const errorData = await exchangeResponse.json();
+            throw new Error(errorData.error || 'Failed to complete OAuth');
+          }
+
+          const result = await exchangeResponse.json();
+          
+          // Save connection
+          const newConnection: CloudConnection = {
+            provider: 'google-drive',
+            connected: true,
+            email: result.email,
+            folderId: result.folderId,
+            folderName: 'Cortex Backups',
+            accessToken: result.accessToken,
+            tokenExpiry: Date.now() + (result.expiresIn * 1000)
+          };
+          
+          const updatedConnections = [
+            ...settings.connections.filter(c => c.provider !== 'google-drive'),
+            newConnection
+          ];
+          
+          setSettings(prev => ({
+            ...prev,
+            connections: updatedConnections,
+            provider: prev.provider || 'google-drive'
+          }));
+          
+          toast.success(`Connected to Google Drive as ${result.email}`);
+        } catch (error: any) {
+          console.error('OAuth callback error:', error);
+          toast.error(`Failed to connect: ${error.message}`);
+        } finally {
+          setIsConnecting(null);
+        }
+      }
+    };
+
+    handleOAuthCallback();
+  }, []);
 
   const handleSettingChange = <K extends keyof CloudBackupSettings>(key: K, value: CloudBackupSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -93,36 +179,42 @@ export const CloudStorageBackup: React.FC = () => {
   };
 
   const handleConnect = async (provider: CloudProvider) => {
+    if (provider !== 'google-drive') {
+      toast.info(`${cloudProviders.find(p => p.id === provider)?.name} integration coming soon!`);
+      return;
+    }
+
     setIsConnecting(provider);
     
     try {
-      // Simulate OAuth flow - in production this would redirect to actual OAuth
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful connection
-      const newConnection: CloudConnection = {
-        provider,
-        connected: true,
-        email: 'user@example.com',
-        folderId: 'cortex-backups-' + Date.now(),
-        folderName: 'Cortex Backups'
-      };
-      
-      const updatedConnections = [
-        ...settings.connections.filter(c => c.provider !== provider),
-        newConnection
-      ];
-      
-      handleSettingChange('connections', updatedConnections);
-      
-      if (!settings.provider) {
-        handleSettingChange('provider', provider);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to connect');
       }
+
+      const redirectUri = `${window.location.origin}/settings`;
       
-      toast.success(`Connected to ${cloudProviders.find(p => p.id === provider)?.name}`);
+      // Get OAuth URL from edge function
+      const authUrlEndpoint = `${SUPABASE_URL}/functions/v1/google-drive-oauth?action=get-auth-url&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+      const response = await fetch(authUrlEndpoint, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get OAuth URL');
+      }
+
+      const { authUrl } = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = authUrl;
     } catch (error: any) {
+      console.error('Connect error:', error);
       toast.error(`Failed to connect: ${error.message}`);
-    } finally {
       setIsConnecting(null);
     }
   };
@@ -148,11 +240,21 @@ export const CloudStorageBackup: React.FC = () => {
     setIsBackingUp(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (!user || userError) {
         throw new Error('You must be logged in to backup data');
       }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Session expired');
+      }
       
+      const connection = getConnection(settings.provider);
+      if (!connection) {
+        throw new Error('No connection found');
+      }
+
       // Fetch user's data
       const [chatsResult, knowledgeResult] = await Promise.all([
         settings.includeChats 
@@ -167,12 +269,39 @@ export const CloudStorageBackup: React.FC = () => {
         exportDate: new Date().toISOString(),
         version: '1.0',
         provider: settings.provider,
+        userId: user.id,
         chats: chatsResult.data || [],
         knowledge: knowledgeResult.data || []
       };
-      
-      // Simulate upload to cloud storage
-      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      if (settings.provider === 'google-drive' && connection.accessToken && connection.folderId) {
+        // Upload to Google Drive via edge function
+        const uploadUrl = `${SUPABASE_URL}/functions/v1/google-drive-oauth?action=upload-backup`;
+
+        const filename = `cortex-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            access_token: connection.accessToken,
+            folder_id: connection.folderId,
+            filename,
+            data: backupData,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const result = await response.json();
+        console.log('Backup uploaded:', result);
+      }
       
       // Update last backup time
       const updatedConnections = settings.connections.map(c => 
@@ -250,6 +379,11 @@ export const CloudStorageBackup: React.FC = () => {
                           Connected
                         </Badge>
                       )}
+                      {!provider.oauth && (
+                        <Badge variant="secondary" className="text-xs">
+                          Coming Soon
+                        </Badge>
+                      )}
                     </div>
                     {connected && connection?.email && (
                       <p className="text-xs text-muted-foreground">{connection.email}</p>
@@ -273,7 +407,7 @@ export const CloudStorageBackup: React.FC = () => {
                     variant="outline" 
                     size="sm"
                     onClick={() => handleConnect(provider.id)}
-                    disabled={isConnecting !== null}
+                    disabled={isConnecting !== null || !provider.oauth}
                   >
                     {isConnecting === provider.id ? (
                       <>
@@ -438,11 +572,15 @@ export const CloudStorageBackup: React.FC = () => {
         {/* Info Note */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50">
           <AlertCircle size={16} className="text-muted-foreground mt-0.5" />
-          <p className="text-xs text-muted-foreground">
-            Connect your cloud storage account to automatically backup your data. 
-            Backups are encrypted and stored in a dedicated folder in your account.
-            Note: Full OAuth integration requires API setup for each provider.
-          </p>
+          <div className="text-xs text-muted-foreground">
+            <p className="mb-1">
+              Connect your Google Drive account to automatically backup your data. 
+              Backups are stored in a "Cortex Backups" folder in your account.
+            </p>
+            <p>
+              <strong>Setup:</strong> Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets configured in your project.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

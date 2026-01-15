@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { NotificationCenter } from '@/components/features/NotificationCenter';
 import { StatusIndicator } from '@/components/connection/StatusIndicator';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
+import { ConflictIndicator } from '@/components/navigation/ConflictIndicator';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -195,10 +196,11 @@ export const Navbar = () => {
             />
           ))}
 
-          {/* Sync Status & Notification Center (authenticated only) */}
+          {/* Sync Status, Conflicts & Notification Center (authenticated only) */}
           {isAuthenticated && (
             <>
               <SyncStatusIndicator />
+              <ConflictIndicator />
               <NotificationCenter />
             </>
           )}
