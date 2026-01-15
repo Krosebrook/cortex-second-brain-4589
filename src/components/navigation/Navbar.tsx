@@ -9,6 +9,7 @@ import { Brain, LogIn, LogOut, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { NotificationCenter } from '@/components/features/NotificationCenter';
@@ -20,7 +21,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { CORTEX_NAV_ITEMS, AUTH_NAV_ITEMS, isActiveRoute } from '@/constants/navigation';
+import { CORTEX_NAV_ITEMS, AUTH_NAV_ITEMS, ADMIN_NAV_ITEM, isActiveRoute } from '@/constants/navigation';
 import { ROUTES } from '@/constants';
 import type { NavItem } from '@/types';
 
@@ -106,6 +107,7 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { isAdmin } = useUserRole();
   const [activeId, setActiveId] = useState<string>('');
 
   // Determine active state from current route
@@ -128,8 +130,15 @@ export const Navbar = () => {
     return CORTEX_NAV_ITEMS.some(item => isActiveRoute(currentPath, item.to));
   }, [currentPath]);
 
-  // Navigation items based on auth state
-  const navItems = isAuthenticated ? AUTH_NAV_ITEMS : [];
+  // Navigation items based on auth state and role
+  const navItems = useMemo(() => {
+    if (!isAuthenticated) return [];
+    const items = [...AUTH_NAV_ITEMS];
+    if (isAdmin) {
+      items.push(ADMIN_NAV_ITEM);
+    }
+    return items;
+  }, [isAuthenticated, isAdmin]);
 
   return (
     <TooltipProvider>
