@@ -1,4 +1,4 @@
-import { Chat, ChatMessage } from '@/types/chat';
+import { Chat } from '@/types/chat';
 import { KnowledgeItem } from '@/hooks/useKnowledge';
 
 export type ConflictResolutionStrategy = 'last-write-wins' | 'user-choice' | 'merge';

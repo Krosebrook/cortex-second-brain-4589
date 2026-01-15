@@ -45,7 +45,7 @@ class ChatServiceImpl extends BaseService {
         // Cache for offline use
         await offlineStorage.storeChats(formattedChats);
         return formattedChats;
-      } catch (error) {
+      } catch (_error) {
         this.log('loadChats', 'Falling back to offline storage');
         return await offlineStorage.getChats();
       }

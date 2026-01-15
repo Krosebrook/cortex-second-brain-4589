@@ -12,13 +12,9 @@ import {
   Code,
   PenTool,
   BookOpen,
-  Save,
-  Shield,
-  Clock
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import AnimatedTransition from '@/components/AnimatedTransition';
 import { Link } from 'react-router-dom';
 
 const FeatureCard = ({ 
@@ -126,8 +122,8 @@ const ValueProp = ({
 };
 
 const HowPage = () => {
-  const [loading, setLoading] = useState(true);
-  const showContent = useAnimateIn(false, 300);
+  const [_loading, setLoading] = useState(true);
+  const _showContent = useAnimateIn(false, 300);
   const heroRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {

@@ -33,7 +33,7 @@ class KnowledgeServiceImpl extends BaseService {
         // Cache for offline use
         await offlineStorage.storeKnowledge(items);
         return items;
-      } catch (error) {
+      } catch (_error) {
         this.log('loadKnowledge', 'Falling back to offline storage');
         return await offlineStorage.getKnowledge();
       }

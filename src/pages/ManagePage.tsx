@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import CortexTable from '@/components/manage/CortexTable';
@@ -38,7 +38,7 @@ const ManagePage = () => {
     setIsEditing(false);
   };
 
-  const handleDialogOpen = () => {
+  const _handleDialogOpen = () => {
     setTempTitle(libraryTitle);
     setDialogOpen(true);
   };
