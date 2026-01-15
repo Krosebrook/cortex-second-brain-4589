@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { ChatService } from '@/services/chat.service';
 import { KnowledgeService } from '@/services/knowledge.service';
 import { cacheManager } from '@/lib/cache-manager';
+import { ROUTE_RELATIONS } from '@/config/cache-policies';
 
 interface PrefetchConfig {
   enabled?: boolean;
@@ -35,6 +36,7 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
     lastPrefetchTime: 0,
   });
   const prefetchTimeoutRef = useRef<NodeJS.Timeout>();
+  const prefetchedRoutesRef = useRef<Set<string>>(new Set());
 
   // Track route history for predictive prefetching
   useEffect(() => {
@@ -46,6 +48,39 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
       }
     }
   }, [location.pathname]);
+
+  // Prefetch a route document
+  const prefetchRoute = useCallback((href: string, priority: 'high' | 'low' = 'low') => {
+    if (prefetchedRoutesRef.current.has(href)) return;
+
+    const doPrefetch = () => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = href;
+      link.as = 'document';
+      
+      if (priority === 'high') {
+        link.setAttribute('fetchpriority', 'high');
+      }
+
+      document.head.appendChild(link);
+      prefetchedRoutesRef.current.add(href);
+    };
+
+    if ('requestIdleCallback' in window) {
+      (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(doPrefetch);
+    } else {
+      setTimeout(doPrefetch, 100);
+    }
+  }, []);
+
+  // Prefetch related routes based on current location
+  const prefetchRelatedRoutes = useCallback(() => {
+    const relatedRoutes = ROUTE_RELATIONS[location.pathname] || [];
+    relatedRoutes.forEach((route, index) => {
+      setTimeout(() => prefetchRoute(route), 200 + index * 100);
+    });
+  }, [location.pathname, prefetchRoute]);
 
   // Prefetch chat data
   const prefetchChats = useCallback(async () => {
@@ -85,6 +120,29 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
     }
   }, [userId, finalConfig.enabled]);
 
+  // Prefetch image
+  const prefetchImage = useCallback((src: string) => {
+    if (prefetchedRoutesRef.current.has(src)) return;
+
+    const img = new Image();
+    img.src = src;
+    prefetchedRoutesRef.current.add(src);
+  }, []);
+
+  // Prefetch multiple images
+  const prefetchImages = useCallback((srcs: string[]) => {
+    srcs.forEach(src => prefetchImage(src));
+  }, [prefetchImage]);
+
+  // Handler for hover-based prefetching
+  const prefetchOnHover = useCallback((href: string) => {
+    return {
+      onMouseEnter: () => prefetchRoute(href, 'high'),
+      onFocus: () => prefetchRoute(href, 'high'),
+      onTouchStart: () => prefetchRoute(href, 'high')
+    };
+  }, [prefetchRoute]);
+
   // Predictive prefetching based on current route
   useEffect(() => {
     if (!finalConfig.enabled || !userId) return;
@@ -98,6 +156,9 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
 
     // Predict next likely action based on current route
     prefetchTimeoutRef.current = setTimeout(() => {
+      // Prefetch related routes
+      prefetchRelatedRoutes();
+
       if (currentPath === '/dashboard' || currentPath === '/') {
         // User on dashboard likely to view chats or knowledge
         prefetchChats();
@@ -118,7 +179,7 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
         clearTimeout(prefetchTimeoutRef.current);
       }
     };
-  }, [location.pathname, userId, finalConfig.enabled, finalConfig.delay, prefetchChats, prefetchKnowledge]);
+  }, [location.pathname, userId, finalConfig.enabled, finalConfig.delay, prefetchChats, prefetchKnowledge, prefetchRelatedRoutes]);
 
   // Prefetch on browser idle (when user is not actively interacting)
   useEffect(() => {
@@ -156,6 +217,10 @@ export function usePrefetch(userId: string | null, config: PrefetchConfig = {}) 
   return {
     prefetchChats,
     prefetchKnowledge,
+    prefetchRoute,
+    prefetchOnHover,
+    prefetchImage,
+    prefetchImages,
     behavior: behaviorRef.current,
   };
 }
