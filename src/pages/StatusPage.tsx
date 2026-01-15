@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { serviceMonitor } from '@/lib/service-monitor';
 import { ServiceStatusCard } from '@/components/status/ServiceStatusCard';
 import { ResponseTimeChart } from '@/components/status/ResponseTimeChart';
+import { PerformanceMonitor } from '@/components/performance/PerformanceMonitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -116,6 +117,13 @@ export default function StatusPage() {
 
           {/* Response Time Chart */}
           <ResponseTimeChart history={history} />
+
+          {/* Performance Metrics */}
+          <Card>
+            <CardContent className="pt-6">
+              <PerformanceMonitor />
+            </CardContent>
+          </Card>
 
           {/* Recent Incidents */}
           <Card>

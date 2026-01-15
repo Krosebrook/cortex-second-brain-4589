@@ -32,6 +32,18 @@
     <!-- DNS prefetch for potential external resources -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    
+    <!-- Performance hints -->
+    <meta http-equiv="x-dns-prefetch-control" content="on">
+    
+    <!-- Inline critical CSS for faster FCP -->
+    <style>
+      /* Critical CSS for initial render */
+      :root { --background: 222.2 84% 4.9%; --foreground: 210 40% 98%; }
+      body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+      #root { min-height: 100vh; }
+      .loading-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    </style>
   </head>
 
   <body>

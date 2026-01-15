@@ -74,6 +74,8 @@ Tessa AI is a comprehensive knowledge management and AI assistant platform desig
 - Comprehensive error handling and recovery
 - Real-time synchronization
 - Offline data persistence
+- **Web Vitals monitoring** for Core Web Vitals (LCP, CLS, INP, FCP, TTFB)
+- **Performance optimizations** for Lighthouse scores >90
 
 ---
 

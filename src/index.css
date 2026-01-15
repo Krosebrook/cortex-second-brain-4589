@@ -243,3 +243,64 @@
     transform: scale(0.95);
   }
 }
+
+/* ============================================
+   Performance Optimizations
+   ============================================ */
+
+/* GPU-accelerated animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Content-visibility for off-screen elements */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* Lazy loading images placeholder */
+img[data-src] {
+  background: linear-gradient(110deg, hsl(var(--muted)) 8%, hsl(var(--muted-foreground) / 0.15) 18%, hsl(var(--muted)) 33%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+/* Reduce paint areas */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Optimize font rendering */
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Efficient transitions */
+.transition-gpu {
+  transition-property: transform, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Print optimization */
+@media print {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
