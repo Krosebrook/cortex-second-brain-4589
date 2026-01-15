@@ -56,7 +56,6 @@ SNYK_BRANCHES=(
 # Function to delete a branch
 delete_branch() {
     local branch=$1
-    local category=$2
     
     # Check if branch exists remotely
     if git ls-remote --heads origin "$branch" | grep -q "$branch"; then
@@ -64,7 +63,7 @@ delete_branch() {
             echo -e "${YELLOW}[DRY RUN]${NC} Would delete: ${branch}"
         else
             echo -e "Deleting: ${branch}"
-            if git push origin --delete "$branch" 2>&1; then
+            if git push origin --delete "$branch"; then
                 echo -e "${GREEN}✓${NC} Deleted: $branch"
             else
                 echo -e "${RED}✗${NC} Failed to delete: $branch"
@@ -76,37 +75,32 @@ delete_branch() {
     fi
 }
 
-# Statistics
-TOTAL_BRANCHES=$((${#COPILOT_BRANCHES[@]} + ${#EDIT_BRANCHES[@]} + ${#SNYK_BRANCHES[@]}))
-DELETED=0
-FAILED=0
-NOT_FOUND=0
-
 echo -e "${BLUE}📊 Summary:${NC}"
 echo "  - Copilot branches: ${#COPILOT_BRANCHES[@]}"
 echo "  - Edit branches: ${#EDIT_BRANCHES[@]}"
 echo "  - Snyk branches: ${#SNYK_BRANCHES[@]}"
+TOTAL_BRANCHES=$((${#COPILOT_BRANCHES[@]} + ${#EDIT_BRANCHES[@]} + ${#SNYK_BRANCHES[@]}))
 echo "  - Total to delete: $TOTAL_BRANCHES"
 echo ""
 
 # Delete copilot branches
 echo -e "${BLUE}🤖 Processing Copilot branches...${NC}"
 for branch in "${COPILOT_BRANCHES[@]}"; do
-    delete_branch "$branch" "copilot"
+    delete_branch "$branch"
 done
 echo ""
 
 # Delete edit branches
 echo -e "${BLUE}✏️  Processing Edit branches...${NC}"
 for branch in "${EDIT_BRANCHES[@]}"; do
-    delete_branch "$branch" "edit"
+    delete_branch "$branch"
 done
 echo ""
 
 # Delete snyk branches
 echo -e "${BLUE}🔒 Processing Snyk branches...${NC}"
 for branch in "${SNYK_BRANCHES[@]}"; do
-    delete_branch "$branch" "snyk"
+    delete_branch "$branch"
 done
 echo ""
 
