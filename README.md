@@ -127,11 +127,23 @@ npm run preview
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all unit and integration tests
 npm run test
 
 # Run tests in watch mode
 npm run test:watch
+
+# Run tests with coverage (enforces 70% threshold)
+npm run test -- --coverage
+
+# Run E2E tests with Playwright
+npx playwright test
+
+# Run E2E tests in UI mode
+npx playwright test --ui
+
+# View E2E test report
+npx playwright show-report
 ```
 
 ---

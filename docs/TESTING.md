@@ -23,7 +23,18 @@ TESSA uses a comprehensive testing strategy to ensure reliability and maintainab
 
 - **Unit Tests**: Test individual functions and components in isolation
 - **Integration Tests**: Test how multiple components work together
-- **E2E Tests**: Test complete user flows from start to finish
+- **E2E Tests**: Test complete user flows from start to finish using Playwright
+
+### Test Coverage Thresholds
+
+The project enforces minimum coverage thresholds in CI:
+
+| Metric | Threshold |
+|--------|-----------|
+| Statements | 70% |
+| Branches | 65% |
+| Functions | 70% |
+| Lines | 70% |
 
 ## Testing Stack
 
@@ -32,19 +43,20 @@ TESSA uses a comprehensive testing strategy to ensure reliability and maintainab
 | [Vitest](https://vitest.dev/) | Test runner and assertion library |
 | [React Testing Library](https://testing-library.com/react) | Component testing utilities |
 | [@testing-library/user-event](https://testing-library.com/docs/user-event/intro) | User interaction simulation |
+| [Playwright](https://playwright.dev/) | End-to-end browser testing |
 | [MSW](https://mswjs.io/) | API mocking (optional) |
 
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all unit/integration tests
 npm run test
 
 # Run tests in watch mode (recommended during development)
 npm run test:watch
 
 # Run tests with coverage report
-npm run test:coverage
+npm run test -- --coverage
 
 # Run tests in UI mode (visual test runner)
 npm run test:ui
@@ -54,6 +66,18 @@ npm run test src/services/__tests__/chat.service.test.ts
 
 # Run tests matching a pattern
 npm run test -- --grep="ChatService"
+
+# Run E2E tests (requires Playwright)
+npx playwright test
+
+# Run E2E tests with UI
+npx playwright test --ui
+
+# Run E2E tests for specific browser
+npx playwright test --project=chromium
+
+# Generate E2E test report
+npx playwright show-report
 ```
 
 ## Test Structure
@@ -387,62 +411,112 @@ describe('Offline Sync Integration', () => {
 
 ## E2E Testing
 
-### Setting Up Playwright (Optional)
+TESSA uses Playwright for comprehensive end-to-end testing across multiple browsers and devices.
 
-```bash
-npm install -D @playwright/test
-npx playwright install
+### E2E Test Location
+
+```
+e2e/
+├── auth.spec.ts           # Authentication flows
+├── notifications.spec.ts   # Notification system
+├── admin-dashboard.spec.ts # Admin functionality
+└── homepage.spec.ts       # Landing page and navigation
 ```
 
-### Example E2E Test
+### Running E2E Tests
+
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install
+
+# Run all E2E tests
+npx playwright test
+
+# Run specific test file
+npx playwright test e2e/auth.spec.ts
+
+# Run in headed mode (see the browser)
+npx playwright test --headed
+
+# Run with UI mode for debugging
+npx playwright test --ui
+
+# Run on specific browser
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+
+# Generate and view report
+npx playwright show-report
+```
+
+### E2E Test Structure
 
 ```typescript
-// e2e/chat-flow.spec.ts
+// e2e/auth.spec.ts
 import { test, expect } from '@playwright/test';
 
-test.describe('Chat Flow', () => {
+test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
-  test('should complete a full chat conversation', async ({ page }) => {
-    // Navigate to search page
-    await page.click('text=Get Started');
-    
-    // Wait for chat interface to load
-    await expect(page.locator('[data-testid="chat-input"]')).toBeVisible();
-    
-    // Type a message
-    await page.fill('[data-testid="chat-input"]', 'Hello, TESSA!');
-    await page.keyboard.press('Enter');
-    
-    // Wait for response
-    await expect(page.locator('[data-testid="ai-response"]')).toBeVisible({
-      timeout: 10000
-    });
-    
-    // Verify response content
-    const response = await page.textContent('[data-testid="ai-response"]');
-    expect(response).toBeTruthy();
+  test('should display login page', async ({ page }) => {
+    await page.goto('/auth');
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
-  test('should persist chat history', async ({ page }) => {
-    // Create a chat
-    await page.goto('/search');
-    await page.fill('[data-testid="chat-input"]', 'Remember this message');
-    await page.keyboard.press('Enter');
-    
-    // Wait for response
-    await expect(page.locator('[data-testid="ai-response"]')).toBeVisible();
-    
-    // Refresh page
-    await page.reload();
-    
-    // Verify chat is still there
-    await expect(page.locator('text=Remember this message')).toBeVisible();
+  test('should show validation errors', async ({ page }) => {
+    await page.goto('/auth');
+    await page.getByRole('button', { name: /sign in/i }).click();
+    // Validation should trigger
   });
 });
 ```
+
+### E2E Best Practices
+
+1. **Use data-testid for reliable selectors**:
+   ```typescript
+   await page.locator('[data-testid="submit-button"]').click();
+   ```
+
+2. **Prefer role-based selectors when possible**:
+   ```typescript
+   await page.getByRole('button', { name: /submit/i }).click();
+   ```
+
+3. **Wait for network requests to complete**:
+   ```typescript
+   await page.waitForResponse(resp => resp.url().includes('/api/'));
+   ```
+
+4. **Take screenshots on failure** (configured in playwright.config.ts):
+   ```typescript
+   use: {
+     screenshot: 'only-on-failure',
+     video: 'retain-on-failure',
+   }
+   ```
+
+5. **Test across viewports**:
+   ```typescript
+   test('mobile responsive', async ({ page }) => {
+     await page.setViewportSize({ width: 375, height: 667 });
+     // Test mobile layout
+   });
+   ```
+
+### Playwright Configuration
+
+The project uses `playwright.config.ts` with the following setup:
+
+- **Browsers**: Chromium, Firefox, WebKit
+- **Mobile**: Pixel 5, iPhone 12
+- **Base URL**: `http://localhost:8080`
+- **Retries**: 2 on CI, 0 locally
+- **Artifacts**: Screenshots, videos, traces on failure
 
 ## Mocking Strategies
 
@@ -596,59 +670,104 @@ describe('ChatInput', () => {
 
 ## Coverage Requirements
 
-| Category | Minimum Coverage |
-|----------|-----------------|
-| Services | 80% |
-| Critical Hooks | 75% |
-| Components | 60% |
-| Overall | 70% |
+### Enforced Thresholds
+
+Coverage thresholds are enforced in both `vite.config.ts` and CI pipeline:
+
+| Metric | Minimum Coverage | Target |
+|--------|-----------------|--------|
+| Statements | 70% | 90% |
+| Branches | 65% | 85% |
+| Functions | 70% | 90% |
+| Lines | 70% | 90% |
+
+### Coverage by Category
+
+| Category | Minimum | Priority |
+|----------|---------|----------|
+| Services | 80% | Critical |
+| Critical Hooks | 75% | Critical |
+| Components | 60% | High |
+| Utilities | 80% | High |
+| Overall | 70% | Required |
 
 ### Generating Coverage Report
 
 ```bash
-npm run test:coverage
+# Generate coverage report
+npm run test -- --coverage
+
+# Coverage outputs:
+# - coverage/index.html     (HTML report)
+# - coverage/lcov.info      (For CI tools like Codecov)
+# - coverage/coverage-summary.json (JSON summary)
 ```
 
-Coverage report is generated in `coverage/` directory.
+### Viewing Coverage Report
+
+```bash
+# Open HTML report in browser
+open coverage/index.html
+
+# Or on Linux
+xdg-open coverage/index.html
+```
 
 ## CI/CD Integration
 
-### GitHub Actions Example
+### GitHub Actions Workflow
+
+The project includes comprehensive CI configuration in `.github/workflows/ci.yml`:
 
 ```yaml
-# .github/workflows/test.yml
-name: Test
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
 jobs:
+  # Code quality checks
+  code-quality:
+    - ESLint linting
+    - TypeScript type checking
+    - Prettier formatting
+
+  # Unit and integration tests with coverage
   test:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run tests
-        run: npm run test:coverage
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
+    - Run tests with coverage
+    - Check coverage thresholds
+    - Upload to Codecov
+    - Generate coverage summary
+
+  # End-to-end tests
+  e2e:
+    - Install Playwright
+    - Run E2E tests on Chromium
+    - Upload test artifacts
+
+  # Production build
+  build:
+    - Build production bundle
+    - Report bundle size
 ```
+
+### Coverage Threshold Enforcement
+
+Coverage thresholds are checked in CI:
+
+```yaml
+- name: Check Coverage Thresholds
+  run: |
+    node -e "
+      const coverage = require('./coverage/coverage-summary.json');
+      const thresholds = { statements: 70, branches: 65, functions: 70, lines: 70 };
+      // Check each threshold and fail if not met
+    "
+```
+
+### PR Requirements
+
+All PRs must:
+1. Pass lint and type checks
+2. Pass all unit/integration tests
+3. Meet coverage thresholds
+4. Pass E2E tests (on Chromium)
+5. Build successfully
 
 ## Debugging Tests
 
