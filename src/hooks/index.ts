@@ -50,6 +50,7 @@ export { useUndoHistory } from './useUndoHistory';
 // Performance hooks
 export { usePrefetch, usePrefetchOnHover } from './usePrefetch';
 export { useWebVitals } from './useWebVitals';
+export { useBackgroundSync } from './useBackgroundSync';
 
 // Toast hook (re-export from shadcn)
 export { useToast, toast } from './use-toast';
