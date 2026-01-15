@@ -15,6 +15,10 @@ import { CacheManagement } from '@/components/settings/CacheManagement';
 import { DataExport } from '@/components/settings/DataExport';
 import { DataImport } from '@/components/settings/DataImport';
 import { ScheduledBackups } from '@/components/settings/ScheduledBackups';
+import { EmailBackup } from '@/components/settings/EmailBackup';
+import { DataMigrationWizard } from '@/components/settings/DataMigrationWizard';
+import { ConflictResolutionPanel } from '@/components/feedback/ConflictResolutionPanel';
+import { useConflictResolution } from '@/hooks/useConflictResolution';
 
 interface NotificationPreferences {
   enabled: boolean;
@@ -41,6 +45,7 @@ const Settings = () => {
     DEFAULT_PREFERENCES
   );
   const [completedTours, setCompletedTours] = useLocalStorage<string[]>('completed-tours', []);
+  const { conflicts, resolveConflict, resolveAllConflicts, refreshConflicts } = useConflictResolution();
 
   const handleNotificationChange = (key: keyof NotificationPreferences, value: boolean) => {
     setNotificationPrefs(prev => ({ ...prev, [key]: value }));
@@ -202,9 +207,17 @@ const Settings = () => {
 
             <TabsContent value="storage" className="space-y-6">
               <CacheManagement />
+              <ConflictResolutionPanel
+                conflicts={conflicts}
+                onResolve={resolveConflict}
+                onResolveAll={resolveAllConflicts}
+                onRefresh={refreshConflicts}
+              />
               <DataExport />
               <DataImport />
+              <DataMigrationWizard />
               <ScheduledBackups />
+              <EmailBackup />
             </TabsContent>
 
             <TabsContent value="tours">
