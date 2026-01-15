@@ -12,6 +12,7 @@ import { Bell, RotateCcw, CheckCircle, MessageSquare, Shield, AlertTriangle, Spa
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { CacheManagement } from '@/components/settings/CacheManagement';
+import { DataExport } from '@/components/settings/DataExport';
 
 interface NotificationPreferences {
   enabled: boolean;
@@ -197,8 +198,9 @@ const Settings = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="storage">
+            <TabsContent value="storage" className="space-y-6">
               <CacheManagement />
+              <DataExport />
             </TabsContent>
 
             <TabsContent value="tours">
