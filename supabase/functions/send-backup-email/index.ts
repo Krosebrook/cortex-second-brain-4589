@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Create the email HTML content
-    let emailHtml = `
+    const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>

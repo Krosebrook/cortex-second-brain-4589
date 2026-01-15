@@ -130,7 +130,7 @@ export const exportToPDF = (items: ExportItem[], selectedFields: string[], title
   return doc.output('blob');
 };
 
-const downloadBlob = (blob: Blob, filename: string) => {
+const _downloadBlob = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -141,7 +141,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-export const getExportFilename = (baseFilename: string, format: ExportFormat): string => {
+export const getExportFilename = (baseFilename: string, _format: ExportFormat): string => {
   const timestamp = new Date().toISOString().split('T')[0];
   return `${baseFilename}-${timestamp}`;
 };

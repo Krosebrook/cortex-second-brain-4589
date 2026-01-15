@@ -120,7 +120,7 @@ class ServiceMonitor {
 
     let currentIncident: { service: string; status: string; start: Date } | null = null;
 
-    history.forEach((entry, index) => {
+    history.forEach((entry, _index) => {
       entry.services.forEach(service => {
         if (service.status !== 'healthy') {
           if (!currentIncident || currentIncident.service !== service.service) {

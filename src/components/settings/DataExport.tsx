@@ -162,7 +162,7 @@ export const DataExport: React.FC = () => {
           filename = `cortex-backup-${timestamp}.json`;
           break;
 
-        case 'csv':
+        case 'csv': {
           // For CSV, we'll create a zip-like structure with multiple files
           // or combine data into a single CSV
           const csvData: any[] = [];
@@ -211,8 +211,9 @@ export const DataExport: React.FC = () => {
           blob = exportToCSV(csvData, ['type', 'id', 'title', 'content', 'tags', 'source_url', 'created_at', 'updated_at']);
           filename = `cortex-backup-${timestamp}.csv`;
           break;
+        }
 
-        case 'pdf':
+        case 'pdf': {
           // Create PDF with all data
           const pdfItems: any[] = [];
           
@@ -237,6 +238,7 @@ export const DataExport: React.FC = () => {
           blob = exportToPDF(pdfItems, ['title', 'type', 'created_at'], 'Cortex Data Export');
           filename = `cortex-backup-${timestamp}.pdf`;
           break;
+        }
 
         default:
           throw new Error('Invalid export format');
