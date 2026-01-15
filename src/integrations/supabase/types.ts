@@ -736,6 +736,21 @@ export type Database = {
         }
         Relationships: []
       }
+      kv_store_128bd8cd: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       kv_store_2c46ec52: {
         Row: {
           key: string
@@ -752,6 +767,21 @@ export type Database = {
         Relationships: []
       }
       kv_store_88829a40: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      kv_store_8aff499e: {
         Row: {
           key: string
           value: Json
@@ -911,6 +941,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          category: Database["public"]["Enums"]["notification_category"] | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          metadata: Json | null
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"] | null
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          category?: Database["public"]["Enums"]["notification_category"] | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          metadata?: Json | null
+          read_at?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["notification_type"] | null
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          category?: Database["public"]["Enums"]["notification_category"] | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          metadata?: Json | null
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"] | null
+          user_id?: string
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -1489,6 +1564,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_goals: {
+        Row: {
+          created_at: string | null
+          current_value: number | null
+          goal_type: string
+          id: string
+          period: string | null
+          target_value: number
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_value?: number | null
+          goal_type: string
+          id?: string
+          period?: string | null
+          target_value?: number
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_value?: number | null
+          goal_type?: string
+          id?: string
+          period?: string | null
+          target_value?: number
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -1576,10 +1687,23 @@ export type Database = {
     }
     Functions: {
       bootstrap_admin: { Args: { target_user: string }; Returns: undefined }
+      create_notification: {
+        Args: {
+          p_action_url?: string
+          p_category?: Database["public"]["Enums"]["notification_category"]
+          p_message: string
+          p_metadata?: Json
+          p_title: string
+          p_type?: Database["public"]["Enums"]["notification_type"]
+          p_user_id: string
+        }
+        Returns: string
+      }
       current_tenant: { Args: never; Returns: string }
       current_tenant_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
+      get_unread_notification_count: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1606,11 +1730,35 @@ export type Database = {
         Args: { p_event_data?: Json; p_event_type: string; p_severity?: string }
         Returns: string
       }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_notification_read: {
+        Args: { notification_id: string }
+        Returns: undefined
+      }
       user_can_create_project: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {
       agent_status: "idle" | "running" | "error" | "completed"
       app_role: "admin" | "moderator" | "user"
+      notification_category:
+        | "general"
+        | "chat"
+        | "knowledge"
+        | "project"
+        | "design"
+        | "security"
+        | "billing"
+        | "collaboration"
+      notification_type:
+        | "info"
+        | "success"
+        | "warning"
+        | "error"
+        | "mention"
+        | "comment"
+        | "share"
+        | "system"
+        | "security"
       project_status: "active" | "paused" | "completed" | "archived"
       subscription_status: "active" | "canceled" | "past_due" | "trialing"
       subscription_tier: "starter" | "professional" | "enterprise"
@@ -1743,6 +1891,27 @@ export const Constants = {
     Enums: {
       agent_status: ["idle", "running", "error", "completed"],
       app_role: ["admin", "moderator", "user"],
+      notification_category: [
+        "general",
+        "chat",
+        "knowledge",
+        "project",
+        "design",
+        "security",
+        "billing",
+        "collaboration",
+      ],
+      notification_type: [
+        "info",
+        "success",
+        "warning",
+        "error",
+        "mention",
+        "comment",
+        "share",
+        "system",
+        "security",
+      ],
       project_status: ["active", "paused", "completed", "archived"],
       subscription_status: ["active", "canceled", "past_due", "trialing"],
       subscription_tier: ["starter", "professional", "enterprise"],
