@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { NotificationCenter } from '@/components/features/NotificationCenter';
 import { StatusIndicator } from '@/components/connection/StatusIndicator';
+import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -194,8 +195,13 @@ export const Navbar = () => {
             />
           ))}
 
-          {/* Notification Center (authenticated only) */}
-          {isAuthenticated && <NotificationCenter />}
+          {/* Sync Status & Notification Center (authenticated only) */}
+          {isAuthenticated && (
+            <>
+              <SyncStatusIndicator />
+              <NotificationCenter />
+            </>
+          )}
 
           {/* Theme Toggle */}
           <Tooltip>

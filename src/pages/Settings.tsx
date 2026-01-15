@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { CacheManagement } from '@/components/settings/CacheManagement';
 import { DataExport } from '@/components/settings/DataExport';
+import { DataImport } from '@/components/settings/DataImport';
+import { ScheduledBackups } from '@/components/settings/ScheduledBackups';
 
 interface NotificationPreferences {
   enabled: boolean;
@@ -201,6 +203,8 @@ const Settings = () => {
             <TabsContent value="storage" className="space-y-6">
               <CacheManagement />
               <DataExport />
+              <DataImport />
+              <ScheduledBackups />
             </TabsContent>
 
             <TabsContent value="tours">
