@@ -1,6 +1,6 @@
 /**
  * Loading Screen Component
- * Displayed while the landing page is loading
+ * Optimized for fast FCP with minimal CSS and instant visibility
  */
 
 import { Brain } from 'lucide-react';
@@ -10,21 +10,28 @@ export const LoadingScreen = () => {
   return (
     <div 
       className={cn(
-        'min-h-screen flex flex-col items-center justify-center',
-        'bg-gradient-to-b from-background to-muted/30'
+        'loading-screen min-h-screen flex flex-col items-center justify-center',
+        'bg-background'
       )}
       role="status"
       aria-label="Loading application"
+      aria-busy="true"
     >
-      {/* Animated Icon */}
-      <div className="animate-spin-slow w-16 h-16 text-primary">
-        <Brain size={64} className="drop-shadow-lg" />
+      {/* Lightweight animated icon */}
+      <div 
+        className="w-16 h-16 text-primary animate-pulse"
+        style={{ willChange: 'opacity' }}
+      >
+        <Brain size={64} aria-hidden="true" />
       </div>
 
-      {/* Loading Text */}
-      <p className="mt-4 text-muted-foreground animate-pulse">
-        Loading your second brain...
+      {/* Loading Text with semantic markup */}
+      <p className="mt-4 text-muted-foreground text-sm">
+        Loading...
       </p>
+      
+      {/* Hidden accessible loading indicator */}
+      <span className="sr-only">Please wait while the application loads</span>
     </div>
   );
 };
