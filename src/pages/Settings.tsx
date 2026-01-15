@@ -17,6 +17,7 @@ import { DataImport } from '@/components/settings/DataImport';
 import { ScheduledBackups } from '@/components/settings/ScheduledBackups';
 import { EmailBackup } from '@/components/settings/EmailBackup';
 import { DataMigrationWizard } from '@/components/settings/DataMigrationWizard';
+import { CloudStorageBackup } from '@/components/settings/CloudStorageBackup';
 import { ConflictResolutionPanel } from '@/components/feedback/ConflictResolutionPanel';
 import { useConflictResolution } from '@/hooks/useConflictResolution';
 
@@ -218,6 +219,7 @@ const Settings = () => {
               <DataMigrationWizard />
               <ScheduledBackups />
               <EmailBackup />
+              <CloudStorageBackup />
             </TabsContent>
 
             <TabsContent value="tours">

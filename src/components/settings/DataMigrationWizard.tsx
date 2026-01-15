@@ -3,23 +3,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   FileUp, 
   CheckCircle, 
   AlertCircle,
   Loader2,
-  FileJson,
   FileText,
   ArrowRight,
+  ArrowLeft,
   Download,
-  Upload
+  Upload,
+  Eye,
+  Edit,
+  Trash2,
+  Tag,
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 type SourceApp = 'notion' | 'evernote' | 'obsidian' | 'roam' | 'bear';
+type WizardStep = 'source' | 'upload' | 'preview' | 'importing' | 'complete';
 
 interface MigrationStep {
   id: string;
@@ -30,11 +38,15 @@ interface MigrationStep {
 }
 
 interface ParsedItem {
+  id: string;
   title: string;
   content: string;
   tags: string[];
   sourceUrl?: string;
   createdAt?: string;
+  selected: boolean;
+  valid: boolean;
+  validationErrors: string[];
 }
 
 const sourceApps: { id: SourceApp; name: string; icon: string; formats: string[]; description: string }[] = [
@@ -76,12 +88,16 @@ const sourceApps: { id: SourceApp; name: string; icon: string; formats: string[]
 ];
 
 export const DataMigrationWizard: React.FC = () => {
+  const [wizardStep, setWizardStep] = useState<WizardStep>('source');
   const [selectedSource, setSelectedSource] = useState<SourceApp | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [steps, setSteps] = useState<MigrationStep[]>([]);
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [importProgress, setImportProgress] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -92,31 +108,66 @@ export const DataMigrationWizard: React.FC = () => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const generateId = () => Math.random().toString(36).substring(2, 11);
+
+  const validateItem = (item: Omit<ParsedItem, 'id' | 'selected' | 'valid' | 'validationErrors'>): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!item.title || item.title.trim().length === 0) {
+      errors.push('Title is required');
+    } else if (item.title.length > 200) {
+      errors.push('Title must be less than 200 characters');
+    }
+    
+    if (item.content && item.content.length > 100000) {
+      errors.push('Content exceeds maximum length (100KB)');
+    }
+    
+    if (item.tags && item.tags.length > 20) {
+      errors.push('Maximum 20 tags allowed');
+    }
+    
+    return { valid: errors.length === 0, errors };
+  };
+
   const parseNotionExport = async (file: File): Promise<ParsedItem[]> => {
     const text = await file.text();
     const items: ParsedItem[] = [];
     
     if (file.name.endsWith('.md')) {
-      // Parse markdown file
       const lines = text.split('\n');
       const title = lines[0]?.replace(/^#\s*/, '') || file.name.replace('.md', '');
       const content = lines.slice(1).join('\n').trim();
-      
-      // Extract tags from content (look for #tag patterns)
       const tagMatches = content.match(/#[\w-]+/g) || [];
       const tags = tagMatches.map(t => t.replace('#', ''));
       
-      items.push({ title, content, tags });
+      const validation = validateItem({ title, content, tags });
+      items.push({ 
+        id: generateId(),
+        title, 
+        content, 
+        tags: [...tags, 'notion-import'],
+        selected: true,
+        valid: validation.valid,
+        validationErrors: validation.errors
+      });
     } else if (file.name.endsWith('.html')) {
-      // Simple HTML parsing
       const parser = new DOMParser();
       const doc = parser.parseFromString(text, 'text/html');
       const title = doc.querySelector('title')?.textContent || file.name;
       const content = doc.body?.textContent || '';
       
-      items.push({ title, content: content.trim(), tags: ['notion-import'] });
+      const validation = validateItem({ title, content: content.trim(), tags: ['notion-import'] });
+      items.push({ 
+        id: generateId(),
+        title, 
+        content: content.trim(), 
+        tags: ['notion-import'],
+        selected: true,
+        valid: validation.valid,
+        validationErrors: validation.errors
+      });
     } else if (file.name.endsWith('.csv')) {
-      // CSV parsing
       const lines = text.split('\n');
       const headers = lines[0]?.split(',').map(h => h.trim().toLowerCase());
       
@@ -125,11 +176,19 @@ export const DataMigrationWizard: React.FC = () => {
         const titleIndex = headers?.findIndex(h => h.includes('title') || h.includes('name'));
         const contentIndex = headers?.findIndex(h => h.includes('content') || h.includes('body'));
         
-        if (titleIndex !== undefined && titleIndex >= 0) {
+        if (titleIndex !== undefined && titleIndex >= 0 && values[titleIndex]?.trim()) {
+          const title = values[titleIndex] || `Item ${i}`;
+          const content = contentIndex !== undefined ? values[contentIndex] || '' : '';
+          const validation = validateItem({ title, content, tags: ['notion-import'] });
+          
           items.push({
-            title: values[titleIndex] || `Item ${i}`,
-            content: contentIndex !== undefined ? values[contentIndex] || '' : '',
-            tags: ['notion-import']
+            id: generateId(),
+            title,
+            content,
+            tags: ['notion-import'],
+            selected: true,
+            valid: validation.valid,
+            validationErrors: validation.errors
           });
         }
       }
@@ -142,7 +201,6 @@ export const DataMigrationWizard: React.FC = () => {
     const text = await file.text();
     const items: ParsedItem[] = [];
     
-    // Simple ENEX parsing (XML-based)
     const noteRegex = /<note>[\s\S]*?<\/note>/g;
     const notes = text.match(noteRegex) || [];
     
@@ -154,14 +212,22 @@ export const DataMigrationWizard: React.FC = () => {
       const title = titleMatch?.[1] || 'Untitled Note';
       let content = contentMatch?.[1] || '';
       
-      // Strip HTML from content
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = content;
       content = tempDiv.textContent || tempDiv.innerText || '';
       
-      const tags = tagMatches?.map(t => t.replace(/<\/?tag>/g, '')) || ['evernote-import'];
+      const tags = tagMatches?.map(t => t.replace(/<\/?tag>/g, '')) || [];
+      const validation = validateItem({ title, content: content.trim(), tags: [...tags, 'evernote-import'] });
       
-      items.push({ title, content: content.trim(), tags });
+      items.push({ 
+        id: generateId(),
+        title, 
+        content: content.trim(), 
+        tags: [...tags, 'evernote-import'],
+        selected: true,
+        valid: validation.valid,
+        validationErrors: validation.errors
+      });
     }
     
     return items;
@@ -169,14 +235,11 @@ export const DataMigrationWizard: React.FC = () => {
 
   const parseObsidianExport = async (file: File): Promise<ParsedItem[]> => {
     const text = await file.text();
-    const items: ParsedItem[] = [];
-    
     const lines = text.split('\n');
     const title = lines[0]?.replace(/^#\s*/, '') || file.name.replace('.md', '');
     
-    // Parse frontmatter for tags
     let content = text;
-    let tags: string[] = ['obsidian-import'];
+    let tags: string[] = [];
     
     if (text.startsWith('---')) {
       const frontmatterEnd = text.indexOf('---', 3);
@@ -184,7 +247,6 @@ export const DataMigrationWizard: React.FC = () => {
         const frontmatter = text.slice(3, frontmatterEnd);
         content = text.slice(frontmatterEnd + 3).trim();
         
-        // Extract tags from frontmatter
         const tagsMatch = frontmatter.match(/tags:\s*\[(.*?)\]/);
         if (tagsMatch) {
           tags = tagsMatch[1].split(',').map(t => t.trim().replace(/["']/g, ''));
@@ -192,16 +254,21 @@ export const DataMigrationWizard: React.FC = () => {
       }
     }
     
-    // Also look for inline tags
     const inlineTags = content.match(/#[\w-]+/g) || [];
-    tags = [...new Set([...tags, ...inlineTags.map(t => t.replace('#', ''))])];
-    
-    // Convert wikilinks to regular text
+    tags = [...new Set([...tags, ...inlineTags.map(t => t.replace('#', '')), 'obsidian-import'])];
     content = content.replace(/\[\[(.*?)\]\]/g, '$1');
     
-    items.push({ title, content, tags });
+    const validation = validateItem({ title, content, tags });
     
-    return items;
+    return [{ 
+      id: generateId(),
+      title, 
+      content, 
+      tags,
+      selected: true,
+      valid: validation.valid,
+      validationErrors: validation.errors
+    }];
   };
 
   const parseRoamExport = async (file: File): Promise<ParsedItem[]> => {
@@ -211,26 +278,33 @@ export const DataMigrationWizard: React.FC = () => {
     if (file.name.endsWith('.json')) {
       try {
         const data = JSON.parse(text);
-        
-        // Roam JSON structure has pages array
         const pages = Array.isArray(data) ? data : data.pages || [];
         
         for (const page of pages) {
           const title = page.title || page['page-title'] || 'Untitled';
           const children = page.children || page.content || [];
-          
-          // Flatten children to content
           const content = flattenRoamChildren(children);
+          const validation = validateItem({ title, content, tags: ['roam-import'] });
           
-          items.push({ title, content, tags: ['roam-import'] });
+          items.push({ 
+            id: generateId(),
+            title, 
+            content, 
+            tags: ['roam-import'],
+            selected: true,
+            valid: validation.valid,
+            validationErrors: validation.errors
+          });
         }
       } catch {
         console.error('Failed to parse Roam JSON');
       }
     } else {
-      // Markdown export
       const parsed = await parseObsidianExport(file);
-      return parsed.map(item => ({ ...item, tags: ['roam-import'] }));
+      return parsed.map(item => ({ 
+        ...item, 
+        tags: item.tags.filter(t => t !== 'obsidian-import').concat('roam-import')
+      }));
     }
     
     return items;
@@ -248,24 +322,19 @@ export const DataMigrationWizard: React.FC = () => {
   };
 
   const parseBearExport = async (file: File): Promise<ParsedItem[]> => {
-    // Bear uses markdown with specific format
-    return parseObsidianExport(file).then(items => 
-      items.map(item => ({ ...item, tags: [...item.tags.filter(t => t !== 'obsidian-import'), 'bear-import'] }))
-    );
+    const items = await parseObsidianExport(file);
+    return items.map(item => ({ 
+      ...item, 
+      tags: item.tags.filter(t => t !== 'obsidian-import').concat('bear-import')
+    }));
   };
 
-  const processFiles = async () => {
+  const parseFiles = async () => {
     if (!selectedSource || files.length === 0) return;
     
     setIsProcessing(true);
-    setSteps([
-      { id: 'parse', title: 'Parsing files', status: 'processing' },
-      { id: 'validate', title: 'Validating data', status: 'pending' },
-      { id: 'import', title: 'Importing to Cortex', status: 'pending' }
-    ]);
     
     try {
-      // Step 1: Parse files
       const allItems: ParsedItem[] = [];
       
       for (const file of files) {
@@ -293,34 +362,37 @@ export const DataMigrationWizard: React.FC = () => {
       }
       
       setParsedItems(allItems);
-      setSteps(prev => prev.map(s => 
-        s.id === 'parse' ? { ...s, status: 'completed', itemsProcessed: allItems.length } : s
-      ));
-      
-      // Step 2: Validate
-      setSteps(prev => prev.map(s => 
-        s.id === 'validate' ? { ...s, status: 'processing' } : s
-      ));
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const validItems = allItems.filter(item => item.title && item.title.trim());
-      setSteps(prev => prev.map(s => 
-        s.id === 'validate' ? { ...s, status: 'completed', itemsProcessed: validItems.length } : s
-      ));
-      
-      // Step 3: Import
-      setSteps(prev => prev.map(s => 
-        s.id === 'import' ? { ...s, status: 'processing', totalItems: validItems.length } : s
-      ));
-      
+      setWizardStep('preview');
+      toast.success(`Parsed ${allItems.length} items from ${files.length} file(s)`);
+    } catch (error: any) {
+      console.error('Parse error:', error);
+      toast.error(`Failed to parse files: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const importItems = async () => {
+    const selectedItems = parsedItems.filter(item => item.selected && item.valid);
+    
+    if (selectedItems.length === 0) {
+      toast.error('No valid items selected for import');
+      return;
+    }
+    
+    setWizardStep('importing');
+    setSteps([
+      { id: 'import', title: 'Importing items', status: 'processing', totalItems: selectedItems.length, itemsProcessed: 0 }
+    ]);
+    
+    try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('You must be logged in to import data');
       }
       
       let imported = 0;
-      for (const item of validItems) {
+      for (const item of selectedItems) {
         const { error } = await supabase.from('knowledge_base').insert({
           user_id: user.id,
           title: item.title,
@@ -332,36 +404,69 @@ export const DataMigrationWizard: React.FC = () => {
         
         if (!error) {
           imported++;
-          setImportProgress(Math.round((imported / validItems.length) * 100));
-          setSteps(prev => prev.map(s => 
-            s.id === 'import' ? { ...s, itemsProcessed: imported } : s
-          ));
+          setImportProgress(Math.round((imported / selectedItems.length) * 100));
+          setSteps(prev => prev.map(s => ({ ...s, itemsProcessed: imported })));
         }
       }
       
-      setSteps(prev => prev.map(s => 
-        s.id === 'import' ? { ...s, status: 'completed' } : s
-      ));
-      
+      setSteps(prev => prev.map(s => ({ ...s, status: 'completed' })));
+      setWizardStep('complete');
       toast.success(`Successfully imported ${imported} items!`);
     } catch (error: any) {
-      console.error('Migration error:', error);
-      toast.error(`Migration failed: ${error.message}`);
-      setSteps(prev => prev.map(s => 
-        s.status === 'processing' ? { ...s, status: 'error' } : s
-      ));
-    } finally {
-      setIsProcessing(false);
+      console.error('Import error:', error);
+      toast.error(`Import failed: ${error.message}`);
+      setSteps(prev => prev.map(s => ({ ...s, status: 'error' })));
     }
   };
 
   const resetWizard = () => {
+    setWizardStep('source');
     setSelectedSource(null);
     setFiles([]);
     setSteps([]);
     setParsedItems([]);
     setImportProgress(0);
+    setSearchQuery('');
+    setEditingItem(null);
+    setExpandedItem(null);
   };
+
+  const toggleItemSelection = (id: string) => {
+    setParsedItems(prev => prev.map(item => 
+      item.id === id ? { ...item, selected: !item.selected } : item
+    ));
+  };
+
+  const toggleSelectAll = () => {
+    const validItems = parsedItems.filter(i => i.valid);
+    const allSelected = validItems.every(i => i.selected);
+    setParsedItems(prev => prev.map(item => 
+      item.valid ? { ...item, selected: !allSelected } : item
+    ));
+  };
+
+  const updateItem = (id: string, updates: Partial<ParsedItem>) => {
+    setParsedItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const updated = { ...item, ...updates };
+      const validation = validateItem(updated);
+      return { ...updated, valid: validation.valid, validationErrors: validation.errors };
+    }));
+  };
+
+  const removeItem = (id: string) => {
+    setParsedItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const filteredItems = parsedItems.filter(item => 
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const selectedCount = parsedItems.filter(i => i.selected && i.valid).length;
+  const validCount = parsedItems.filter(i => i.valid).length;
+  const invalidCount = parsedItems.filter(i => !i.valid).length;
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -381,8 +486,29 @@ export const DataMigrationWizard: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!selectedSource ? (
-          // Source Selection
+        {/* Step Indicators */}
+        <div className="flex items-center justify-between mb-4">
+          {['source', 'upload', 'preview', 'importing'].map((step, index) => (
+            <React.Fragment key={step}>
+              <div className={`flex items-center gap-2 ${
+                wizardStep === step ? 'text-primary' : 
+                ['source', 'upload', 'preview', 'importing'].indexOf(wizardStep) > index ? 'text-green-500' : 'text-muted-foreground'
+              }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  wizardStep === step ? 'bg-primary text-primary-foreground' :
+                  ['source', 'upload', 'preview', 'importing'].indexOf(wizardStep) > index ? 'bg-green-500 text-white' : 'bg-muted'
+                }`}>
+                  {['source', 'upload', 'preview', 'importing'].indexOf(wizardStep) > index ? <CheckCircle size={16} /> : index + 1}
+                </div>
+                <span className="text-xs hidden sm:inline capitalize">{step}</span>
+              </div>
+              {index < 3 && <div className="flex-1 h-0.5 bg-muted mx-2" />}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Step 1: Source Selection */}
+        {wizardStep === 'source' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Select the app you want to import from:
@@ -391,7 +517,10 @@ export const DataMigrationWizard: React.FC = () => {
               {sourceApps.map((app) => (
                 <button
                   key={app.id}
-                  onClick={() => setSelectedSource(app.id)}
+                  onClick={() => {
+                    setSelectedSource(app.id);
+                    setWizardStep('upload');
+                  }}
                   className="flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary hover:bg-accent/50 transition-colors text-left"
                 >
                   <span className="text-2xl">{app.icon}</span>
@@ -415,8 +544,10 @@ export const DataMigrationWizard: React.FC = () => {
               ))}
             </div>
           </div>
-        ) : steps.length === 0 ? (
-          // File Upload
+        )}
+
+        {/* Step 2: File Upload */}
+        {wizardStep === 'upload' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -427,8 +558,9 @@ export const DataMigrationWizard: React.FC = () => {
                   {sourceApps.find(a => a.id === selectedSource)?.name}
                 </span>
               </div>
-              <Button variant="ghost" size="sm" onClick={resetWizard}>
-                Change Source
+              <Button variant="ghost" size="sm" onClick={() => setWizardStep('source')}>
+                <ArrowLeft size={16} className="mr-1" />
+                Back
               </Button>
             </div>
 
@@ -455,7 +587,7 @@ export const DataMigrationWizard: React.FC = () => {
 
             {files.length > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Selected Files</Label>
+                <Label className="text-sm font-medium">Selected Files ({files.length})</Label>
                 <ScrollArea className="h-32">
                   <div className="space-y-2">
                     {files.map((file, index) => (
@@ -486,15 +618,160 @@ export const DataMigrationWizard: React.FC = () => {
 
             <Button
               className="w-full"
-              onClick={processFiles}
-              disabled={files.length === 0}
+              onClick={parseFiles}
+              disabled={files.length === 0 || isProcessing}
             >
-              <FileUp size={16} className="mr-2" />
-              Start Migration
+              {isProcessing ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Eye size={16} className="mr-2" />
+                  Preview Import
+                </>
+              )}
             </Button>
           </div>
-        ) : (
-          // Processing Steps
+        )}
+
+        {/* Step 3: Preview & Edit */}
+        {wizardStep === 'preview' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" onClick={() => setWizardStep('upload')}>
+                  <ArrowLeft size={16} className="mr-1" />
+                  Back
+                </Button>
+                <div className="text-sm">
+                  <span className="text-green-500 font-medium">{validCount}</span> valid, 
+                  <span className="text-destructive font-medium ml-1">{invalidCount}</span> invalid, 
+                  <span className="text-primary font-medium ml-1">{selectedCount}</span> selected
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={toggleSelectAll}>
+                {parsedItems.filter(i => i.valid).every(i => i.selected) ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <ScrollArea className="h-[400px] border rounded-lg">
+              <div className="p-2 space-y-2">
+                {filteredItems.map((item) => (
+                  <div 
+                    key={item.id}
+                    className={`rounded-lg border ${
+                      !item.valid ? 'border-destructive/50 bg-destructive/5' : 
+                      item.selected ? 'border-primary/50 bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 p-3">
+                      <Checkbox
+                        checked={item.selected}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
+                        disabled={!item.valid}
+                      />
+                      <div className="flex-1 min-w-0">
+                        {editingItem === item.id ? (
+                          <Input
+                            value={item.title}
+                            onChange={(e) => updateItem(item.id, { title: e.target.value })}
+                            onBlur={() => setEditingItem(null)}
+                            onKeyDown={(e) => e.key === 'Enter' && setEditingItem(null)}
+                            autoFocus
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">{item.title}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setEditingItem(item.id)}
+                            >
+                              <Edit size={12} />
+                            </Button>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          {item.tags.slice(0, 3).map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              <Tag size={10} className="mr-1" />
+                              {tag}
+                            </Badge>
+                          ))}
+                          {item.tags.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{item.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {!item.valid && item.validationErrors.length > 0 && (
+                          <div className="flex items-center gap-1 mt-2 text-xs text-destructive">
+                            <AlertCircle size={12} />
+                            {item.validationErrors.join(', ')}
+                          </div>
+                        )}
+
+                        {expandedItem === item.id && (
+                          <div className="mt-3 p-2 bg-muted/50 rounded text-xs">
+                            <p className="whitespace-pre-wrap line-clamp-6">
+                              {item.content || '(No content)'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
+                        >
+                          <Eye size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <Button
+              className="w-full"
+              onClick={importItems}
+              disabled={selectedCount === 0}
+            >
+              <FileUp size={16} className="mr-2" />
+              Import {selectedCount} Items
+            </Button>
+          </div>
+        )}
+
+        {/* Step 4: Importing */}
+        {wizardStep === 'importing' && (
           <div className="space-y-4">
             <div className="space-y-3">
               {steps.map((step) => (
@@ -509,75 +786,60 @@ export const DataMigrationWizard: React.FC = () => {
                     {step.status === 'processing' && (
                       <Loader2 size={18} className="text-primary animate-spin" />
                     )}
-                    {step.status === 'pending' && (
-                      <div className="w-[18px] h-[18px] rounded-full border-2 border-muted-foreground" />
-                    )}
                     {step.status === 'error' && (
                       <AlertCircle size={18} className="text-destructive" />
                     )}
                     <span className="text-sm font-medium">{step.title}</span>
                   </div>
-                  {step.itemsProcessed !== undefined && (
-                    <Badge variant="outline">
-                      {step.itemsProcessed}
-                      {step.totalItems ? ` / ${step.totalItems}` : ''} items
-                    </Badge>
-                  )}
+                  <Badge variant="outline">
+                    {step.itemsProcessed} / {step.totalItems}
+                  </Badge>
                 </div>
               ))}
             </div>
 
-            {importProgress > 0 && importProgress < 100 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Importing...</span>
-                  <span>{importProgress}%</span>
-                </div>
-                <Progress value={importProgress} className="h-2" />
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Progress</span>
+                <span>{importProgress}%</span>
               </div>
-            )}
+              <Progress value={importProgress} className="h-2" />
+            </div>
+          </div>
+        )}
 
-            {steps.every(s => s.status === 'completed') && (
-              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle size={18} />
-                  <span className="font-medium">Migration Complete!</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Your data has been successfully imported into Cortex.
-                </p>
-              </div>
-            )}
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={resetWizard}
-            >
+        {/* Step 5: Complete */}
+        {wizardStep === 'complete' && (
+          <div className="space-y-4 text-center py-8">
+            <CheckCircle size={48} className="mx-auto text-green-500" />
+            <h3 className="text-lg font-semibold">Migration Complete!</h3>
+            <p className="text-sm text-muted-foreground">
+              Your data has been successfully imported into Cortex.
+            </p>
+            <Button onClick={resetWizard} variant="outline">
               Start New Migration
             </Button>
           </div>
         )}
 
         {/* Help Text */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50">
-          <AlertCircle size={16} className="text-muted-foreground mt-0.5" />
-          <div className="text-xs text-muted-foreground">
-            <p className="font-medium mb-1">How to export your data:</p>
-            <ul className="list-disc list-inside space-y-0.5">
-              <li><strong>Notion:</strong> Settings → Export → Markdown or HTML</li>
-              <li><strong>Evernote:</strong> File → Export Notes → ENEX format</li>
-              <li><strong>Obsidian:</strong> Select your vault's .md files</li>
-              <li><strong>Roam:</strong> Export → JSON or Markdown</li>
-            </ul>
+        {wizardStep !== 'complete' && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50">
+            <AlertCircle size={16} className="text-muted-foreground mt-0.5" />
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">How to export your data:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li><strong>Notion:</strong> Settings → Export → Markdown or HTML</li>
+                <li><strong>Evernote:</strong> File → Export Notes → ENEX format</li>
+                <li><strong>Obsidian:</strong> Select your vault's .md files</li>
+                <li><strong>Roam:</strong> Export → JSON or Markdown</li>
+              </ul>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
 };
-
-// Need to add Label import
-import { Label } from "@/components/ui/label";
 
 export default DataMigrationWizard;
