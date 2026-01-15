@@ -169,7 +169,7 @@ jobs:
   # --------------------------------------------------------------------------
   # JOB: Test
   # --------------------------------------------------------------------------
-  # Runs unit and integration tests with coverage reporting
+  # Runs unit and integration tests with coverage reporting and thresholds
   
   test:
     name: Test
@@ -190,11 +190,39 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Run tests with coverage
-      - name: Run Tests
+      # Run tests with coverage and thresholds
+      - name: Run Tests with Coverage
         run: npm run test -- --coverage --reporter=verbose
         env:
           CI: true
+
+      # Check coverage thresholds
+      - name: Check Coverage Thresholds
+        run: |
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const coverage = require('./coverage/coverage-summary.json');
+              const total = coverage.total;
+              console.log('| Metric | Coverage | Threshold | Status |');
+              console.log('|--------|----------|-----------|--------|');
+              const thresholds = { statements: 70, branches: 65, functions: 70, lines: 70 };
+              let failed = false;
+              for (const [key, value] of Object.entries(total)) {
+                if (thresholds[key]) {
+                  const pct = value.pct;
+                  const threshold = thresholds[key];
+                  const status = pct >= threshold ? '✅' : '❌';
+                  if (pct < threshold) failed = true;
+                  console.log(\`| \${key} | \${pct}% | \${threshold}% | \${status} |\`);
+                }
+              }
+              if (failed) process.exit(1);
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage report not found" >> $GITHUB_STEP_SUMMARY
+          fi
 
       # Upload coverage report as artifact
       - name: Upload Coverage Report
@@ -205,16 +233,64 @@ jobs:
           path: coverage/
           retention-days: 7
 
-      # Add coverage summary to PR
-      - name: Create Coverage Summary
+      # Upload coverage to Codecov (optional)
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # --------------------------------------------------------------------------
+  # JOB: E2E Tests
+  # --------------------------------------------------------------------------
+  # Runs end-to-end tests using Playwright
+  
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [code-quality, build]
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: npx playwright test --project=chromium
+        env:
+          CI: true
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Create E2E Summary
         if: always()
         run: |
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f coverage/coverage-summary.json ]; then
-            echo "Coverage report generated successfully." >> $GITHUB_STEP_SUMMARY
+          if [ -f playwright-report/results.json ]; then
+            echo "E2E tests completed. See artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
           else
-            echo "Tests completed." >> $GITHUB_STEP_SUMMARY
+            echo "E2E test report not found." >> $GITHUB_STEP_SUMMARY
           fi
 
   # --------------------------------------------------------------------------

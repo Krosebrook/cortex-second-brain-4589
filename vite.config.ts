@@ -108,7 +108,8 @@ export default defineConfig(({ mode }) => ({
     css: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov', 'json-summary'],
+      reportsDirectory: './coverage',
       exclude: [
         'node_modules/',
         'src/main.tsx',
@@ -116,7 +117,18 @@ export default defineConfig(({ mode }) => ({
         '**/*.d.ts',
         '**/*.test.{ts,tsx}',
         '**/types.ts',
+        'src/integrations/supabase/types.ts',
+        'e2e/**',
+        'playwright.config.ts',
       ],
+      thresholds: {
+        global: {
+          statements: 70,
+          branches: 65,
+          functions: 70,
+          lines: 70,
+        },
+      },
     },
   },
 }));
