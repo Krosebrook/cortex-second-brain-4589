@@ -227,6 +227,60 @@ Enable "Require status checks to pass":
 /.github/ @devops-team
 ```
 
+### Branch Cleanup
+
+Automated branch cleanup is configured via GitHub Actions to maintain repository hygiene.
+
+#### Automatic Cleanup
+
+**When:** After PR merge  
+**Action:** Branch is automatically deleted
+
+**Workflow:** `.github/workflows/branch-cleanup.yml`
+
+#### Manual Cleanup
+
+For cleanup of stale merged branches:
+
+1. Navigate to **Actions → Branch Cleanup**
+2. Click **Run workflow**
+3. Enable **dry-run** to preview deletions
+4. Run without dry-run to execute cleanup
+
+**Stale Criteria:**
+- Merged into default branch
+- Last commit > 7 days old
+- Not a protected branch (main/master/develop)
+
+#### CLI Commands
+
+```bash
+# List merged branches
+git branch --merged main
+
+# Delete local branch
+git branch -d feature-branch
+
+# Delete remote branch
+git push origin --delete feature-branch
+
+# Cleanup local references to deleted remote branches
+git fetch --prune
+
+# List all remote branches
+git branch -r
+
+# Find branches older than 30 days
+git for-each-ref --sort=-committerdate refs/remotes/ --format='%(refname:short) %(committerdate:relative)'
+```
+
+#### Protected Branches
+
+The following branches are **never deleted** automatically:
+- `main`
+- `master`
+- `develop`
+
 ---
 
 ## Scripts Reference
