@@ -189,8 +189,8 @@ jobs:
           # Remove stale label when updated
           remove-stale-when-updated: true
           
-          # Delete branch when closing (optional - disabled by default)
-          delete-branch: false
+          # Delete branch when closing stale PRs
+          delete-branch: true
           
           # Processing limits
           operations-per-run: 50
