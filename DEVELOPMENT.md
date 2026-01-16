@@ -1,206 +1,105 @@
 # Development Guide
 
-This guide covers the development setup, code quality tools, and contribution workflow for Cortex Second Brain.
+Complete guide for contributing to Cortex Second Brain.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Code Quality Tools](#code-quality-tools)
-  - [ESLint](#eslint)
-  - [Prettier](#prettier)
-  - [TypeScript](#typescript)
+- [Quick Start](#quick-start)
+- [Code Quality](#code-quality)
 - [Pre-commit Hooks](#pre-commit-hooks)
 - [IDE Setup](#ide-setup)
-- [Scripts Reference](#scripts-reference)
-- [Troubleshooting](#troubleshooting)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Releases](#releases)
+- [Branch Protection](#branch-protection)
 
 ---
 
-## Prerequisites
+## Quick Start
 
-- **Node.js** >= 18.x
-- **npm** >= 9.x (or compatible package manager)
-- **Git** >= 2.x
+### Prerequisites
 
-## Getting Started
+- Node.js ≥ 18.x
+- npm ≥ 9.x
+- Git ≥ 2.x
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd cortex-second-brain
-   ```
+### Setup
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Initialize Husky** (for pre-commit hooks)
-   ```bash
-   npx husky install
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+```bash
+git clone <repository-url>
+cd cortex-second-brain
+npm install
+npx husky install
+npm run dev
+```
 
 ---
 
-## Code Quality Tools
-
-We use a comprehensive suite of tools to maintain code quality and consistency.
+## Code Quality
 
 ### ESLint
 
-ESLint is configured with strict TypeScript rules to catch issues early in development.
-
-#### Configuration
-
-Our ESLint setup (`eslint.config.js`) includes:
-
-- **TypeScript strict mode rules**:
-  - `@typescript-eslint/no-unused-vars` (error) - Flags unused imports/variables
-  - `@typescript-eslint/no-explicit-any` (warn) - Discourages `any` type usage
-  - `@typescript-eslint/no-floating-promises` (warn) - Ensures promises are handled
-  - `@typescript-eslint/await-thenable` (error) - Prevents invalid await usage
-  - `@typescript-eslint/no-unsafe-*` (warn) - Type safety rules
-
-- **React-specific rules**:
-  - `react-hooks/rules-of-hooks` (error)
-  - `react-hooks/exhaustive-deps` (warn)
-  - `react-refresh/only-export-components` (warn)
-
-- **Import optimization**:
-  - `@typescript-eslint/consistent-type-imports` - Enforces `type` imports
-  - `@typescript-eslint/no-import-type-side-effects` (error)
-
-#### Running ESLint
+Strict TypeScript rules with React hooks validation.
 
 ```bash
-# Check for issues
-npm run lint
-
-# Auto-fix issues where possible
-npm run lint -- --fix
-
-# Check specific files
-npx eslint src/components/MyComponent.tsx
+npm run lint              # Check for issues
+npm run lint -- --fix     # Auto-fix issues
 ```
 
-#### Ignoring Rules
-
-Use sparingly and document why:
-
-```typescript
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Legacy API returns unknown shape
-const data: any = legacyApiCall();
-```
+Key rules:
+- `@typescript-eslint/no-unused-vars` → error
+- `@typescript-eslint/no-explicit-any` → warn
+- `react-hooks/rules-of-hooks` → error
 
 ### Prettier
 
-Prettier handles all code formatting to ensure consistency across the codebase.
+Automatic code formatting.
 
-#### Configuration
+```bash
+npx prettier --check "src/**/*.{ts,tsx}"   # Check
+npx prettier --write "src/**/*.{ts,tsx}"   # Fix
+```
 
-`.prettierrc`:
+Config (`.prettierrc`):
 ```json
 {
   "semi": true,
   "singleQuote": true,
   "tabWidth": 2,
   "trailingComma": "es5",
-  "printWidth": 100,
-  "bracketSpacing": true,
-  "arrowParens": "always",
-  "endOfLine": "lf"
+  "printWidth": 100
 }
-```
-
-#### Running Prettier
-
-```bash
-# Check formatting
-npx prettier --check "src/**/*.{ts,tsx}"
-
-# Fix formatting
-npx prettier --write "src/**/*.{ts,tsx}"
-
-# Format entire codebase
-npx prettier --write "src/**/*.{ts,tsx,css}"
 ```
 
 ### TypeScript
 
-TypeScript is configured for strict type checking.
-
-#### Type Checking
+Strict type checking.
 
 ```bash
-# Run type checker
-npx tsc --noEmit
-
-# Watch mode
-npx tsc --noEmit --watch
+npx tsc --noEmit           # Type check
+npx tsc --noEmit --watch   # Watch mode
 ```
 
 ---
 
 ## Pre-commit Hooks
 
-We use **Husky** and **lint-staged** to run quality checks before commits.
+Husky + lint-staged runs automatically on `git commit`:
 
-### How It Works
+1. ESLint with `--fix` on staged `.ts/.tsx` files
+2. Prettier formats staged files
+3. Commit blocked if errors remain
 
-When you run `git commit`, the following happens automatically:
-
-1. **lint-staged** selects only staged files
-2. **ESLint** runs with `--fix` on `.ts` and `.tsx` files
-3. **Prettier** formats the files
-4. If any errors remain, the commit is **blocked**
-
-### Configuration
-
-`.lintstagedrc.json`:
+Config (`.lintstagedrc.json`):
 ```json
 {
-  "*.{ts,tsx}": [
-    "eslint --fix --max-warnings=0",
-    "prettier --write"
-  ],
-  "*.{js,mjs,cjs}": [
-    "eslint --fix",
-    "prettier --write"
-  ],
-  "*.{css,scss}": [
-    "prettier --write"
-  ]
+  "*.{ts,tsx}": ["eslint --fix --max-warnings=0", "prettier --write"],
+  "*.{css,scss}": ["prettier --write"]
 }
 ```
 
-### Bypassing Hooks (Emergency Only)
-
+**Bypass (emergency only):**
 ```bash
-# Skip pre-commit hooks (use sparingly!)
 git commit --no-verify -m "emergency fix"
-```
-
-**⚠️ Warning**: CI will still fail if code doesn't pass checks.
-
-### Troubleshooting Hooks
-
-If hooks aren't running:
-
-```bash
-# Reinstall Husky
-npx husky install
-
-# Verify hook exists
-cat .husky/pre-commit
-
-# Check permissions (Unix)
-chmod +x .husky/pre-commit
 ```
 
 ---
@@ -209,35 +108,124 @@ chmod +x .husky/pre-commit
 
 ### VS Code (Recommended)
 
-Install these extensions:
-- **ESLint** (`dbaeumer.vscode-eslint`)
-- **Prettier** (`esbenp.prettier-vscode`)
-- **TypeScript Vue Plugin** (for better TS support)
+Install extensions from `.vscode/extensions.json`:
+- ESLint
+- Prettier
+- Tailwind CSS IntelliSense
+- Error Lens
 
-Recommended `.vscode/settings.json`:
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "typescript.preferences.importModuleSpecifier": "relative",
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ]
-}
+Settings are pre-configured in `.vscode/settings.json`.
+
+### Other IDEs
+
+Enable:
+1. ESLint with auto-fix on save
+2. Prettier as default formatter
+3. Format on save
+
+---
+
+## CI/CD Pipeline
+
+GitHub Actions runs on every PR:
+
+| Job | Description | Required |
+|-----|-------------|----------|
+| Code Quality | ESLint, TypeScript, Prettier | ✅ |
+| Test | Unit tests with coverage | ✅ |
+| Build | Production bundle | ✅ |
+| E2E | Playwright tests | ✅ |
+| Security | npm audit | ⚠️ Warning |
+
+PRs blocked until all required checks pass.
+
+---
+
+## Releases
+
+Automated semantic versioning via [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Commit Format
+
+```
+<type>[scope][!]: <description>
+
+[body]
+
+[footer]
 ```
 
-### WebStorm / IntelliJ
+### Version Bumps
 
-1. Go to **Preferences > Languages & Frameworks > JavaScript > Code Quality Tools > ESLint**
-2. Enable **Automatic ESLint configuration**
-3. Go to **Preferences > Languages & Frameworks > JavaScript > Prettier**
-4. Enable **On save** and **On Reformat Code**
+| Commit | Version Change |
+|--------|----------------|
+| `feat:` | Minor (1.0.0 → 1.1.0) |
+| `fix:` | Patch (1.0.0 → 1.0.1) |
+| `feat!:` or `BREAKING CHANGE` | Major (1.0.0 → 2.0.0) |
+
+### Examples
+
+```bash
+# Feature → minor bump
+git commit -m "feat: add dark mode toggle"
+git commit -m "feat(auth): implement OAuth2 login"
+
+# Fix → patch bump
+git commit -m "fix: resolve null pointer error"
+git commit -m "fix(api): handle timeout gracefully"
+
+# Breaking → major bump
+git commit -m "feat!: redesign authentication API"
+git commit -m "refactor: update API format
+
+BREAKING CHANGE: responses now use camelCase"
+```
+
+### Release Workflows
+
+| Workflow | File | Behavior |
+|----------|------|----------|
+| Release Please | `release-please.yml` | Creates Release PR (recommended) |
+| Custom Release | `release.yml` | Immediate release on push |
+
+**Release Please flow:**
+1. Push to main → Creates/updates Release PR
+2. Merge Release PR → Creates GitHub Release
+
+**Manual trigger:** Actions → Release → Run workflow
+
+---
+
+## Branch Protection
+
+Configure in **Settings → Branches → Add rule**:
+
+### Required Status Checks
+
+Enable "Require status checks to pass":
+- ✅ Code Quality
+- ✅ Test
+- ✅ Build
+- ✅ E2E Tests
+
+### Pull Request Rules
+
+| Setting | Value |
+|---------|-------|
+| Require PR before merging | ✅ |
+| Required approvals | 1-2 |
+| Dismiss stale approvals | ✅ |
+| Require Code Owner review | ✅ |
+
+### CODEOWNERS
+
+```
+# .github/CODEOWNERS
+* @team-lead
+/src/components/ @frontend-team
+/supabase/ @backend-team
+/.github/ @devops-team
+```
 
 ---
 
@@ -245,317 +233,40 @@ Recommended `.vscode/settings.json`:
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run unit tests |
-| `npm run test:coverage` | Run tests with coverage |
-| `npx tsc --noEmit` | Type check without emitting |
-| `npx prettier --write "src/**/*"` | Format all source files |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint check |
+| `npm run test` | Unit tests |
+| `npm run test:coverage` | Tests with coverage |
 
 ---
 
 ## Troubleshooting
 
-### ESLint Not Finding Config
-
+### ESLint cache issues
 ```bash
-# Clear ESLint cache
 rm -rf node_modules/.cache/eslint
-
-# Reinstall dependencies
-rm -rf node_modules && npm install
 ```
 
-### Prettier Conflicts with ESLint
-
-We use `eslint-config-prettier` to disable conflicting rules. If you see conflicts:
-
-1. Ensure `eslint-config-prettier` is the **last** item in ESLint extends
-2. Run `npx eslint-config-prettier src/SomeFile.tsx` to check for conflicts
-
-### Type Errors in Editor but Not CI
-
-```bash
-# Restart TypeScript server in VS Code
+### TypeScript server out of sync
+```
 Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
-
-# Clear TypeScript build cache
-rm -rf node_modules/.cache
 ```
 
-### Pre-commit Hook Not Running
-
+### Pre-commit hooks not running
 ```bash
-# Verify Husky is installed
-ls -la .husky/
-
-# Reinstall hooks
 npx husky install
-
-# On Windows, ensure Git Bash or WSL is used
+chmod +x .husky/pre-commit
 ```
-
----
-
-## CI/CD Pipeline
-
-Our GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every PR:
-
-| Job | Description | Blocking |
-|-----|-------------|----------|
-| **Code Quality** | ESLint + TypeScript + Prettier | ✅ Yes |
-| **Test** | Unit tests with coverage | ✅ Yes |
-| **Build** | Production build verification | ✅ Yes |
-| **E2E** | Playwright browser tests | ✅ Yes |
-| **Security** | npm audit | ⚠️ Warning only |
-
-### Required Checks
-
-PRs cannot be merged unless:
-- ESLint passes with no errors
-- TypeScript type checking passes
-- All tests pass
-- Build completes successfully
-
----
-
-## Branch Protection Rules
-
-To enforce code quality standards, configure branch protection rules in GitHub:
-
-### Setting Up Branch Protection
-
-1. Navigate to your repository on GitHub
-2. Go to **Settings** → **Branches**
-3. Click **Add branch protection rule**
-4. Set **Branch name pattern** to `main` (or your default branch)
-
-### Recommended Protection Settings
-
-#### Required Status Checks
-
-Enable **"Require status checks to pass before merging"** and select:
-
-| Status Check | Description |
-|--------------|-------------|
-| `Code Quality` | ESLint, TypeScript, Prettier checks |
-| `Test` | Unit tests with coverage thresholds |
-| `Build` | Production build verification |
-| `E2E Tests` | Playwright browser tests |
-
-✅ Enable **"Require branches to be up to date before merging"**
-
-#### Pull Request Requirements
-
-| Setting | Recommended Value |
-|---------|-------------------|
-| **Require a pull request before merging** | ✅ Enabled |
-| **Require approvals** | 1-2 (depending on team size) |
-| **Dismiss stale pull request approvals** | ✅ Enabled |
-| **Require review from Code Owners** | ✅ Enabled (if using CODEOWNERS) |
-| **Require approval of most recent push** | ✅ Enabled |
-
-#### Additional Protections
-
-| Setting | Recommended Value |
-|---------|-------------------|
-| **Require conversation resolution** | ✅ Enabled |
-| **Require signed commits** | Optional (for security-critical projects) |
-| **Require linear history** | Optional (prevents merge commits) |
-| **Do not allow bypassing** | ✅ Enabled (even for admins) |
-| **Restrict who can push** | Optional (limit to specific teams) |
-
-### Example Configuration
-
-```yaml
-# Branch protection for 'main' branch
-Branch name pattern: main
-
-✅ Require a pull request before merging
-  ├── Required approvals: 1
-  ├── ✅ Dismiss stale approvals when new commits are pushed
-  ├── ✅ Require review from Code Owners
-  └── ✅ Require approval of the most recent push
-
-✅ Require status checks to pass before merging
-  ├── ✅ Require branches to be up to date before merging
-  └── Status checks:
-      ├── Code Quality
-      ├── Test
-      ├── Build
-      └── E2E Tests
-
-✅ Require conversation resolution before merging
-
-✅ Do not allow bypassing the above settings
-```
-
-### CODEOWNERS File
-
-Create a `CODEOWNERS` file to automatically request reviews:
-
-```
-# .github/CODEOWNERS
-
-# Default owners for everything
-* @team-lead @senior-dev
-
-# Frontend components
-/src/components/ @frontend-team
-
-# Backend/Edge functions
-/supabase/ @backend-team
-
-# CI/CD configuration
-/.github/ @devops-team
-
-# Documentation
-*.md @docs-team
-```
-
-### Enforcement Tips
-
-1. **Start gradually**: Begin with required status checks only, then add review requirements
-2. **Use branch rulesets** (newer GitHub feature) for more granular control
-3. **Create environment protection rules** for production deployments
-4. **Enable required status checks for all branches** using wildcard patterns (e.g., `feature/*`)
-
-### Troubleshooting Branch Protection
-
-**"This branch has no upstream branch"**
-```bash
-git push -u origin feature/my-feature
-```
-
-**"Required status check is failing"**
-1. Check the Actions tab for failed workflow runs
-2. Fix the issues locally and push again
-3. Ensure your branch is up to date with main:
-   ```bash
-   git fetch origin
-   git rebase origin/main
-   ```
-
-**"Waiting for status checks"**
-- Some checks only run on PRs, not pushes
-- Ensure the workflow is triggered for your PR type
-
----
-
-## Automated Releases
-
-This project uses automated semantic versioning based on [Conventional Commits](https://www.conventionalcommits.org/).
-
-### Release Workflows
-
-We provide two release workflow options:
-
-| Workflow | File | Description |
-|----------|------|-------------|
-| **Custom Release** | `release.yml` | Immediate release on push to main |
-| **Release Please** | `release-please.yml` | Maintains a Release PR (recommended) |
-
-> **Note**: Enable only one workflow at a time. By default, use Release Please for better control.
-
-### How Release Please Works
-
-1. **Push to main** → Release Please analyzes your conventional commits
-2. **Creates/updates Release PR** → Shows pending version bump and changelog
-3. **Merge Release PR** → Creates GitHub Release with tag and changelog
-
-```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│ Push to     │────▶│ Release PR       │────▶│ Merge PR        │
-│ main        │     │ (auto-updated)   │     │ → GitHub Release│
-└─────────────┘     └──────────────────┘     └─────────────────┘
-```
-
-### Conventional Commits Quick Reference
-
-| Type | Description | Version Bump |
-|------|-------------|--------------|
-| `feat:` | New feature | Minor (1.0.0 → 1.1.0) |
-| `fix:` | Bug fix | Patch (1.0.0 → 1.0.1) |
-| `feat!:` | Breaking change | Major (1.0.0 → 2.0.0) |
-| `BREAKING CHANGE` | In commit body | Major |
-| `docs:` | Documentation | None |
-| `style:` | Formatting | None |
-| `refactor:` | Code restructuring | None |
-| `perf:` | Performance improvement | Patch |
-| `test:` | Test changes | None |
-| `build:` | Build system changes | None |
-| `ci:` | CI/CD changes | None |
-| `chore:` | Maintenance | None |
-
-### Commit Examples
-
-```bash
-# Feature (minor version bump)
-git commit -m "feat: add dark mode toggle"
-git commit -m "feat(auth): implement OAuth2 login"
-
-# Bug fix (patch version bump)
-git commit -m "fix: resolve null pointer in user service"
-git commit -m "fix(api): handle timeout errors gracefully"
-
-# Breaking change (major version bump)
-git commit -m "feat!: redesign authentication API"
-git commit -m "refactor!: rename User to Account"
-
-# With body for more context
-git commit -m "feat: add export functionality
-
-Adds ability to export data in CSV and JSON formats.
-Includes progress indicator for large exports.
-
-Closes #123"
-
-# Breaking change in body
-git commit -m "refactor: update API response format
-
-BREAKING CHANGE: API responses now use camelCase instead of snake_case"
-```
-
-### Manual Release (if needed)
-
-Trigger a manual release via GitHub Actions:
-
-1. Go to **Actions** → **Release** (or **Release Please**)
-2. Click **Run workflow**
-3. Select release type (for custom workflow) or let it auto-detect
-
-### Release Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `.release-please-manifest.json` | Tracks current version |
-| `release-please-config.json` | Release Please configuration |
-| `.github/workflows/release.yml` | Custom release workflow |
-| `.github/workflows/release-please.yml` | Release Please workflow |
-
-### Choosing a Workflow
-
-**Use Release Please if:**
-- You want to review changes before releasing
-- Multiple features should be batched into one release
-- You prefer PR-based release approval
-
-**Use Custom Release if:**
-- You want immediate releases on every push
-- Single-developer project with frequent releases
-- Simpler setup without Release PR management
-
-To switch workflows, disable one and enable the other in GitHub Actions settings.
 
 ---
 
 ## Contributing
 
-1. Create a feature branch: `git checkout -b feat/my-feature`
-2. Make your changes following the code style
-3. Commit with conventional commits: `git commit -m "feat: add new feature"`
-4. Push and create a PR
-5. Ensure all CI checks pass
+1. Create branch: `git checkout -b feat/my-feature`
+2. Make changes following code style
+3. Commit: `git commit -m "feat: description"`
+4. Push and create PR
+5. Ensure CI passes
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
