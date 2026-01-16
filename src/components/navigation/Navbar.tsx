@@ -110,7 +110,7 @@ export const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { isAdmin } = useUserRole();
-  const [activeId, setActiveId] = useState<string>('');
+  const [, setActiveId] = useState<string>('');
 
   // Determine active state from current route
   const currentPath = location.pathname;

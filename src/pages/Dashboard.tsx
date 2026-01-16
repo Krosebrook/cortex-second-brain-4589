@@ -1,4 +1,3 @@
-import React from 'react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

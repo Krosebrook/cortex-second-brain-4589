@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { Folder, Share, Users, Lock, Plus, Move } from 'lucide-react';
+import React from 'react';
+import { Share, Users, Lock, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type CortexCategory = {

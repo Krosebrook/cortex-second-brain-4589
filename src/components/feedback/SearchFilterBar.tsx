@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, Filter, Save, Star, Settings2 } from 'lucide-react';
+import { Search, X, Filter, Save, Settings2 } from 'lucide-react';
 import { FilterPreset, FilterOptions } from '@/types/filter-preset';
 import { FilterPresetBadge } from './FilterPresetBadge';
 import { FilterPresetDialog } from './FilterPresetDialog';

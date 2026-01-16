@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { Button } from '@/components/ui/button';
 interface IntegrationShowcaseProps {
   show: boolean;
 }

@@ -1,4 +1,3 @@
-import React from 'react';
 import Search from '@/components/search';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';

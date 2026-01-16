@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '@/constants';
+import { ERROR_MESSAGES } from '@/constants';
 
 interface UseAsyncActionOptions<T> {
   onSuccess?: (data: T) => void;

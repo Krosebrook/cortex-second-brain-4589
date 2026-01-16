@@ -1,4 +1,4 @@
-import React, { useRef, ReactNode } from 'react';
+import { useRef, ReactNode } from 'react';
 import { useVirtualScroll } from '@/hooks/useVirtualScroll';
 
 interface VirtualListProps<T> {

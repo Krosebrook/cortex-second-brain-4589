@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
@@ -16,7 +16,6 @@ import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
-import { FilterPresetDialog } from '@/components/feedback/FilterPresetDialog';
 import { ConflictDialog } from '@/components/feedback/ConflictDialog';
 import { ShortcutsHelpDialog } from '@/components/feedback/ShortcutsHelpDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
@@ -28,9 +27,7 @@ import { FileText, Globe, Database, File, Trash2, GripVertical } from 'lucide-re
 import { cn } from '@/lib/utils';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
-import { UndoToast } from '@/components/feedback/UndoToast';
-import { ConflictResolver } from '@/lib/conflict-resolver';
-import { Conflict, ConflictResolution, ConflictError } from '@/types/conflict';
+import { Conflict } from '@/types/conflict';
 
 const typeIcons = {
   note: FileText,
@@ -41,11 +38,10 @@ const typeIcons = {
 
 export const KnowledgeList: React.FC = () => {
   const { user } = useAuth();
-  const { 
+const { 
     items, 
     loading, 
     deleteKnowledgeItem, 
-    deleteBulkKnowledgeItems, 
     softDeleteBulkKnowledgeItems,
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder, 
@@ -104,7 +100,7 @@ export const KnowledgeList: React.FC = () => {
     return undoStack.flatMap(action => action.data.itemIds || []);
   }, [undoStack]);
 
-  const { conflicts } = useConflictDetection('knowledge_base', itemsInHistory);
+  useConflictDetection('knowledge_base', itemsInHistory);
 
   const { draggedId, dragOverId, handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } = useDragAndDrop({
     items: filteredItems,

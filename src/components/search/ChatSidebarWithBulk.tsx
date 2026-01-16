@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,7 +23,7 @@ import { DragIndicator } from '@/components/ui/drag-indicator';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename } from '@/utils/exportUtils';
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
-import { Conflict, ConflictResolution } from '@/types/conflict';
+import { Conflict } from '@/types/conflict';
 
 interface ChatSidebarWithBulkProps {
   chats: Chat[];
@@ -76,7 +76,7 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
     return undoStack.flatMap(action => action.data.itemIds || []);
   }, [undoStack]);
 
-  const { conflicts } = useConflictDetection('chats', itemsInHistory);
+  useConflictDetection('chats', itemsInHistory);
 
   const filteredChats = useMemo(() => {
     if (!searchQuery) return chats;
@@ -119,8 +119,8 @@ const ChatSidebarWithBulk: React.FC<ChatSidebarWithBulkProps> = ({
   const handleBulkDelete = async () => { 
     if (selectedCount === 0 || !softDeleteBulkChats) return;
     
-    const chatsToDelete = chats.filter(chat => selectedIds.includes(chat.id));
-    const deletedChats = await softDeleteBulkChats(selectedIds);
+const chatsToDelete = chats.filter(chat => selectedIds.includes(chat.id));
+    await softDeleteBulkChats(selectedIds);
     
     addAction({
       id: `bulk-delete-chats-${Date.now()}`,

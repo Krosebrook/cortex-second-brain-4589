@@ -1,5 +1,3 @@
-
-import React from 'react';
 import { LayoutGrid, List, Table2, Columns } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

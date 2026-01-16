@@ -1,4 +1,4 @@
-import { checkSupabaseHealth, HealthCheckResult } from './supabase-health';
+import { checkSupabaseHealth } from './supabase-health';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ServiceHealth {
@@ -42,8 +42,7 @@ class ConnectionManager {
 
   // Check health of all services
   async checkAllServices(): Promise<ConnectionStatus> {
-    const startTime = Date.now();
-    const services: ServiceHealth[] = [];
+const services: ServiceHealth[] = [];
 
     // Check Supabase Auth
     try {

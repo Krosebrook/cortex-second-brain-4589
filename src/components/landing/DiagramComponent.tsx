@@ -1,5 +1,3 @@
-
-import { useState } from 'react';
 import { Brain, FileText, Bookmark, Image, Network, Search, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

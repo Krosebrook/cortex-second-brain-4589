@@ -27,15 +27,7 @@ describe('ChatService', () => {
         },
       ];
 
-      const mockMessagesData = [
-        {
-          id: 'msg-1',
-          chat_id: 'chat-1',
-          role: 'user',
-          content: 'Hello',
-          created_at: '2024-01-01T00:00:00Z',
-        },
-      ];
+// Mock messages data reserved for future tests
 
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnThis(),

@@ -1,5 +1,3 @@
-
-import React from 'react';
 import { Check, Square } from 'lucide-react';
 import { CortexItem } from '../cortex-data';
 import { cn } from '@/lib/utils';
