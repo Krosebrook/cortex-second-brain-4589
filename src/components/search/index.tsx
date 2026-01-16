@@ -1,12 +1,8 @@
-
-import React from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChatContainer } from './ChatContainer';
 import { ChatErrorBoundary } from '@/components/error/ChatErrorBoundary';
 import { ChatListSkeleton } from '@/components/ui/skeleton-variants';
-import { EmptyState } from '@/components/feedback/EmptyState';
-import { MessageSquare } from 'lucide-react';
 
 export const Search: React.FC = () => {
   const { user } = useAuth();

@@ -11,8 +11,6 @@ import {
   Trash2,
   Download,
   X,
-  Search,
-  Tag,
 } from 'lucide-react';
 
 interface UseCommandPaletteOptions {

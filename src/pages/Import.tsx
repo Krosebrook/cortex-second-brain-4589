@@ -1,5 +1,3 @@
-
-import React from 'react';
 import ImportPanel from '@/components/ImportPanel';
 import { KnowledgeList } from '@/components/knowledge/KnowledgeList';
 import { AnimatedTransition } from '@/components/AnimatedTransition';

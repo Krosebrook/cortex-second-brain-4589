@@ -228,7 +228,7 @@ describe('Notification System Integration', () => {
 
       vi.mocked(supabase.channel).mockReturnValue(mockChannel as any);
 
-      const channel = supabase
+supabase
         .channel('notifications-changes')
         .on('postgres_changes', {
           event: 'INSERT',

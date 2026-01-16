@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Conflict, ConflictError, ConflictType } from '@/types/conflict';
+import { Conflict, ConflictError } from '@/types/conflict';
 
 export class ConflictResolver {
   static async detectConflict(

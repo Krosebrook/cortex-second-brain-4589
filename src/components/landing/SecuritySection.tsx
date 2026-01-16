@@ -1,6 +1,5 @@
 import { ShieldCheck, Lock, KeyRound, Eye, Sparkles } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 interface SecuritySectionProps {
   show: boolean;

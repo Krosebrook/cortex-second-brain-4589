@@ -73,7 +73,7 @@ export const EmailBackup: React.FC = () => {
         supabase.from('knowledge_base').select('*').eq('user_id', user.id)
       ]);
 
-      const { data: session } = await supabase.auth.getSession();
+      await supabase.auth.getSession();
 
       const backupData = {
         chats: chatsResult.data || [],

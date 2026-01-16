@@ -122,8 +122,8 @@ const ValueProp = ({
 };
 
 const HowPage = () => {
-  const [_loading, setLoading] = useState(true);
-  const _showContent = useAnimateIn(false, 300);
+const [_loading, setLoading] = useState(true);
+  useAnimateIn(false, 300);
   const heroRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {

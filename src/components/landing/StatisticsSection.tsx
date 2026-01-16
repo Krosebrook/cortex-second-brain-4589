@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { Activity, Sparkles } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 interface StatisticsSectionProps {
   show: boolean;
