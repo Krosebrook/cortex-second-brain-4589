@@ -129,23 +129,20 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Run ESLint for code linting
+      # Run ESLint for code linting (strict mode - fail on any error)
       - name: Lint Code
         id: lint
-        run: npm run lint
-        continue-on-error: true
+        run: npm run lint -- --max-warnings=0
 
       # Run TypeScript compiler for type checking
       - name: Type Check
         id: typecheck
         run: npx tsc --noEmit
-        continue-on-error: true
 
-      # Check code formatting with Prettier (optional)
+      # Check code formatting with Prettier (strict - fail if not formatted)
       - name: Check Formatting
         id: format
-        run: npx prettier --check "src/**/*.{ts,tsx,css}" || true
-        continue-on-error: true
+        run: npx prettier --check "src/**/*.{ts,tsx,css}"
 
       # Create summary of code quality checks
       - name: Create Summary
