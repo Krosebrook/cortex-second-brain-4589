@@ -320,6 +320,129 @@ PRs cannot be merged unless:
 
 ---
 
+## Branch Protection Rules
+
+To enforce code quality standards, configure branch protection rules in GitHub:
+
+### Setting Up Branch Protection
+
+1. Navigate to your repository on GitHub
+2. Go to **Settings** → **Branches**
+3. Click **Add branch protection rule**
+4. Set **Branch name pattern** to `main` (or your default branch)
+
+### Recommended Protection Settings
+
+#### Required Status Checks
+
+Enable **"Require status checks to pass before merging"** and select:
+
+| Status Check | Description |
+|--------------|-------------|
+| `Code Quality` | ESLint, TypeScript, Prettier checks |
+| `Test` | Unit tests with coverage thresholds |
+| `Build` | Production build verification |
+| `E2E Tests` | Playwright browser tests |
+
+✅ Enable **"Require branches to be up to date before merging"**
+
+#### Pull Request Requirements
+
+| Setting | Recommended Value |
+|---------|-------------------|
+| **Require a pull request before merging** | ✅ Enabled |
+| **Require approvals** | 1-2 (depending on team size) |
+| **Dismiss stale pull request approvals** | ✅ Enabled |
+| **Require review from Code Owners** | ✅ Enabled (if using CODEOWNERS) |
+| **Require approval of most recent push** | ✅ Enabled |
+
+#### Additional Protections
+
+| Setting | Recommended Value |
+|---------|-------------------|
+| **Require conversation resolution** | ✅ Enabled |
+| **Require signed commits** | Optional (for security-critical projects) |
+| **Require linear history** | Optional (prevents merge commits) |
+| **Do not allow bypassing** | ✅ Enabled (even for admins) |
+| **Restrict who can push** | Optional (limit to specific teams) |
+
+### Example Configuration
+
+```yaml
+# Branch protection for 'main' branch
+Branch name pattern: main
+
+✅ Require a pull request before merging
+  ├── Required approvals: 1
+  ├── ✅ Dismiss stale approvals when new commits are pushed
+  ├── ✅ Require review from Code Owners
+  └── ✅ Require approval of the most recent push
+
+✅ Require status checks to pass before merging
+  ├── ✅ Require branches to be up to date before merging
+  └── Status checks:
+      ├── Code Quality
+      ├── Test
+      ├── Build
+      └── E2E Tests
+
+✅ Require conversation resolution before merging
+
+✅ Do not allow bypassing the above settings
+```
+
+### CODEOWNERS File
+
+Create a `CODEOWNERS` file to automatically request reviews:
+
+```
+# .github/CODEOWNERS
+
+# Default owners for everything
+* @team-lead @senior-dev
+
+# Frontend components
+/src/components/ @frontend-team
+
+# Backend/Edge functions
+/supabase/ @backend-team
+
+# CI/CD configuration
+/.github/ @devops-team
+
+# Documentation
+*.md @docs-team
+```
+
+### Enforcement Tips
+
+1. **Start gradually**: Begin with required status checks only, then add review requirements
+2. **Use branch rulesets** (newer GitHub feature) for more granular control
+3. **Create environment protection rules** for production deployments
+4. **Enable required status checks for all branches** using wildcard patterns (e.g., `feature/*`)
+
+### Troubleshooting Branch Protection
+
+**"This branch has no upstream branch"**
+```bash
+git push -u origin feature/my-feature
+```
+
+**"Required status check is failing"**
+1. Check the Actions tab for failed workflow runs
+2. Fix the issues locally and push again
+3. Ensure your branch is up to date with main:
+   ```bash
+   git fetch origin
+   git rebase origin/main
+   ```
+
+**"Waiting for status checks"**
+- Some checks only run on PRs, not pushes
+- Ensure the workflow is triggered for your PR type
+
+---
+
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feat/my-feature`
