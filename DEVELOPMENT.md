@@ -443,6 +443,113 @@ git push -u origin feature/my-feature
 
 ---
 
+## Automated Releases
+
+This project uses automated semantic versioning based on [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Release Workflows
+
+We provide two release workflow options:
+
+| Workflow | File | Description |
+|----------|------|-------------|
+| **Custom Release** | `release.yml` | Immediate release on push to main |
+| **Release Please** | `release-please.yml` | Maintains a Release PR (recommended) |
+
+> **Note**: Enable only one workflow at a time. By default, use Release Please for better control.
+
+### How Release Please Works
+
+1. **Push to main** → Release Please analyzes your conventional commits
+2. **Creates/updates Release PR** → Shows pending version bump and changelog
+3. **Merge Release PR** → Creates GitHub Release with tag and changelog
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Push to     │────▶│ Release PR       │────▶│ Merge PR        │
+│ main        │     │ (auto-updated)   │     │ → GitHub Release│
+└─────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Conventional Commits Quick Reference
+
+| Type | Description | Version Bump |
+|------|-------------|--------------|
+| `feat:` | New feature | Minor (1.0.0 → 1.1.0) |
+| `fix:` | Bug fix | Patch (1.0.0 → 1.0.1) |
+| `feat!:` | Breaking change | Major (1.0.0 → 2.0.0) |
+| `BREAKING CHANGE` | In commit body | Major |
+| `docs:` | Documentation | None |
+| `style:` | Formatting | None |
+| `refactor:` | Code restructuring | None |
+| `perf:` | Performance improvement | Patch |
+| `test:` | Test changes | None |
+| `build:` | Build system changes | None |
+| `ci:` | CI/CD changes | None |
+| `chore:` | Maintenance | None |
+
+### Commit Examples
+
+```bash
+# Feature (minor version bump)
+git commit -m "feat: add dark mode toggle"
+git commit -m "feat(auth): implement OAuth2 login"
+
+# Bug fix (patch version bump)
+git commit -m "fix: resolve null pointer in user service"
+git commit -m "fix(api): handle timeout errors gracefully"
+
+# Breaking change (major version bump)
+git commit -m "feat!: redesign authentication API"
+git commit -m "refactor!: rename User to Account"
+
+# With body for more context
+git commit -m "feat: add export functionality
+
+Adds ability to export data in CSV and JSON formats.
+Includes progress indicator for large exports.
+
+Closes #123"
+
+# Breaking change in body
+git commit -m "refactor: update API response format
+
+BREAKING CHANGE: API responses now use camelCase instead of snake_case"
+```
+
+### Manual Release (if needed)
+
+Trigger a manual release via GitHub Actions:
+
+1. Go to **Actions** → **Release** (or **Release Please**)
+2. Click **Run workflow**
+3. Select release type (for custom workflow) or let it auto-detect
+
+### Release Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `.release-please-manifest.json` | Tracks current version |
+| `release-please-config.json` | Release Please configuration |
+| `.github/workflows/release.yml` | Custom release workflow |
+| `.github/workflows/release-please.yml` | Release Please workflow |
+
+### Choosing a Workflow
+
+**Use Release Please if:**
+- You want to review changes before releasing
+- Multiple features should be batched into one release
+- You prefer PR-based release approval
+
+**Use Custom Release if:**
+- You want immediate releases on every push
+- Single-developer project with frequent releases
+- Simpler setup without Release PR management
+
+To switch workflows, disable one and enable the other in GitHub Actions settings.
+
+---
+
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feat/my-feature`
