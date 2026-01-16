@@ -15,7 +15,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Plus, X, Tag } from 'lucide-react';
 import { useTagAutocomplete } from '@/hooks/useTagAutocomplete';
-import { cn } from '@/lib/utils';
 import { validateTag } from '@/utils/security';
 import { useToast } from '@/hooks/use-toast';
 

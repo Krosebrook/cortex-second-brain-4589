@@ -16,7 +16,7 @@ const waitFor = async (callback: () => void | Promise<void>, options = { timeout
 };
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { useDashboardData, DashboardStats, RecentActivity, UserGoal } from '../useDashboardData';
+import { useDashboardData } from '../useDashboardData';
 import { supabase } from '@/integrations/supabase/client';
 
 // Mock dependencies

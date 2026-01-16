@@ -11,10 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PresetCard } from './PresetCard';
 import { PresetEditDialog } from './PresetEditDialog';
-import { Search, Plus, Grid3x3, List } from 'lucide-react';
+import { Search, Grid3x3, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PresetManagementDialogProps {
@@ -28,8 +27,8 @@ export const PresetManagementDialog: React.FC<PresetManagementDialogProps> = ({
   onOpenChange,
   scope,
 }) => {
-  const { presets, updatePreset, deletePreset, duplicatePreset } = useFilterPresets(scope);
-  const { orderedPresets, reorder } = usePresetReorder(presets);
+const { presets, updatePreset, deletePreset, duplicatePreset } = useFilterPresets(scope);
+  const { orderedPresets } = usePresetReorder(presets);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [editPreset, setEditPreset] = useState<FilterPreset | null>(null);

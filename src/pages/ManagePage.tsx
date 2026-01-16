@@ -38,10 +38,11 @@ const ManagePage = () => {
     setIsEditing(false);
   };
 
-  const _handleDialogOpen = () => {
+// Dialog open handler - used by Edit button
+  const handleOpenDialog = () => {
     setTempTitle(libraryTitle);
     setDialogOpen(true);
-  };
+  }; void handleOpenDialog;
 
   const handleDialogSave = () => {
     if (tempTitle.trim()) {

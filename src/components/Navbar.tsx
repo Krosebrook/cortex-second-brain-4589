@@ -16,7 +16,6 @@ import {
   NavigationMenuItem,
   NavigationMenuList,
   NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -131,7 +130,7 @@ const SubMenuItem = ({ to, icon, label, active, onClick }: NavItemProps) => {
 
 export const Navbar = () => {
   const [active, setActive] = useState('what');
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 

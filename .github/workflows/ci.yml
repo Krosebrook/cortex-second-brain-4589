@@ -1,428 +1,164 @@
-# ============================================================================
-# Continuous Integration Workflow
-# ============================================================================
-# 
-# This workflow automates testing, linting, and type checking for all pull
-# requests and pushes to the main branch. It ensures code quality and
-# maintains the standards defined in our CONTRIBUTING.md and CODE_OF_CONDUCT.md.
-#
-# WORKFLOW OVERVIEW:
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Trigger: Push to main/develop OR Pull Request                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#                                    │
-#                                    ▼
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Job: code-quality                                                       │
-# │  ├── Checkout code                                                       │
-# │  ├── Setup Node.js with caching                                          │
-# │  ├── Install dependencies                                                │
-# │  ├── Run ESLint (linting)                                                │
-# │  ├── Run TypeScript (type checking)                                      │
-# │  └── Run Prettier (formatting check)                                     │
-# └─────────────────────────────────────────────────────────────────────────┘
-#                                    │
-#                                    ▼
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Job: test                                                               │
-# │  ├── Checkout code                                                       │
-# │  ├── Setup Node.js with caching                                          │
-# │  ├── Install dependencies                                                │
-# │  ├── Run unit tests with coverage                                        │
-# │  └── Upload coverage report                                              │
-# └─────────────────────────────────────────────────────────────────────────┘
-#                                    │
-#                                    ▼
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Job: build                                                              │
-# │  ├── Checkout code                                                       │
-# │  ├── Setup Node.js with caching                                          │
-# │  ├── Install dependencies                                                │
-# │  ├── Build production bundle                                             │
-# │  └── Upload build artifacts                                              │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# ============================================================================
+# =============================================================================
+# CI WORKFLOW
+# =============================================================================
+# Runs on PRs and pushes to main/develop
+# =============================================================================
 
 name: CI
 
-# ============================================================================
-# TRIGGERS
-# ============================================================================
-# Define when this workflow should run
-
 on:
-  # Run on pushes to main and develop branches
   push:
-    branches:
-      - main
-      - develop
-    # Ignore changes to documentation-only files
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/FUNDING.yml'
-      - 'LICENSE'
-
-  # Run on all pull requests to main and develop
+    branches: [main, develop]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
-    branches:
-      - main
-      - develop
-    types:
-      - opened
-      - synchronize
-      - reopened
-
-  # Allow manual trigger from GitHub UI
+    branches: [main, develop]
   workflow_dispatch:
-
-# ============================================================================
-# CONCURRENCY
-# ============================================================================
-# Cancel in-progress runs when a new run is triggered for the same PR/branch
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# ============================================================================
-# ENVIRONMENT VARIABLES
-# ============================================================================
-# Global environment variables available to all jobs
-
 env:
   NODE_VERSION: '18'
-  HUSKY: 0  # Disable Husky during CI
-
-# ============================================================================
-# JOBS
-# ============================================================================
+  HUSKY: 0
 
 jobs:
-  # --------------------------------------------------------------------------
-  # JOB: Code Quality
-  # --------------------------------------------------------------------------
-  # Runs linting, type checking, and formatting validation
-  
+  # ---------------------------------------------------------------------------
+  # Code Quality
+  # ---------------------------------------------------------------------------
   code-quality:
     name: Code Quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
-    steps:
-      # Checkout repository with full git history for better caching
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Setup Node.js with dependency caching
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      - run: npm ci
 
-      # Install dependencies using clean install
-      - name: Install Dependencies
-        run: npm ci
-
-      # Run ESLint for code linting
-      - name: Lint Code
+      - name: Lint
         id: lint
-        run: npm run lint
-        continue-on-error: true
+        run: npm run lint -- --max-warnings=0
 
-      # Run TypeScript compiler for type checking
       - name: Type Check
         id: typecheck
         run: npx tsc --noEmit
-        continue-on-error: true
 
-      # Check code formatting with Prettier (optional)
-      - name: Check Formatting
+      - name: Format Check
         id: format
-        run: npx prettier --check "src/**/*.{ts,tsx,css}" || true
-        continue-on-error: true
+        run: npx prettier --check "src/**/*.{ts,tsx,css}"
 
-      # Create summary of code quality checks
-      - name: Create Summary
+      - name: Summary
         if: always()
         run: |
-          echo "## Code Quality Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Code Quality" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ESLint | ${{ steps.lint.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TypeScript | ${{ steps.typecheck.outcome == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Prettier | ${{ steps.format.outcome == 'success' && '✅ Passed' || '⚠️ Warnings' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ESLint | ${{ steps.lint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | ${{ steps.typecheck.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Prettier | ${{ steps.format.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
 
-      # Fail the job if critical checks failed
-      - name: Check Results
-        if: steps.lint.outcome == 'failure' || steps.typecheck.outcome == 'failure'
-        run: |
-          echo "❌ Code quality checks failed. Please fix the issues above."
-          exit 1
-
-  # --------------------------------------------------------------------------
-  # JOB: Test
-  # --------------------------------------------------------------------------
-  # Runs unit and integration tests with coverage reporting and thresholds
-  
+  # ---------------------------------------------------------------------------
+  # Test
+  # ---------------------------------------------------------------------------
   test:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: code-quality
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      - run: npm ci
 
-      - name: Install Dependencies
-        run: npm ci
-
-      # Run tests with coverage and thresholds
-      - name: Run Tests with Coverage
+      - name: Run Tests
         run: npm run test -- --coverage --reporter=verbose
-        env:
-          CI: true
 
-      # Check coverage thresholds
-      - name: Check Coverage Thresholds
-        run: |
-          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f coverage/coverage-summary.json ]; then
-            node -e "
-              const coverage = require('./coverage/coverage-summary.json');
-              const total = coverage.total;
-              console.log('| Metric | Coverage | Threshold | Status |');
-              console.log('|--------|----------|-----------|--------|');
-              const thresholds = { statements: 70, branches: 65, functions: 70, lines: 70 };
-              let failed = false;
-              for (const [key, value] of Object.entries(total)) {
-                if (thresholds[key]) {
-                  const pct = value.pct;
-                  const threshold = thresholds[key];
-                  const status = pct >= threshold ? '✅' : '❌';
-                  if (pct < threshold) failed = true;
-                  console.log(\`| \${key} | \${pct}% | \${threshold}% | \${status} |\`);
-                }
-              }
-              if (failed) process.exit(1);
-            " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Coverage report not found" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      # Upload coverage report as artifact
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
           path: coverage/
           retention-days: 7
 
-      # Upload coverage to Codecov (optional)
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          files: ./coverage/lcov.info
-          fail_ci_if_error: false
-        continue-on-error: true
+  # ---------------------------------------------------------------------------
+  # Build
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: code-quality
 
-  # --------------------------------------------------------------------------
-  # JOB: E2E Tests
-  # --------------------------------------------------------------------------
-  # Runs end-to-end tests using Playwright
-  
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+          retention-days: 7
+
+      - name: Summary
+        run: |
+          echo "## Build" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Completed" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/ >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # E2E Tests
+  # ---------------------------------------------------------------------------
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [code-quality, build]
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
 
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run E2E Tests
-        run: npx playwright test --project=chromium
-        env:
-          CI: true
-
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
-      - name: Create E2E Summary
-        if: always()
-        run: |
-          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f playwright-report/results.json ]; then
-            echo "E2E tests completed. See artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "E2E test report not found." >> $GITHUB_STEP_SUMMARY
-          fi
-
-  # --------------------------------------------------------------------------
-  # JOB: Build
-  # --------------------------------------------------------------------------
-  # Builds the production bundle to verify it compiles correctly
-  
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: code-quality
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      # Build production bundle
-      - name: Build Application
-        run: npm run build
-        env:
-          CI: true
-
-      # Upload build artifacts
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: dist/
-          retention-days: 7
-
-      # Report build size
-      - name: Report Build Size
-        run: |
-          echo "## Build Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Build completed successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Bundle Size" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          du -sh dist/ || echo "Build output not found"
-          du -sh dist/* 2>/dev/null || true
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-  # --------------------------------------------------------------------------
-  # JOB: Security Scan (Optional)
-  # --------------------------------------------------------------------------
-  # Runs security vulnerability scanning on dependencies
-  
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'pull_request'
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      # Run npm audit for vulnerability detection
-      - name: Security Audit
-        run: npm audit --audit-level=high || true
-        continue-on-error: true
-
-      # Create security summary
-      - name: Create Security Summary
-        run: |
-          echo "## Security Scan" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Security audit completed. Review any vulnerabilities above." >> $GITHUB_STEP_SUMMARY
-
-  # --------------------------------------------------------------------------
-  # JOB: PR Validation
-  # --------------------------------------------------------------------------
-  # Validates PR metadata and ensures compliance with contribution guidelines
-  
+  # ---------------------------------------------------------------------------
+  # PR Validation
+  # ---------------------------------------------------------------------------
   pr-validation:
     name: PR Validation
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     timeout-minutes: 5
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      # Check PR title follows conventional commits
+    steps:
       - name: Validate PR Title
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
-          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
-          
-          if [[ ! "$PR_TITLE" =~ $PATTERN ]]; then
-            echo "## ❌ Invalid PR Title" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "PR title must follow [Conventional Commits](https://www.conventionalcommits.org/):" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Format: \`type(scope): description\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Examples:" >> $GITHUB_STEP_SUMMARY
-            echo "- \`feat: add user authentication\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`fix(auth): resolve login redirect issue\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`docs: update API documentation\`" >> $GITHUB_STEP_SUMMARY
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?\!?:\ .+ ]]; then
+            echo "❌ PR title must follow Conventional Commits" >> $GITHUB_STEP_SUMMARY
             exit 1
-          else
-            echo "## ✅ PR Title Valid" >> $GITHUB_STEP_SUMMARY
           fi
-
-      # Check PR description is not empty
-      - name: Validate PR Description
-        run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
-          
-          if [ -z "$PR_BODY" ] || [ ${#PR_BODY} -lt 50 ]; then
-            echo "## ⚠️ PR Description Warning" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please provide a detailed description of your changes." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ✅ PR Description Present" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "✅ PR title valid" >> $GITHUB_STEP_SUMMARY

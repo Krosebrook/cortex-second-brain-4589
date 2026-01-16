@@ -75,7 +75,7 @@ export const ShortcutsHelpDialog: React.FC<ShortcutsHelpDialogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [printMode, setPrintMode] = useState(false);
-  const { usageStats, getMostUsed, trackShortcut, resetStats } = useShortcutTracking();
+  const { usageStats, getMostUsed, resetStats } = useShortcutTracking();
 
   const contextualShortcuts = useMemo(() => {
     if (!context || activeTab !== 'context') return shortcuts;

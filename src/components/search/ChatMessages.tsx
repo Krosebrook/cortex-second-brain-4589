@@ -1,6 +1,4 @@
-
-import React from 'react';
-import { User, Bot } from 'lucide-react';
+import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnimatedTransition from '@/components/AnimatedTransition';
 import { Chat, ChatMessage } from '@/types/chat';

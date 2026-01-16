@@ -5,7 +5,7 @@
  * with action buttons, progress bars, and undo functionality.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { enhancedToast } from '../EnhancedToast';
 import { Button } from '@/components/ui/button';
 

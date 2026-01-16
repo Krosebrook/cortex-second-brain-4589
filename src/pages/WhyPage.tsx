@@ -32,8 +32,8 @@ const WhySection = ({
 };
 
 const WhyPage = () => {
-  const [_loading, setLoading] = useState(true);
-  const _showContent = useAnimateIn(false, 300);
+const [_loading, setLoading] = useState(true);
+  useAnimateIn(false, 300);
   
   useEffect(() => {
     // Simulate loading

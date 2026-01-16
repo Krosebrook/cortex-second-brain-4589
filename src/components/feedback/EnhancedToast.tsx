@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X, Undo } from 'lucide-react';
 import { toast as sonnerToast, ExternalToast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
