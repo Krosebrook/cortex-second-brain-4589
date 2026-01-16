@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Generated files
+*.min.js
+*.min.css
+bun.lockb
+package-lock.json
+
+# Supabase
+supabase/.temp/
+
+# Test outputs
+playwright-report/
+test-results/
+
+# Config files that shouldn't be formatted
+*.md
+*.json
+*.yaml
+*.yml

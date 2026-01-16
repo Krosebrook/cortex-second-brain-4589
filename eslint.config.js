@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
+import eslintConfigPrettier from "eslint-config-prettier";
 
 export default tseslint.config(
   { ignores: ["dist", "node_modules", "coverage", "playwright-report", "test-results"] },
@@ -79,5 +80,7 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.node,
     },
-  }
+  },
+  // Prettier must be last to override conflicting rules
+  eslintConfigPrettier
 );
