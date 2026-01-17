@@ -41,37 +41,80 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
 
+  /* Snapshot configuration for visual regression tests */
+  snapshotDir: './e2e/__snapshots__',
+  snapshotPathTemplate: '{snapshotDir}/{testFilePath}/{arg}{ext}',
+  
+  expect: {
+    /* Visual comparison settings */
+    toHaveScreenshot: {
+      /* Threshold for pixel comparison (0-1) */
+      maxDiffPixelRatio: 0.1,
+      /* Animation handling */
+      animations: 'disabled',
+      /* Scale for comparison */
+      scale: 'device',
+    },
+    toMatchSnapshot: {
+      maxDiffPixelRatio: 0.1,
+    },
+  },
+
   /* Configure projects for major browsers */
   projects: [
+    /* Visual regression testing - Chromium only for consistency */
+    {
+      name: 'visual-chromium',
+      testMatch: '**/admin-dashboard-visual.spec.ts',
+      use: { 
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1920, height: 1080 },
+        /* Consistent rendering for visual tests */
+        deviceScaleFactor: 1,
+        hasTouch: false,
+        isMobile: false,
+        /* Disable animations for consistent screenshots */
+        launchOptions: {
+          args: ['--font-render-hinting=none', '--disable-skia-runtime-opts'],
+        },
+      },
+    },
+
+    /* Standard E2E tests */
     {
       name: 'chromium',
+      testIgnore: '**/admin-dashboard-visual.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
 
     {
       name: 'firefox',
+      testIgnore: '**/admin-dashboard-visual.spec.ts',
       use: { ...devices['Desktop Firefox'] },
     },
 
     {
       name: 'webkit',
+      testIgnore: '**/admin-dashboard-visual.spec.ts',
       use: { ...devices['Desktop Safari'] },
     },
 
     /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
+      testIgnore: '**/admin-dashboard-visual.spec.ts',
       use: { ...devices['Pixel 5'] },
     },
     {
       name: 'Mobile Safari',
+      testIgnore: '**/admin-dashboard-visual.spec.ts',
       use: { ...devices['iPhone 12'] },
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run build && npm run preview',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

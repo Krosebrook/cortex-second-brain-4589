@@ -1,0 +1,290 @@
+# =============================================================================
+# VISUAL REGRESSION TESTS WORKFLOW
+# =============================================================================
+# Runs visual regression tests on PRs with baseline image management
+# Automatically updates baselines when approved
+# =============================================================================
+
+name: Visual Regression Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/components/**'
+      - 'src/pages/**'
+      - 'src/index.css'
+      - 'tailwind.config.ts'
+      - 'e2e/**visual**.spec.ts'
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Update baseline snapshots'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '18'
+  HUSKY: 0
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Visual Regression Tests
+  # ---------------------------------------------------------------------------
+  visual-tests:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Run Visual Regression Tests
+        id: visual-tests
+        run: |
+          npx playwright test --project=visual-chromium --reporter=html,json
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      - name: Upload Diff Images
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diff-images
+          path: |
+            e2e/**/*-diff.png
+            e2e/**/*-actual.png
+            test-results/**/*-diff.png
+            test-results/**/*-actual.png
+          retention-days: 14
+
+      - name: Comment on PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read test results
+            let resultsPath = 'playwright-report/results.json';
+            let results = { suites: [] };
+            
+            if (fs.existsSync(resultsPath)) {
+              results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+            }
+            
+            // Calculate stats
+            const specs = results.suites || [];
+            let passed = 0;
+            let failed = 0;
+            let skipped = 0;
+            
+            const countTests = (suite) => {
+              if (suite.specs) {
+                suite.specs.forEach(spec => {
+                  spec.tests?.forEach(test => {
+                    if (test.status === 'expected') passed++;
+                    else if (test.status === 'unexpected') failed++;
+                    else if (test.status === 'skipped') skipped++;
+                  });
+                });
+              }
+              if (suite.suites) {
+                suite.suites.forEach(countTests);
+              }
+            };
+            
+            specs.forEach(countTests);
+            
+            const total = passed + failed + skipped;
+            const status = failed > 0 ? '❌' : '✅';
+            
+            // Build comment body
+            let body = `## ${status} Visual Regression Test Results\n\n`;
+            body += `| Metric | Count |\n`;
+            body += `|--------|-------|\n`;
+            body += `| ✅ Passed | ${passed} |\n`;
+            body += `| ❌ Failed | ${failed} |\n`;
+            body += `| ⏭️ Skipped | ${skipped} |\n`;
+            body += `| 📊 Total | ${total} |\n\n`;
+            
+            if (failed > 0) {
+              body += `### ⚠️ Visual Differences Detected\n\n`;
+              body += `Some screenshots have changed. Please review the differences:\n\n`;
+              body += `1. Download the \`visual-diff-images\` artifact to see the differences\n`;
+              body += `2. If the changes are intentional, update baselines by:\n`;
+              body += `   - Running \`npx playwright test --update-snapshots\` locally\n`;
+              body += `   - Committing the updated baseline images\n`;
+              body += `   - Or triggering the "Update Baselines" workflow\n\n`;
+            } else if (passed > 0) {
+              body += `### ✅ All Visual Tests Passed\n\n`;
+              body += `No visual regressions detected. Screenshots match the baselines.\n\n`;
+            }
+            
+            body += `📁 [View Full Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Visual Regression Test Results')
+            );
+            
+            // Update or create comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Check Test Results
+        if: steps.visual-tests.outcome == 'failure'
+        run: |
+          echo "## ❌ Visual Regression Tests Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Some screenshots differ from baselines." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the diff images in the artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "2. If changes are intentional, update baselines" >> $GITHUB_STEP_SUMMARY
+          echo "3. Re-run this workflow after updating" >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: Success Summary
+        if: steps.visual-tests.outcome == 'success'
+        run: |
+          echo "## ✅ Visual Regression Tests Passed" >> $GITHUB_STEP_SUMMARY
+          echo "All screenshots match their baselines." >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Update Baselines (Manual Trigger)
+  # ---------------------------------------------------------------------------
+  update-baselines:
+    name: Update Baseline Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event.inputs.update_snapshots == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Update Snapshots
+        run: npx playwright test --project=visual-chromium --update-snapshots
+
+      - name: Commit Updated Baselines
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Add all snapshot files
+          git add "e2e/**/*.png"
+          git add "**/*-snapshots/**/*.png"
+          
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "No baseline changes to commit"
+          else
+            git commit -m "chore: update visual regression baselines [skip ci]"
+            git push
+            echo "## ✅ Baselines Updated" >> $GITHUB_STEP_SUMMARY
+            echo "New baseline images have been committed." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Baseline Comparison Report
+  # ---------------------------------------------------------------------------
+  generate-report:
+    name: Generate Comparison Report
+    runs-on: ubuntu-latest
+    needs: visual-tests
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+      - name: Download Test Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: visual-regression-report
+          path: report/
+
+      - name: Generate Report Summary
+        run: |
+          echo "## 📊 Visual Regression Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "report/results.json" ]; then
+            # Parse and display results
+            PASSED=$(cat report/results.json | jq '[.. | .status? // empty | select(. == "expected")] | length')
+            FAILED=$(cat report/results.json | jq '[.. | .status? // empty | select(. == "unexpected")] | length')
+            
+            echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No results found" >> $GITHUB_STEP_SUMMARY
+          fi
