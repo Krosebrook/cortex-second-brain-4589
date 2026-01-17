@@ -3,8 +3,8 @@
  * Tracks rate limit hits, API latency, and usage patterns
  */
 
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { 
   BarChart, 
   Bar, 
@@ -62,6 +63,45 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--muted-fo
 
 export function UsageMonitoringDashboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+  const [isLive, setIsLive] = useState(true);
+  const queryClient = useQueryClient();
+
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!isLive) return;
+
+    const channel = supabase
+      .channel('usage-tracking-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'usage_tracking',
+        },
+        (payload) => {
+          // Invalidate query to refresh data
+          queryClient.invalidateQueries({ queryKey: ['usage-monitoring'] });
+          
+          // Show toast for rate limit events
+          const newData = payload.new as UsageData;
+          if (newData.metadata?.rate_limited) {
+            toast.warning(`Rate limit hit: ${newData.feature}`, {
+              description: 'A request was blocked due to rate limiting',
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLive, queryClient]);
+
+  const toggleLive = useCallback(() => {
+    setIsLive(prev => !prev);
+  }, []);
 
   const getDateRange = (range: TimeRange) => {
     const now = new Date();
@@ -224,6 +264,18 @@ export function UsageMonitoringDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant={isLive ? "default" : "outline"} 
+            size="sm"
+            onClick={toggleLive}
+            className="gap-2"
+          >
+            <span className={cn(
+              "h-2 w-2 rounded-full",
+              isLive ? "bg-green-500 animate-pulse" : "bg-muted-foreground"
+            )} />
+            {isLive ? 'Live' : 'Paused'}
+          </Button>
           <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
             <SelectTrigger className="w-32">
               <SelectValue />

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import { RateLimitSettings } from '@/components/admin/RateLimitSettings';
 import { FailedLoginAttempts } from '@/components/admin/FailedLoginAttempts';
+import { UsageMonitoringDashboard } from '@/components/admin/UsageMonitoringDashboard';
 import { cn } from '@/lib/utils';
 import { 
   Shield, 
@@ -100,6 +101,11 @@ const AdminDashboard = () => {
         {/* Rate Limit Settings */}
         <div className="mb-8">
           <RateLimitSettings />
+        </div>
+
+        {/* Usage Monitoring Dashboard */}
+        <div className="mb-8">
+          <UsageMonitoringDashboard />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
