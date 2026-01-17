@@ -35,6 +35,10 @@ export { useChat } from './useChat';
 export { useKnowledge } from './useKnowledge';
 export { useProfile } from './useProfile';
 
+// Admin and security hooks
+export { useAdminDashboard } from './useAdminDashboard';
+export { useRateLimitConfig } from './useRateLimitConfig';
+export { useFailedLoginAttempts } from './useFailedLoginAttempts';
 
 // Filter and search hooks
 export { useSearchFilter } from './useSearchFilter';

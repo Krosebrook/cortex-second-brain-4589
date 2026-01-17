@@ -206,11 +206,14 @@ theme: {
 │  │ - Users  │  │  │ - RLS   │  │  │ - chat-with-tessa-  │  │
 │  │ - OAuth  │  │  │ - Funcs │  │  │   secure            │  │
 │  └──────────┘  │  └─────────┘  │  │ - system-status     │  │
+│                │               │  │ - ip-geolocation    │  │
 │                │               │  └─────────────────────┘  │
 └────────────────┴───────────────┴───────────────────────────┘
 ```
 
 ### Database Schema (Key Tables)
+
+#### Core Tables
 
 ```
 ┌─────────────────┐     ┌─────────────────┐
@@ -245,6 +248,50 @@ theme: {
 │ is_default      │
 │ sort_order      │
 └─────────────────┘
+```
+
+#### Security Tables
+
+```
+┌───────────────────────┐     ┌───────────────────────┐
+│ failed_login_attempts │     │     blocked_ips       │
+├───────────────────────┤     ├───────────────────────┤
+│ id (PK)               │     │ id (PK)               │
+│ email                 │     │ ip_address            │
+│ ip_address            │     │ reason                │
+│ user_agent            │     │ blocked_until         │
+│ attempted_at          │     │ permanent             │
+│ country               │     │ blocked_by_user_id    │
+│ city                  │     │ created_at            │
+│ region                │     └───────────────────────┘
+│ country_code          │
+└───────────────────────┘
+
+┌───────────────────────┐     ┌───────────────────────┐
+│   security_alerts     │     │   rate_limit_config   │
+├───────────────────────┤     ├───────────────────────┤
+│ id (PK)               │     │ id (PK)               │
+│ alert_type            │     │ config_key            │
+│ severity              │     │ max_attempts          │
+│ ip_address            │     │ time_window_minutes   │
+│ user_id               │     │ block_duration_minutes│
+│ event_data (JSON)     │     │ enabled               │
+│ triggered_at          │     │ updated_at            │
+│ email_sent            │     └───────────────────────┘
+└───────────────────────┘
+
+┌───────────────────────┐
+│    ip_geolocation     │
+├───────────────────────┤
+│ ip_address (PK)       │
+│ country               │
+│ country_code          │
+│ region                │
+│ city                  │
+│ latitude              │
+│ longitude             │
+│ cached_at             │
+└───────────────────────┘
 ```
 
 ### Edge Function Flow
@@ -458,6 +505,67 @@ USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own knowledge"
 ON knowledge_base FOR INSERT
 WITH CHECK (auth.uid() = user_id);
+```
+
+### Rate Limiting Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Rate Limiting Flow                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────────┐
+        │        Failed Login Attempt              │
+        │    (AuthPage → record_failed_login)      │
+        └─────────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────────┐
+        │     check_and_block_ip() Trigger         │
+        │  • Check rate_limit_config settings      │
+        │  • Count attempts in time window         │
+        └─────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+     ┌─────────────────┐            ┌─────────────────┐
+     │ Under Threshold │            │ Over Threshold  │
+     │ (Allow access)  │            │ (Block IP)      │
+     └─────────────────┘            └────────┬────────┘
+                                             │
+                                             ▼
+                                  ┌─────────────────────┐
+                                  │ Insert blocked_ips  │
+                                  │ Log security_event  │
+                                  └─────────────────────┘
+```
+
+### IP Geolocation Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               ip-geolocation Edge Function                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────────┐
+        │       Check ip_geolocation cache         │
+        └─────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+     ┌─────────────────┐            ┌─────────────────┐
+     │   Cache Hit     │            │   Cache Miss    │
+     │ (Return cached) │            │ (Lookup IP)     │
+     └─────────────────┘            └────────┬────────┘
+                                             │
+                                             ▼
+                                  ┌─────────────────────┐
+                                  │  ip-api.com lookup  │
+                                  │  Cache result       │
+                                  │  Return geolocation │
+                                  └─────────────────────┘
 ```
 
 ---
