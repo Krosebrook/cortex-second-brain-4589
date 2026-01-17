@@ -80,6 +80,7 @@ const mockThreatResponses: ThreatResponse[] = [
   {
     id: 'response-1',
     rule_id: 'rule-1',
+    event_id: 'event-1',
     action_taken: 'blocked_ip',
     success: true,
     executed_at: new Date().toISOString(),

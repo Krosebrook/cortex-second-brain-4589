@@ -2,68 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { formatTimeAgo, getStartOfToday } from '@/lib/time-utils';
+import type { 
+  SecurityAlert, 
+  BlockedIP, 
+  ThreatResponse, 
+  UserActivity, 
+  SecurityStats 
+} from '@/types/security';
 
-export interface SecurityAlert {
-  id: string;
-  alert_type: string;
-  severity: string;
-  ip_address: string;
-  user_id: string | null;
-  event_data: Record<string, unknown>;
-  triggered_at: string;
-  email_sent: boolean;
-}
-
-export interface BlockedIP {
-  id: string;
-  ip_address: string;
-  reason: string;
-  blocked_until: string | null;
-  permanent: boolean;
-  blocked_by_user_id: string | null;
-  created_at: string;
-}
-
-export interface ThreatResponse {
-  id: string;
-  rule_id: string | null;
-  action_taken: string;
-  success: boolean;
-  executed_at: string;
-  reversed_at: string | null;
-}
-
-export interface UserActivity {
-  id: string;
-  user_id: string;
-  activity_type: string;
-  activity_data: Record<string, unknown>;
-  ip_address: string;
-  user_agent: string | null;
-  created_at: string;
-}
-
-export interface SecurityStats {
-  totalAlerts: number;
-  criticalAlerts: number;
-  blockedIPs: number;
-  activeThreats: number;
-  recentActivities: number;
-}
-
-function formatTimeAgo(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return 'Just now';
-}
+const STALE_TIME = 30000; // 30 seconds
 
 export function useAdminDashboard() {
   const { user, isAuthenticated } = useAuth();
@@ -93,15 +41,14 @@ export function useAdminDashboard() {
   const statsQuery = useQuery({
     queryKey: ['admin-security-stats'],
     queryFn: async (): Promise<SecurityStats> => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStart = getStartOfToday();
 
       const [alertsResult, criticalResult, blockedResult, threatsResult, activitiesResult] = await Promise.all([
         supabase.from('security_alerts').select('id', { count: 'exact', head: true }),
         supabase.from('security_alerts').select('id', { count: 'exact', head: true }).eq('severity', 'critical'),
         supabase.from('blocked_ips').select('id', { count: 'exact', head: true }),
         supabase.from('threat_responses').select('id', { count: 'exact', head: true }).eq('success', true),
-        supabase.from('user_activity').select('id', { count: 'exact', head: true }).gte('created_at', today.toISOString())
+        supabase.from('user_activity').select('id', { count: 'exact', head: true }).gte('created_at', todayStart)
       ]);
 
       return {
@@ -113,7 +60,7 @@ export function useAdminDashboard() {
       };
     },
     enabled: isAdmin,
-    staleTime: 30000,
+    staleTime: STALE_TIME,
   });
 
   // Fetch security alerts
@@ -131,10 +78,10 @@ export function useAdminDashboard() {
         ...alert,
         ip_address: String(alert.ip_address),
         event_data: alert.event_data as Record<string, unknown>
-      }));
+      })) as SecurityAlert[];
     },
     enabled: isAdmin,
-    staleTime: 30000,
+    staleTime: STALE_TIME,
   });
 
   // Fetch blocked IPs
@@ -153,7 +100,7 @@ export function useAdminDashboard() {
       }));
     },
     enabled: isAdmin,
-    staleTime: 30000,
+    staleTime: STALE_TIME,
   });
 
   // Fetch threat responses
@@ -170,7 +117,7 @@ export function useAdminDashboard() {
       return data || [];
     },
     enabled: isAdmin,
-    staleTime: 30000,
+    staleTime: STALE_TIME,
   });
 
   // Fetch user activity
@@ -191,7 +138,7 @@ export function useAdminDashboard() {
       }));
     },
     enabled: isAdmin,
-    staleTime: 30000,
+    staleTime: STALE_TIME,
   });
 
   // Block IP mutation
@@ -246,6 +193,14 @@ export function useAdminDashboard() {
     }
   });
 
+  const refetchAll = () => {
+    statsQuery.refetch();
+    alertsQuery.refetch();
+    blockedIPsQuery.refetch();
+    threatResponsesQuery.refetch();
+    userActivityQuery.refetch();
+  };
+
   return {
     isAdmin,
     isCheckingAdmin: isAdminQuery.isLoading,
@@ -267,12 +222,9 @@ export function useAdminDashboard() {
     isBlocking: blockIPMutation.isPending,
     isUnblocking: unblockIPMutation.isPending,
     formatTimeAgo,
-    refetch: () => {
-      statsQuery.refetch();
-      alertsQuery.refetch();
-      blockedIPsQuery.refetch();
-      threatResponsesQuery.refetch();
-      userActivityQuery.refetch();
-    }
+    refetch: refetchAll
   };
 }
+
+// Re-export types for convenience
+export type { SecurityAlert, BlockedIP, ThreatResponse, UserActivity, SecurityStats };

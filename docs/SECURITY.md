@@ -433,9 +433,78 @@ if (req.method === 'OPTIONS') {
 
 ### Rate Limiting
 
-- Implement rate limiting on sensitive endpoints
-- Use exponential backoff for failed requests
-- Monitor for unusual traffic patterns
+The platform includes automatic rate limiting for failed login attempts:
+
+#### Database Configuration
+
+Rate limiting is configured via the `rate_limit_config` table:
+
+```sql
+-- Default configuration for failed logins
+INSERT INTO rate_limit_config (config_key, max_attempts, time_window_minutes, block_duration_minutes, enabled)
+VALUES ('failed_login', 5, 15, 60, true);
+```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `max_attempts` | 5 | Failed attempts before blocking |
+| `time_window_minutes` | 15 | Window to count attempts |
+| `block_duration_minutes` | 60 | How long to block the IP |
+| `enabled` | true | Toggle rate limiting on/off |
+
+#### Automatic IP Blocking
+
+When an IP exceeds the threshold, it's automatically blocked:
+
+```sql
+-- Database function automatically:
+-- 1. Records the failed login attempt
+-- 2. Checks if threshold exceeded
+-- 3. Blocks IP in blocked_ips table
+-- 4. Logs a security_event
+```
+
+#### Admin Dashboard
+
+Administrators can manage rate limiting from the Admin Dashboard:
+- View recent failed login attempts with geolocation
+- Configure rate limiting thresholds
+- Manually block/unblock IP addresses
+- Monitor security alerts and threat responses
+
+#### IP Geolocation
+
+Failed login attempts include geolocation data:
+- Country, region, city
+- Country flag emoji display
+- Cached geolocation lookups for performance
+
+#### Client-Side Integration
+
+```typescript
+// AuthPage.tsx automatically records failed attempts
+const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+if (error) {
+  const { data: result } = await supabase.rpc('record_failed_login', {
+    p_email: email,
+    p_ip_address: '0.0.0.0', // Server logs actual IP
+    p_user_agent: navigator.userAgent
+  });
+  
+  if (result?.blocked) {
+    // Show blocked message to user
+  }
+}
+```
+
+#### Best Practices
+
+- ✅ Use exponential backoff for failed requests
+- ✅ Monitor rate limit triggers in admin dashboard
+- ✅ Configure appropriate thresholds for your use case
+- ✅ Review blocked IPs regularly for false positives
+- ✅ Enable email notifications for critical security events
 
 ---
 
