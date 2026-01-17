@@ -5,6 +5,13 @@ All notable changes to Cortex will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-01-17)
+
+
+### Features
+
+* add automated branch cleanup workflow and documentation ([52c81a3](https://github.com/Krosebrook/cortex-second-brain-4589/commit/52c81a3b4600db89abc655430d1366d327e83583))
+
 ## [Unreleased]
 
 ### Planned
