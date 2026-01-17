@@ -5,4 +5,6 @@
 
 export { ChatService, ChatServiceImpl } from './chat.service';
 export { KnowledgeService, KnowledgeServiceImpl } from './knowledge.service';
+export { AdminService, AdminServiceImpl } from './admin.service';
+export { NotificationService, NotificationServiceImpl } from './notification.service';
 export { BaseService, handleSupabaseResult, handleSupabaseArrayResult } from './base.service';
