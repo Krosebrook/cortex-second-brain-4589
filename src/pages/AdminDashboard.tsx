@@ -8,6 +8,8 @@ import { PageWrapper } from '@/components/layout/PageWrapper';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
+import { RateLimitSettings } from '@/components/admin/RateLimitSettings';
+import { FailedLoginAttempts } from '@/components/admin/FailedLoginAttempts';
 import { cn } from '@/lib/utils';
 import { 
   Shield, 
@@ -95,7 +97,14 @@ const AdminDashboard = () => {
           ))}
         </div>
 
+        {/* Rate Limit Settings */}
+        <div className="mb-8">
+          <RateLimitSettings />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Failed Login Attempts */}
+          <FailedLoginAttempts />
           {/* Security Alerts */}
           <Card className="border-border/50">
             <CardHeader>

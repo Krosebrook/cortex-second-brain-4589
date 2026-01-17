@@ -586,23 +586,35 @@ export type Database = {
       failed_login_attempts: {
         Row: {
           attempted_at: string
+          city: string | null
+          country: string | null
+          country_code: string | null
           email: string
           id: string
           ip_address: unknown
+          region: string | null
           user_agent: string | null
         }
         Insert: {
           attempted_at?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
           email: string
           id?: string
           ip_address?: unknown
+          region?: string | null
           user_agent?: string | null
         }
         Update: {
           attempted_at?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
           email?: string
           id?: string
           ip_address?: unknown
+          region?: string | null
           user_agent?: string | null
         }
         Relationships: []
@@ -1151,6 +1163,39 @@ export type Database = {
           },
         ]
       }
+      rate_limit_config: {
+        Row: {
+          block_duration_minutes: number
+          config_key: string
+          enabled: boolean
+          id: string
+          max_attempts: number
+          time_window_minutes: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          block_duration_minutes?: number
+          config_key: string
+          enabled?: boolean
+          id?: string
+          max_attempts?: number
+          time_window_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          block_duration_minutes?: number
+          config_key?: string
+          enabled?: boolean
+          id?: string
+          max_attempts?: number
+          time_window_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       scheduled_reports: {
         Row: {
           created_at: string
@@ -1687,6 +1732,18 @@ export type Database = {
     }
     Functions: {
       bootstrap_admin: { Args: { target_user: string }; Returns: undefined }
+      cache_ip_geolocation: {
+        Args: {
+          p_city?: string
+          p_country?: string
+          p_country_code?: string
+          p_ip_address: string
+          p_latitude?: number
+          p_longitude?: number
+          p_region?: string
+        }
+        Returns: undefined
+      }
       create_notification: {
         Args: {
           p_action_url?: string
@@ -1736,10 +1793,27 @@ export type Database = {
         Args: { notification_id: string }
         Returns: undefined
       }
-      record_failed_login: {
-        Args: { p_email: string; p_ip_address: string; p_user_agent?: string }
-        Returns: Json
-      }
+      record_failed_login:
+        | {
+            Args: {
+              p_email: string
+              p_ip_address: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_city?: string
+              p_country?: string
+              p_country_code?: string
+              p_email: string
+              p_ip_address: string
+              p_region?: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
       user_can_create_project: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {
