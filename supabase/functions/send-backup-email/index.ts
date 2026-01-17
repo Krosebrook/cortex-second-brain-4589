@@ -125,7 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
     const attachments = format === 'json' ? [
       {
         filename: `cortex-backup-${new Date().toISOString().split('T')[0]}.json`,
-        content: Buffer.from(JSON.stringify(backupData, null, 2)).toString('base64'),
+        content: btoa(JSON.stringify(backupData, null, 2)),
       }
     ] : undefined;
 
