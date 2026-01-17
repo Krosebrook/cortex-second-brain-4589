@@ -15,32 +15,56 @@ class ChatServiceImpl extends BaseService {
   }
 
   /**
-   * Load all chats for a user
+   * Load all chats for a user with batch-loaded messages (fixes N+1 query pattern)
    */
   async loadChats(userId: string): Promise<Chat[]> {
     return this.executeWithRetry('loadChats', async () => {
       try {
-        const result = await supabase
+        // Step 1: Load all chats
+        const chatsResult = await supabase
           .from('chats')
           .select('*')
           .eq('user_id', userId)
           .is('deleted_at', null)
           .order('updated_at', { ascending: false });
 
-        const chatsData = handleSupabaseArrayResult(result);
+        const chatsData = handleSupabaseArrayResult(chatsResult);
 
-        const formattedChats: Chat[] = await Promise.all(
-          chatsData.map(async (chat) => {
-            const messages = await this.loadMessages(chat.id);
-            return {
-              id: chat.id,
-              title: chat.title,
-              messages,
-              createdAt: new Date(chat.created_at),
-              updatedAt: new Date(chat.updated_at),
-            };
-          })
-        );
+        if (chatsData.length === 0) {
+          return [];
+        }
+
+        // Step 2: Batch load all messages for all chats in a single query
+        const chatIds = chatsData.map(chat => chat.id);
+        const messagesResult = await supabase
+          .from('messages')
+          .select('*')
+          .in('chat_id', chatIds)
+          .order('created_at', { ascending: true });
+
+        const messagesData = handleSupabaseArrayResult(messagesResult);
+
+        // Step 3: Group messages by chat_id
+        const messagesByChatId = new Map<string, ChatMessage[]>();
+        for (const msg of messagesData) {
+          const chatMessages = messagesByChatId.get(msg.chat_id) || [];
+          chatMessages.push({
+            id: msg.id,
+            type: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+          });
+          messagesByChatId.set(msg.chat_id, chatMessages);
+        }
+
+        // Step 4: Format chats with their messages
+        const formattedChats: Chat[] = chatsData.map((chat) => ({
+          id: chat.id,
+          title: chat.title,
+          messages: messagesByChatId.get(chat.id) || [],
+          createdAt: new Date(chat.created_at),
+          updatedAt: new Date(chat.updated_at),
+        }));
 
         // Cache for offline use
         await offlineStorage.storeChats(formattedChats);
@@ -71,6 +95,39 @@ class ChatServiceImpl extends BaseService {
         content: msg.content,
         timestamp: new Date(msg.created_at),
       }));
+    });
+  }
+
+  /**
+   * Batch load messages for multiple chats in a single query
+   */
+  async loadMessagesForChats(chatIds: string[]): Promise<Map<string, ChatMessage[]>> {
+    return this.executeWithRetry('loadMessagesForChats', async () => {
+      if (chatIds.length === 0) {
+        return new Map();
+      }
+
+      const result = await supabase
+        .from('messages')
+        .select('*')
+        .in('chat_id', chatIds)
+        .order('created_at', { ascending: true });
+
+      const messagesData = handleSupabaseArrayResult(result);
+
+      const messagesByChatId = new Map<string, ChatMessage[]>();
+      for (const msg of messagesData) {
+        const chatMessages = messagesByChatId.get(msg.chat_id) || [];
+        chatMessages.push({
+          id: msg.id,
+          type: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+        });
+        messagesByChatId.set(msg.chat_id, chatMessages);
+      }
+
+      return messagesByChatId;
     });
   }
 

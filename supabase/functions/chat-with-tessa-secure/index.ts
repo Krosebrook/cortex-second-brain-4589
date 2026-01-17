@@ -12,26 +12,103 @@ interface RequestData {
   chatId: string;
 }
 
-// Rate limiting storage
-const rateLimitStore = new Map<string, number[]>();
+interface RateLimitConfig {
+  max_attempts: number;
+  time_window_minutes: number;
+  block_duration_minutes: number;
+  enabled: boolean;
+}
 
-// Rate limiting function
-function isRateLimited(userId: string, maxRequests = 10, windowMs = 60000): boolean {
-  const now = Date.now();
-  const userRequests = rateLimitStore.get(userId) || [];
-  
-  // Remove old requests
-  const validRequests = userRequests.filter(time => now - time < windowMs);
-  
-  if (validRequests.length >= maxRequests) {
-    return true;
+// Database-backed rate limiting that persists across function instances
+async function checkRateLimit(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+  config: RateLimitConfig
+): Promise<{ allowed: boolean; remainingRequests: number; resetAt: Date | null }> {
+  if (!config.enabled) {
+    return { allowed: true, remainingRequests: config.max_attempts, resetAt: null };
   }
-  
-  // Add current request
-  validRequests.push(now);
-  rateLimitStore.set(userId, validRequests);
-  
-  return false;
+
+  const windowStart = new Date();
+  windowStart.setMinutes(windowStart.getMinutes() - config.time_window_minutes);
+
+  // Count requests in the time window using usage_tracking table
+  const { count, error } = await supabaseAdmin
+    .from('usage_tracking')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('feature', 'chat_api')
+    .gte('created_at', windowStart.toISOString());
+
+  if (error) {
+    console.error('Error checking rate limit:', error);
+    // Fail open - allow request if rate limiting check fails
+    return { allowed: true, remainingRequests: config.max_attempts, resetAt: null };
+  }
+
+  const requestCount = count || 0;
+  const allowed = requestCount < config.max_attempts;
+  const remainingRequests = Math.max(0, config.max_attempts - requestCount);
+
+  // Calculate reset time
+  let resetAt: Date | null = null;
+  if (!allowed) {
+    resetAt = new Date();
+    resetAt.setMinutes(resetAt.getMinutes() + config.block_duration_minutes);
+  }
+
+  return { allowed, remainingRequests, resetAt };
+}
+
+// Record rate limit hit in database
+async function recordRateLimitHit(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { error } = await supabaseAdmin
+    .from('usage_tracking')
+    .insert({
+      user_id: userId,
+      feature: 'chat_api',
+      date: today,
+      usage_count: 1,
+      metadata: { timestamp: new Date().toISOString() }
+    });
+
+  if (error) {
+    console.error('Error recording rate limit hit:', error);
+  }
+}
+
+// Get rate limit configuration from database
+async function getRateLimitConfig(
+  supabaseAdmin: ReturnType<typeof createClient>
+): Promise<RateLimitConfig> {
+  const defaultConfig: RateLimitConfig = {
+    max_attempts: 20,
+    time_window_minutes: 1,
+    block_duration_minutes: 5,
+    enabled: true
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from('rate_limit_config')
+    .select('*')
+    .eq('config_key', 'chat_api')
+    .single();
+
+  if (error || !data) {
+    return defaultConfig;
+  }
+
+  return {
+    max_attempts: data.max_attempts ?? defaultConfig.max_attempts,
+    time_window_minutes: data.time_window_minutes ?? defaultConfig.time_window_minutes,
+    block_duration_minutes: data.block_duration_minutes ?? defaultConfig.block_duration_minutes,
+    enabled: data.enabled ?? defaultConfig.enabled
+  };
 }
 
 // Input validation and sanitization
@@ -64,16 +141,19 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
+    // Initialize Supabase clients
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization')! },
+      },
+    });
+
+    // Admin client for rate limiting operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the user from the request
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
@@ -89,17 +169,39 @@ serve(async (req) => {
       );
     }
 
-    // Rate limiting check
-    if (isRateLimited(user.id, 20, 60000)) { // 20 requests per minute
+    // Get rate limit config from database
+    const rateLimitConfig = await getRateLimitConfig(supabaseAdmin);
+
+    // Database-backed rate limiting check
+    const { allowed, remainingRequests, resetAt } = await checkRateLimit(
+      supabaseAdmin,
+      user.id,
+      rateLimitConfig
+    );
+
+    if (!allowed) {
       console.warn(`Rate limit exceeded for user: ${user.id}`);
       return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please wait before sending another message.' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Rate limit exceeded. Please wait before sending another message.',
+          retryAfter: resetAt?.toISOString(),
+          remainingRequests: 0
+        }),
         { 
           status: 429, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': resetAt?.toISOString() || ''
+          } 
         }
       );
     }
+
+    // Record this request for rate limiting
+    await recordRateLimitHit(supabaseAdmin, user.id);
 
     // Parse and validate request data
     const requestData: RequestData = await req.json();
@@ -202,81 +304,108 @@ ${contextString}
 
 ` : ''}Please provide helpful, accurate responses based on the user's question and any relevant context from their knowledge base. Keep responses focused and conversational.`;
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: sanitizedMessage }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
-    });
+    // Add timeout to OpenAI request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', openAIResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ success: false, error: 'AI service temporarily unavailable' }),
-        { 
-          status: 503, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    const openAIData = await openAIResponse.json();
-    const aiMessage = openAIData.choices[0]?.message?.content;
-
-    if (!aiMessage) {
-      console.error('No AI response received');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to generate response' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Store AI response
-    const { error: aiMessageError } = await supabaseClient
-      .from('messages')
-      .insert({
-        chat_id: requestData.chatId,
-        content: aiMessage,
-        role: 'assistant'
+    try {
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: sanitizedMessage }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
       });
 
-    if (aiMessageError) {
-      console.error('Error storing AI message:', aiMessageError);
+      clearTimeout(timeoutId);
+
+      if (!openAIResponse.ok) {
+        const errorText = await openAIResponse.text();
+        console.error('OpenAI API error:', openAIResponse.status, errorText);
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI service temporarily unavailable' }),
+          { 
+            status: 503, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      const openAIData = await openAIResponse.json();
+      const aiMessage = openAIData.choices[0]?.message?.content;
+
+      if (!aiMessage) {
+        console.error('No AI response received');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to generate response' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Store AI response
+      const { error: aiMessageError } = await supabaseClient
+        .from('messages')
+        .insert({
+          chat_id: requestData.chatId,
+          content: aiMessage,
+          role: 'assistant'
+        });
+
+      if (aiMessageError) {
+        console.error('Error storing AI message:', aiMessageError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to store AI response' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Log successful interaction for monitoring
+      console.log(`Successful chat interaction for user ${user.id} in chat ${requestData.chatId}`);
+
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to store AI response' }),
+        JSON.stringify({ 
+          success: true, 
+          message: aiMessage,
+          remainingRequests: remainingRequests - 1
+        }),
         { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': String(remainingRequests - 1)
+          } 
         }
       );
-    }
-
-    // Log successful interaction for monitoring
-    console.log(`Successful chat interaction for user ${user.id} in chat ${requestData.chatId}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: aiMessage 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI request timed out');
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI service request timed out' }),
+          { 
+            status: 504, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
-    );
+      throw fetchError;
+    }
 
   } catch (error) {
     console.error('Unexpected error in chat function:', error);

@@ -1,5 +1,5 @@
 import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +30,10 @@ export const DesignSection = ({ show }: DesignSectionProps) => {
   const [currentTemplates, setCurrentTemplates] = useState<string[]>([]);
   const [category, setCategory] = useState(0);
   const [animating, setAnimating] = useState(false);
+  
+  // Refs for timer cleanup
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateTemplates = useCallback((categoryIndex: number) => {
     const templates = [...templateCategories[categoryIndex].templates]
@@ -43,9 +47,15 @@ export const DesignSection = ({ show }: DesignSectionProps) => {
   }, [updateTemplates]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setAnimating(true);
-      setTimeout(() => {
+      
+      // Clear any existing animation timeout before setting a new one
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+      
+      animationTimeoutRef.current = setTimeout(() => {
         const nextCategory = (category + 1) % templateCategories.length;
         setCategory(nextCategory);
         updateTemplates(nextCategory);
@@ -53,13 +63,30 @@ export const DesignSection = ({ show }: DesignSectionProps) => {
       }, 500);
     }, 5000);
 
-    return () => clearInterval(timer);
+    return () => {
+      // Clean up interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      // Clean up animation timeout
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
   }, [category, updateTemplates]);
 
   const changeCategory = (index: number) => {
     if (category === index || animating) return;
     setAnimating(true);
-    setTimeout(() => {
+    
+    // Clear any existing animation timeout before setting a new one
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+    
+    animationTimeoutRef.current = setTimeout(() => {
       setCategory(index);
       updateTemplates(index);
       setAnimating(false);

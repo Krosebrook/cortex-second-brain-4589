@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface NetworkStatus {
   isOnline: boolean;
@@ -13,27 +13,31 @@ export const useNetworkStatus = (): NetworkStatus => {
   const [lastOnlineTime, setLastOnlineTime] = useState<Date | null>(
     navigator.onLine ? new Date() : null
   );
+  
+  // Use ref to track current online state for interval callback
+  const isOnlineRef = useRef(isOnline);
+  isOnlineRef.current = isOnline;
+
+  const handleOnline = useCallback(() => {
+    setIsOnline(true);
+    setWasOffline(true);
+    setLastOnlineTime(new Date());
+    console.log('Network: Back online');
+  }, []);
+
+  const handleOffline = useCallback(() => {
+    setIsOnline(false);
+    console.log('Network: Gone offline');
+  }, []);
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setWasOffline(true);
-      setLastOnlineTime(new Date());
-      console.log('Network: Back online');
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      console.log('Network: Gone offline');
-    };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     // Check connection periodically
     const checkConnection = setInterval(() => {
       const currentOnline = navigator.onLine;
-      if (currentOnline !== isOnline) {
+      if (currentOnline !== isOnlineRef.current) {
         if (currentOnline) {
           handleOnline();
         } else {
@@ -47,7 +51,7 @@ export const useNetworkStatus = (): NetworkStatus => {
       window.removeEventListener('offline', handleOffline);
       clearInterval(checkConnection);
     };
-  }, [isOnline]);
+  }, [handleOnline, handleOffline]);
 
   return {
     isOnline,
