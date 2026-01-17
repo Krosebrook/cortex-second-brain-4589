@@ -134,6 +134,25 @@ const AuthPage = () => {
       });
 
       if (error) {
+        // Record failed login attempt for rate limiting
+        try {
+          // Get client IP (will be 0.0.0.0 from client-side, but server can log actual IP)
+          const { data: result } = await supabase.rpc('record_failed_login', {
+            p_email: email,
+            p_ip_address: '0.0.0.0', // Client doesn't know real IP, server-side tracking preferred
+            p_user_agent: navigator.userAgent
+          });
+          
+          const typedResult = result as { blocked?: boolean } | null;
+          if (typedResult?.blocked) {
+            toast.error('Your access has been temporarily blocked due to too many failed attempts. Please try again later.');
+            setLoading(false);
+            return;
+          }
+        } catch (trackingError) {
+          console.error('Failed to record login attempt:', trackingError);
+        }
+        
         toast.error(getAuthErrorMessage(error));
       } else {
         toast.success('Welcome back!');

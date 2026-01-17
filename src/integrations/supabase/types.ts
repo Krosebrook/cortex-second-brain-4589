@@ -1716,6 +1716,7 @@ export type Database = {
         Returns: undefined
       }
       is_claims_admin: { Args: never; Returns: boolean }
+      is_ip_blocked: { Args: { check_ip: unknown }; Returns: boolean }
       log_profile_access: {
         Args: {
           p_access_type: string
@@ -1734,6 +1735,10 @@ export type Database = {
       mark_notification_read: {
         Args: { notification_id: string }
         Returns: undefined
+      }
+      record_failed_login: {
+        Args: { p_email: string; p_ip_address: string; p_user_agent?: string }
+        Returns: Json
       }
       user_can_create_project: { Args: { user_id: string }; Returns: boolean }
     }
