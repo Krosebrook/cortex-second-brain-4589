@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ export const InstallPromptBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const navigate = useNavigate();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check if already dismissed
@@ -28,7 +29,7 @@ export const InstallPromptBanner = () => {
       }
       
       // Show banner after a delay if not installed
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setIsVisible(true);
       }, 3000);
     };
@@ -46,6 +47,11 @@ export const InstallPromptBanner = () => {
 
     return () => {
       window.removeEventListener('appinstalled', handleAppInstalled);
+      // Clean up timeout on unmount
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
   }, []);
 
