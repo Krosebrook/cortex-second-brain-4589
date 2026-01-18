@@ -407,8 +407,8 @@ describe('UserService', () => {
     });
   });
 
-  describe('isUsernameAvailable', () => {
-    it('should return true if username is available', async () => {
+  describe('isFullNameAvailable', () => {
+    it('should return true if full name is available', async () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -420,12 +420,12 @@ describe('UserService', () => {
         }),
       } as any);
 
-      const result = await UserService.isUsernameAvailable('newuser');
+      const result = await UserService.isFullNameAvailable('New User');
 
       expect(result).toBe(true);
     });
 
-    it('should return false if username is taken', async () => {
+    it('should return false if full name is taken', async () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -437,7 +437,7 @@ describe('UserService', () => {
         }),
       } as any);
 
-      const result = await UserService.isUsernameAvailable('existinguser');
+      const result = await UserService.isFullNameAvailable('Existing User');
 
       expect(result).toBe(false);
     });

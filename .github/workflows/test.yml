@@ -61,52 +61,59 @@ jobs:
           
           # Extract coverage summary from the json-summary reporter
           if [ -f coverage/coverage-summary.json ]; then
-            STATEMENTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
-            BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
-            FUNCTIONS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
-            LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
-            
-            echo "| Metric | Coverage | Threshold | Status |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|----------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-            
-            # Check statements
-            if (( $(echo "$STATEMENTS >= 70" | bc -l) )); then
-              echo "| Statements | ${STATEMENTS}% | 70% | ✅ |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| Statements | ${STATEMENTS}% | 70% | ❌ |" >> $GITHUB_STEP_SUMMARY
-              echo "ERROR: Statements coverage ${STATEMENTS}% is below 70% threshold"
-              exit 1
-            fi
-            
-            # Check branches
-            if (( $(echo "$BRANCHES >= 65" | bc -l) )); then
-              echo "| Branches | ${BRANCHES}% | 65% | ✅ |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| Branches | ${BRANCHES}% | 65% | ❌ |" >> $GITHUB_STEP_SUMMARY
-              echo "ERROR: Branches coverage ${BRANCHES}% is below 65% threshold"
-              exit 1
-            fi
-            
-            # Check functions
-            if (( $(echo "$FUNCTIONS >= 70" | bc -l) )); then
-              echo "| Functions | ${FUNCTIONS}% | 70% | ✅ |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| Functions | ${FUNCTIONS}% | 70% | ❌ |" >> $GITHUB_STEP_SUMMARY
-              echo "ERROR: Functions coverage ${FUNCTIONS}% is below 70% threshold"
-              exit 1
-            fi
-            
-            # Check lines
-            if (( $(echo "$LINES >= 70" | bc -l) )); then
-              echo "| Lines | ${LINES}% | 70% | ✅ |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| Lines | ${LINES}% | 70% | ❌ |" >> $GITHUB_STEP_SUMMARY
-              echo "ERROR: Lines coverage ${LINES}% is below 70% threshold"
-              exit 1
-            fi
-            
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ All coverage thresholds met!" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const fs = require('fs');
+              const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+              const total = coverage.total;
+              
+              console.log('| Metric | Coverage | Threshold | Status |');
+              console.log('|--------|----------|-----------|--------|');
+              
+              let failed = false;
+              
+              // Check statements
+              if (total.statements.pct >= 70) {
+                console.log(\`| Statements | \${total.statements.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Statements | \${total.statements.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Statements coverage \${total.statements.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              // Check branches
+              if (total.branches.pct >= 65) {
+                console.log(\`| Branches | \${total.branches.pct}% | 65% | ✅ |\`);
+              } else {
+                console.log(\`| Branches | \${total.branches.pct}% | 65% | ❌ |\`);
+                console.error(\`ERROR: Branches coverage \${total.branches.pct}% is below 65% threshold\`);
+                failed = true;
+              }
+              
+              // Check functions
+              if (total.functions.pct >= 70) {
+                console.log(\`| Functions | \${total.functions.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Functions | \${total.functions.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Functions coverage \${total.functions.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              // Check lines
+              if (total.lines.pct >= 70) {
+                console.log(\`| Lines | \${total.lines.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Lines | \${total.lines.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Lines coverage \${total.lines.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              if (!failed) {
+                console.log('');
+                console.log('✅ All coverage thresholds met!');
+              }
+              
+              process.exit(failed ? 1 : 0);
+            " | tee -a $GITHUB_STEP_SUMMARY
           else
             echo "❌ Coverage summary file not found!" >> $GITHUB_STEP_SUMMARY
             exit 1

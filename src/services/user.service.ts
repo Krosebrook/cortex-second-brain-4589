@@ -258,14 +258,15 @@ class UserServiceImpl extends BaseService {
   }
 
   /**
-   * Check if username is available
+   * Check if full name is available (not already in use)
+   * Note: full_name is not necessarily unique and may contain spaces
    */
-  async isUsernameAvailable(username: string): Promise<boolean> {
-    return this.executeWithRetry('isUsernameAvailable', async () => {
+  async isFullNameAvailable(fullName: string): Promise<boolean> {
+    return this.executeWithRetry('isFullNameAvailable', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('full_name', username)
+        .eq('full_name', fullName)
         .limit(1);
 
       if (error) throw error;

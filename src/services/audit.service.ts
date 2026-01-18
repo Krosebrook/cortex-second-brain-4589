@@ -94,13 +94,10 @@ class AuditLoggingServiceImpl extends BaseService {
     try {
       this.browserInfo.userAgent = navigator.userAgent;
       
-      // Try to get IP address from a public API (for logging purposes)
-      // In production, this should come from the server
-      const response = await fetch('https://api.ipify.org?format=json').catch(() => null);
-      if (response) {
-        const data = await response.json();
-        this.browserInfo.ipAddress = data.ip;
-      }
+      // Note: IP address should be obtained server-side in production
+      // This is a client-side placeholder and won't reflect the true server IP
+      // For proper implementation, pass IP from server-side request headers
+      this.browserInfo.ipAddress = 'client-detected';
     } catch (error) {
       console.warn('Could not initialize browser info for audit logging:', error);
     }
