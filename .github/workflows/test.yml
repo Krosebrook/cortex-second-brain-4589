@@ -1,0 +1,215 @@
+# =============================================================================
+# TEST WORKFLOW WITH COVERAGE ENFORCEMENT
+# =============================================================================
+# Runs tests with coverage checks and enforces 70% minimum threshold
+# =============================================================================
+
+name: Test with Coverage
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'vitest.config.ts'
+      - 'vitest.setup.ts'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '18'
+  HUSKY: 0
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Unit & Integration Tests with Coverage
+  # ---------------------------------------------------------------------------
+  test-coverage:
+    name: Tests & Coverage Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Tests with Coverage
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: Check Coverage Thresholds
+        run: |
+          echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract coverage summary from the json-summary reporter
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const fs = require('fs');
+              const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+              const total = coverage.total;
+              
+              console.log('| Metric | Coverage | Threshold | Status |');
+              console.log('|--------|----------|-----------|--------|');
+              
+              let failed = false;
+              
+              // Check statements
+              if (total.statements.pct >= 70) {
+                console.log(\`| Statements | \${total.statements.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Statements | \${total.statements.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Statements coverage \${total.statements.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              // Check branches
+              if (total.branches.pct >= 65) {
+                console.log(\`| Branches | \${total.branches.pct}% | 65% | ✅ |\`);
+              } else {
+                console.log(\`| Branches | \${total.branches.pct}% | 65% | ❌ |\`);
+                console.error(\`ERROR: Branches coverage \${total.branches.pct}% is below 65% threshold\`);
+                failed = true;
+              }
+              
+              // Check functions
+              if (total.functions.pct >= 70) {
+                console.log(\`| Functions | \${total.functions.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Functions | \${total.functions.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Functions coverage \${total.functions.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              // Check lines
+              if (total.lines.pct >= 70) {
+                console.log(\`| Lines | \${total.lines.pct}% | 70% | ✅ |\`);
+              } else {
+                console.log(\`| Lines | \${total.lines.pct}% | 70% | ❌ |\`);
+                console.error(\`ERROR: Lines coverage \${total.lines.pct}% is below 70% threshold\`);
+                failed = true;
+              }
+              
+              if (!failed) {
+                console.log('');
+                console.log('✅ All coverage thresholds met!');
+              }
+              
+              process.exit(failed ? 1 : 0);
+            " | tee -a $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Coverage summary file not found!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+          retention-days: 30
+
+      - name: Comment PR with Coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const total = coverage.total;
+            
+            const body = `## 📊 Test Coverage Report
+            
+            | Metric | Coverage | Threshold | Status |
+            |--------|----------|-----------|--------|
+            | Statements | ${total.statements.pct}% | 70% | ${total.statements.pct >= 70 ? '✅' : '❌'} |
+            | Branches | ${total.branches.pct}% | 65% | ${total.branches.pct >= 65 ? '✅' : '❌'} |
+            | Functions | ${total.functions.pct}% | 70% | ${total.functions.pct >= 70 ? '✅' : '❌'} |
+            | Lines | ${total.lines.pct}% | 70% | ${total.lines.pct >= 70 ? '✅' : '❌'} |
+            
+            [View Full Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # ---------------------------------------------------------------------------
+  # Test Results Summary
+  # ---------------------------------------------------------------------------
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: test-coverage
+    if: always()
+    
+    steps:
+      - name: Check Test Status
+        run: |
+          if [ "${{ needs.test-coverage.result }}" == "success" ]; then
+            echo "✅ All tests passed with sufficient coverage!"
+            exit 0
+          else
+            echo "❌ Tests failed or coverage below threshold!"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # OpenAPI Validation
+  # ---------------------------------------------------------------------------
+  openapi-validation:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install OpenAPI Tools
+        run: npm install -g @apidevtools/swagger-cli
+      
+      - name: Validate OpenAPI Specification
+        run: |
+          swagger-cli validate docs/openapi.yaml
+          echo "✅ OpenAPI specification is valid!" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Bundle OpenAPI Spec
+        run: |
+          swagger-cli bundle docs/openapi.yaml -o docs/openapi-bundled.yaml -t yaml
+          echo "📦 OpenAPI spec bundled successfully" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload OpenAPI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: |
+            docs/openapi.yaml
+            docs/openapi-bundled.yaml
+            docs/api.html
+          retention-days: 30
