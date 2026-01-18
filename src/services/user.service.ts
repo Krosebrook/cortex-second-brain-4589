@@ -32,7 +32,7 @@ class UserServiceImpl extends BaseService {
    * Get the current user profile
    */
   async getCurrentUser(): Promise<UserProfile | null> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getCurrentUser', async () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
@@ -45,14 +45,14 @@ class UserServiceImpl extends BaseService {
         .single();
 
       return this.handleSupabaseResult(data, error);
-    }, 'getCurrentUser');
+    });
   }
 
   /**
    * Get a user profile by ID
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getUserProfile', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -60,28 +60,28 @@ class UserServiceImpl extends BaseService {
         .single();
 
       return this.handleSupabaseResult(data, error);
-    }, 'getUserProfile');
+    });
   }
 
   /**
    * Get multiple user profiles by IDs
    */
   async getUserProfiles(userIds: string[]): Promise<UserProfile[]> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getUserProfiles', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .in('id', userIds);
 
       return this.handleSupabaseResult(data, error) || [];
-    }, 'getUserProfiles');
+    });
   }
 
   /**
    * Update the current user's profile
    */
   async updateCurrentUserProfile(updates: UpdateProfileData): Promise<UserProfile> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('updateCurrentUserProfile', async () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
@@ -98,14 +98,14 @@ class UserServiceImpl extends BaseService {
         .single();
 
       return this.handleSupabaseResult(data, error);
-    }, 'updateCurrentUserProfile');
+    });
   }
 
   /**
    * Update user preferences
    */
   async updatePreferences(preferences: Record<string, unknown>): Promise<UserProfile> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('updatePreferences', async () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
@@ -129,14 +129,14 @@ class UserServiceImpl extends BaseService {
         .single();
 
       return this.handleSupabaseResult(data, error);
-    }, 'updatePreferences');
+    });
   }
 
   /**
    * Upload and update user avatar
    */
   async uploadAvatar(file: File): Promise<string> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('uploadAvatar', async () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
@@ -163,14 +163,14 @@ class UserServiceImpl extends BaseService {
       await this.updateCurrentUserProfile({ avatar_url: publicUrl });
 
       return publicUrl;
-    }, 'uploadAvatar');
+    });
   }
 
   /**
    * Search users by name or email
    */
   async searchUsers(query: string, limit: number = 10): Promise<UserProfile[]> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('searchUsers', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -178,7 +178,7 @@ class UserServiceImpl extends BaseService {
         .limit(limit);
 
       return this.handleSupabaseResult(data, error) || [];
-    }, 'searchUsers');
+    });
   }
 
   /**
@@ -190,7 +190,7 @@ class UserServiceImpl extends BaseService {
     messageCount: number;
     lastActive: string | null;
   }> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getUserStats', async () => {
       const targetUserId = userId || (await supabase.auth.getUser()).data.user?.id;
       
       if (!targetUserId) throw new Error('User ID required');
@@ -228,14 +228,14 @@ class UserServiceImpl extends BaseService {
         messageCount: messageCount || 0,
         lastActive: lastMessage?.created_at || null,
       };
-    }, 'getUserStats');
+    });
   }
 
   /**
    * Delete user account (soft delete - marks as deleted)
    */
   async deleteAccount(): Promise<void> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('deleteAccount', async () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
@@ -254,14 +254,14 @@ class UserServiceImpl extends BaseService {
 
       // Sign out user
       await supabase.auth.signOut();
-    }, 'deleteAccount');
+    });
   }
 
   /**
    * Check if username is available
    */
   async isUsernameAvailable(username: string): Promise<boolean> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('isUsernameAvailable', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
@@ -270,7 +270,7 @@ class UserServiceImpl extends BaseService {
 
       if (error) throw error;
       return !data || data.length === 0;
-    }, 'isUsernameAvailable');
+    });
   }
 }
 
