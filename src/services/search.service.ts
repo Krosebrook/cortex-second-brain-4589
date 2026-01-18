@@ -45,7 +45,7 @@ class SearchServiceImpl extends BaseService {
     page: number = 1,
     perPage: number = 20
   ): Promise<SearchResponse> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('searchAll', async () => {
       const offset = (page - 1) * perPage;
       const results: SearchResult[] = [];
 
@@ -73,7 +73,7 @@ class SearchServiceImpl extends BaseService {
         perPage,
         hasMore: sortedResults.length > offset + perPage,
       };
-    }, 'searchAll');
+    });
   }
 
   /**
@@ -85,7 +85,7 @@ class SearchServiceImpl extends BaseService {
     page: number = 1,
     perPage: number = 20
   ): Promise<SearchResponse> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('searchChats', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -136,7 +136,7 @@ class SearchServiceImpl extends BaseService {
         perPage,
         hasMore: (count || 0) > offset + perPage,
       };
-    }, 'searchChats');
+    });
   }
 
   /**
@@ -148,7 +148,7 @@ class SearchServiceImpl extends BaseService {
     page: number = 1,
     perPage: number = 20
   ): Promise<SearchResponse> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('searchKnowledge', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -211,7 +211,7 @@ class SearchServiceImpl extends BaseService {
         perPage,
         hasMore: (count || 0) > offset + perPage,
       };
-    }, 'searchKnowledge');
+    });
   }
 
   /**
@@ -223,7 +223,7 @@ class SearchServiceImpl extends BaseService {
     page: number = 1,
     perPage: number = 20
   ): Promise<SearchResponse> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('searchMessages', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -275,14 +275,14 @@ class SearchServiceImpl extends BaseService {
         perPage,
         hasMore: (count || 0) > offset + perPage,
       };
-    }, 'searchMessages');
+    });
   }
 
   /**
    * Get search suggestions based on query
    */
   async getSearchSuggestions(query: string, limit: number = 5): Promise<string[]> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getSearchSuggestions', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -309,14 +309,14 @@ class SearchServiceImpl extends BaseService {
       recentKnowledge?.forEach(item => item.title && suggestions.add(item.title));
 
       return Array.from(suggestions).slice(0, limit);
-    }, 'getSearchSuggestions');
+    });
   }
 
   /**
    * Get popular tags for filtering
    */
   async getPopularTags(limit: number = 20): Promise<string[]> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getPopularTags', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -344,14 +344,14 @@ class SearchServiceImpl extends BaseService {
         .sort((a, b) => b[1] - a[1])
         .slice(0, limit)
         .map(([tag]) => tag);
-    }, 'getPopularTags');
+    });
   }
 
   /**
    * Save search to history
    */
   async saveSearchHistory(query: string, filters?: SearchFilters): Promise<void> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('saveSearchHistory', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -361,7 +361,7 @@ class SearchServiceImpl extends BaseService {
         filters: filters || {},
         created_at: new Date().toISOString(),
       });
-    }, 'saveSearchHistory');
+    });
   }
 
   /**
@@ -372,7 +372,7 @@ class SearchServiceImpl extends BaseService {
     filters?: SearchFilters;
     createdAt: string;
   }>> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('getSearchHistory', async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
@@ -390,7 +390,7 @@ class SearchServiceImpl extends BaseService {
         filters: item.filters,
         createdAt: item.created_at,
       }));
-    }, 'getSearchHistory');
+    });
   }
 
   /**
