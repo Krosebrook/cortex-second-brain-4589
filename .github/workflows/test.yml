@@ -167,3 +167,42 @@ jobs:
             echo "❌ Tests failed or coverage below threshold!"
             exit 1
           fi
+
+  # ---------------------------------------------------------------------------
+  # OpenAPI Validation
+  # ---------------------------------------------------------------------------
+  openapi-validation:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install OpenAPI Tools
+        run: npm install -g @apidevtools/swagger-cli
+      
+      - name: Validate OpenAPI Specification
+        run: |
+          swagger-cli validate docs/openapi.yaml
+          echo "✅ OpenAPI specification is valid!" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Bundle OpenAPI Spec
+        run: |
+          swagger-cli bundle docs/openapi.yaml -o docs/openapi-bundled.yaml -t yaml
+          echo "📦 OpenAPI spec bundled successfully" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload OpenAPI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: |
+            docs/openapi.yaml
+            docs/openapi-bundled.yaml
+            docs/api.html
+          retention-days: 30

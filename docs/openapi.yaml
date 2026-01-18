@@ -1,0 +1,541 @@
+openapi: 3.0.3
+info:
+  title: Tessa AI Platform API
+  description: |
+    REST API and Edge Functions for the Tessa AI Platform - An intelligent knowledge management and AI assistant platform.
+    
+    ## Authentication
+    All endpoints require authentication via Supabase Auth. Include the Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer <your-access-token>
+    ```
+    
+    ## Rate Limiting
+    API endpoints are rate-limited to prevent abuse. Default limits:
+    - Chat API: 100 requests per 10 minutes per user
+    - Search API: 200 requests per 10 minutes per user
+    - Profile Updates: 20 requests per hour per user
+    
+    ## Error Handling
+    All endpoints return errors in a consistent format:
+    ```json
+    {
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable error message",
+        "details": {}
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@tessa-ai.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://your-project.supabase.co/functions/v1
+    description: Production API
+  - url: http://localhost:54321/functions/v1
+    description: Local Development
+
+tags:
+  - name: Chat
+    description: AI chat and conversation endpoints
+  - name: Knowledge
+    description: Knowledge base management
+  - name: Search
+    description: Search and discovery
+  - name: Admin
+    description: Admin and monitoring operations
+  - name: Integration
+    description: Third-party integrations
+
+security:
+  - BearerAuth: []
+
+paths:
+  /chat-with-tessa:
+    post:
+      tags:
+        - Chat
+      summary: Send a message to Tessa AI
+      description: |
+        Send a message to the AI assistant and receive a response. Supports context-aware conversations
+        using chat history.
+      operationId: chatWithTessa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+                - chatId
+              properties:
+                message:
+                  type: string
+                  description: User's message to send
+                  minLength: 1
+                  maxLength: 10000
+                  example: "What is the meaning of life?"
+                chatId:
+                  type: string
+                  format: uuid
+                  description: Unique identifier for the chat session
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                model:
+                  type: string
+                  description: AI model to use
+                  enum: [gpt-4, gpt-3.5-turbo, claude-3-opus]
+                  default: gpt-3.5-turbo
+                temperature:
+                  type: number
+                  description: Creativity level (0.0 to 2.0)
+                  minimum: 0
+                  maximum: 2
+                  default: 0.7
+                maxTokens:
+                  type: integer
+                  description: Maximum tokens in response
+                  minimum: 1
+                  maximum: 4000
+                  default: 2000
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: AI assistant's response
+                    example: "The meaning of life is a philosophical question..."
+                  chatId:
+                    type: string
+                    format: uuid
+                  messageId:
+                    type: string
+                    format: uuid
+                    description: Unique identifier for this message
+                  tokens:
+                    type: object
+                    properties:
+                      prompt:
+                        type: integer
+                      completion:
+                        type: integer
+                      total:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /chat-with-tessa-secure:
+    post:
+      tags:
+        - Chat
+      summary: Send a secure message with enhanced protections
+      description: |
+        Enhanced chat endpoint with additional security measures including:
+        - Input sanitization
+        - Content filtering
+        - Stricter rate limiting
+        - Audit logging
+      operationId: chatWithTessaSecure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /system-status:
+    get:
+      tags:
+        - Admin
+      summary: Get system health and status
+      description: |
+        Returns current system status including:
+        - Service availability
+        - Database connection status
+        - Cache status
+        - API rate limits
+      operationId: getSystemStatus
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, down]
+                    example: healthy
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        $ref: '#/components/schemas/ServiceStatus'
+                      cache:
+                        $ref: '#/components/schemas/ServiceStatus'
+                      ai:
+                        $ref: '#/components/schemas/ServiceStatus'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /ip-geolocation:
+    post:
+      tags:
+        - Admin
+      summary: Get geolocation for an IP address
+      description: |
+        Resolve IP address to geographic location for security monitoring and analytics.
+      operationId: getIpGeolocation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip
+              properties:
+                ip:
+                  type: string
+                  format: ipv4
+                  example: "192.168.1.1"
+      responses:
+        '200':
+          description: Geolocation data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ip:
+                    type: string
+                  country:
+                    type: string
+                    example: "United States"
+                  countryCode:
+                    type: string
+                    example: "US"
+                  region:
+                    type: string
+                    example: "California"
+                  city:
+                    type: string
+                    example: "San Francisco"
+                  latitude:
+                    type: number
+                    format: double
+                  longitude:
+                    type: number
+                    format: double
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /send-backup-email:
+    post:
+      tags:
+        - Integration
+      summary: Send backup email notification
+      description: |
+        Trigger an email notification for data backup completion or failure.
+      operationId: sendBackupEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - status
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                status:
+                  type: string
+                  enum: [success, failure]
+                backupId:
+                  type: string
+                  format: uuid
+                timestamp:
+                  type: string
+                  format: date-time
+                details:
+                  type: object
+                  properties:
+                    size:
+                      type: integer
+                      description: Backup size in bytes
+                    duration:
+                      type: integer
+                      description: Backup duration in milliseconds
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  messageId:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /google-drive-oauth:
+    get:
+      tags:
+        - Integration
+      summary: Google Drive OAuth flow
+      description: |
+        Handle Google Drive OAuth authentication flow. Supports:
+        - Initial authorization
+        - Token exchange
+        - Token refresh
+      operationId: googleDriveOAuth
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [authorize, callback, refresh]
+        - name: code
+          in: query
+          description: Authorization code (for callback action)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  token_type:
+                    type: string
+                    example: "Bearer"
+        '302':
+          description: Redirect to Google OAuth
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token from authentication
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+        - chatId
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        chatId:
+          type: string
+          format: uuid
+        model:
+          type: string
+          enum: [gpt-4, gpt-3.5-turbo, claude-3-opus]
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        maxTokens:
+          type: integer
+          minimum: 1
+          maximum: 4000
+
+    ChatResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        chatId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        tokens:
+          type: object
+          properties:
+            prompt:
+              type: integer
+            completion:
+              type: integer
+            total:
+              type: integer
+        metadata:
+          type: object
+
+    ServiceStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+        latency:
+          type: integer
+          description: Response time in milliseconds
+        lastCheck:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid request parameters"
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Invalid request parameters"
+              details:
+                field: "message"
+                issue: "Message cannot be empty"
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+
+    TooManyRequests:
+      description: Too many requests - Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per time window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: string
+            format: date-time
+          description: Time when limit resets
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Too many requests. Please try again later."
+              details:
+                limit: 100
+                resetAt: "2024-01-01T12:00:00Z"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An internal error occurred"
