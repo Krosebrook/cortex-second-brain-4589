@@ -6,8 +6,10 @@
 
 [![Built with Lovable](https://img.shields.io/badge/Built%20with-Lovable-ff69b4)](https://lovable.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3-61dafb)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-18.3-61dafb)](https://react.dev())
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-3ecf8e)](https://supabase.com/)
+[![Test Coverage](https://img.shields.io/badge/coverage-70%25+-brightgreen)](https://github.com/Krosebrook/cortex-second-brain-4589/actions/workflows/test.yml)
+[![CI](https://github.com/Krosebrook/cortex-second-brain-4589/actions/workflows/test.yml/badge.svg)](https://github.com/Krosebrook/cortex-second-brain-4589/actions/workflows/test.yml)
 
 [Demo](https://lovable.dev/projects/513db1a2-0fcc-4643-bd43-f10d076dfa80) · [Documentation](docs/) · [Report Bug](https://github.com/your-repo/issues) · [Request Feature](https://github.com/your-repo/issues)
 
