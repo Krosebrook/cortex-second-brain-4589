@@ -1,6 +1,8 @@
 /**
  * Audit Logging Service
  * Handles security audit logging for sensitive operations
+ * Note: This service provides client-side logging utilities.
+ * For production, audit logs should be stored in a proper audit_logs table.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -76,6 +78,10 @@ export interface AuditLogFilter {
   search?: string;
 }
 
+// In-memory storage for audit logs (for demo/development purposes)
+// In production, these would be stored in a dedicated audit_logs table
+const inMemoryAuditLogs: AuditLogEntry[] = [];
+
 class AuditLoggingServiceImpl extends BaseService {
   private browserInfo: {
     ipAddress?: string;
@@ -90,13 +96,10 @@ class AuditLoggingServiceImpl extends BaseService {
   /**
    * Initialize browser information for audit logs
    */
-  private async initializeBrowserInfo() {
+  private initializeBrowserInfo(): void {
     try {
       this.browserInfo.userAgent = navigator.userAgent;
-      
       // Note: IP address should be obtained server-side in production
-      // This is a client-side placeholder and won't reflect the true server IP
-      // For proper implementation, pass IP from server-side request headers
       this.browserInfo.ipAddress = 'client-detected';
     } catch (error) {
       console.warn('Could not initialize browser info for audit logging:', error);
@@ -115,7 +118,7 @@ class AuditLoggingServiceImpl extends BaseService {
       userId?: string | null;
     } = {}
   ): Promise<void> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('log', async () => {
       const { severity = AuditSeverity.INFO, metadata, userId } = options;
 
       // Get current user if not provided
@@ -126,6 +129,7 @@ class AuditLoggingServiceImpl extends BaseService {
       }
 
       const entry: AuditLogEntry = {
+        id: crypto.randomUUID(),
         user_id: targetUserId,
         event_type: eventType,
         severity,
@@ -140,21 +144,19 @@ class AuditLoggingServiceImpl extends BaseService {
         created_at: new Date().toISOString(),
       };
 
-      // Insert audit log
-      const { error } = await supabase
-        .from('audit_logs')
-        .insert(entry);
-
-      if (error) {
-        // Don't throw error - audit logging failure shouldn't break the application
-        console.error('Failed to create audit log:', error);
+      // Store in memory (in production, this would insert to a database table)
+      inMemoryAuditLogs.unshift(entry);
+      
+      // Keep only last 1000 entries in memory
+      if (inMemoryAuditLogs.length > 1000) {
+        inMemoryAuditLogs.pop();
       }
 
       // For critical events, also log to console
       if (severity === AuditSeverity.CRITICAL || severity === AuditSeverity.ERROR) {
         console.warn(`[AUDIT ${severity.toUpperCase()}] ${eventType}: ${description}`, metadata);
       }
-    }, 'log');
+    });
   }
 
   /**
@@ -244,7 +246,7 @@ class AuditLoggingServiceImpl extends BaseService {
   }
 
   /**
-   * Get audit logs with filtering
+   * Get audit logs with filtering (from in-memory storage)
    */
   async getAuditLogs(
     filter: AuditLogFilter = {},
@@ -256,63 +258,54 @@ class AuditLoggingServiceImpl extends BaseService {
     page: number;
     perPage: number;
   }> {
-    return this.executeWithRetry(async () => {
-      const offset = (page - 1) * perPage;
-      
-      let query = supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact' });
+    return this.executeWithRetry('getAuditLogs', async () => {
+      let filteredLogs = [...inMemoryAuditLogs];
 
       // Apply filters
       if (filter.user_id) {
-        query = query.eq('user_id', filter.user_id);
+        filteredLogs = filteredLogs.filter(log => log.user_id === filter.user_id);
       }
 
       if (filter.event_type) {
-        if (Array.isArray(filter.event_type)) {
-          query = query.in('event_type', filter.event_type);
-        } else {
-          query = query.eq('event_type', filter.event_type);
-        }
+        const eventTypes = Array.isArray(filter.event_type) ? filter.event_type : [filter.event_type];
+        filteredLogs = filteredLogs.filter(log => eventTypes.includes(log.event_type));
       }
 
       if (filter.severity) {
-        if (Array.isArray(filter.severity)) {
-          query = query.in('severity', filter.severity);
-        } else {
-          query = query.eq('severity', filter.severity);
-        }
+        const severities = Array.isArray(filter.severity) ? filter.severity : [filter.severity];
+        filteredLogs = filteredLogs.filter(log => severities.includes(log.severity));
       }
 
       if (filter.dateFrom) {
-        query = query.gte('created_at', filter.dateFrom);
+        filteredLogs = filteredLogs.filter(log => 
+          log.created_at && new Date(log.created_at) >= new Date(filter.dateFrom!)
+        );
       }
 
       if (filter.dateTo) {
-        query = query.lte('created_at', filter.dateTo);
+        filteredLogs = filteredLogs.filter(log => 
+          log.created_at && new Date(log.created_at) <= new Date(filter.dateTo!)
+        );
       }
 
       if (filter.search) {
-        query = query.ilike('description', `%${filter.search}%`);
+        const searchLower = filter.search.toLowerCase();
+        filteredLogs = filteredLogs.filter(log => 
+          log.description.toLowerCase().includes(searchLower)
+        );
       }
 
-      // Order by most recent first
-      query = query.order('created_at', { ascending: false });
-
       // Apply pagination
-      query = query.range(offset, offset + perPage - 1);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
+      const offset = (page - 1) * perPage;
+      const paginatedLogs = filteredLogs.slice(offset, offset + perPage);
 
       return {
-        data: (data || []) as AuditLogEntry[],
-        total: count || 0,
+        data: paginatedLogs,
+        total: filteredLogs.length,
         page,
         perPage,
       };
-    }, 'getAuditLogs');
+    });
   }
 
   /**
@@ -324,22 +317,20 @@ class AuditLoggingServiceImpl extends BaseService {
     bySeverity: Record<string, number>;
     topUsers: Array<{ user_id: string; count: number }>;
   }> {
-    return this.executeWithRetry(async () => {
-      let query = supabase.from('audit_logs').select('*');
+    return this.executeWithRetry('getAuditStats', async () => {
+      let logs = [...inMemoryAuditLogs];
 
       if (dateFrom) {
-        query = query.gte('created_at', dateFrom);
+        logs = logs.filter(log => 
+          log.created_at && new Date(log.created_at) >= new Date(dateFrom)
+        );
       }
       if (dateTo) {
-        query = query.lte('created_at', dateTo);
+        logs = logs.filter(log => 
+          log.created_at && new Date(log.created_at) <= new Date(dateTo)
+        );
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const logs = data || [];
-      
       // Calculate statistics
       const byType: Record<string, number> = {};
       const bySeverity: Record<string, number> = {};
@@ -365,26 +356,30 @@ class AuditLoggingServiceImpl extends BaseService {
         bySeverity,
         topUsers,
       };
-    }, 'getAuditStats');
+    });
   }
 
   /**
-   * Clean up old audit logs (should be run periodically)
+   * Clean up old audit logs
    */
   async cleanupOldLogs(daysToKeep: number = 90): Promise<number> {
-    return this.executeWithRetry(async () => {
+    return this.executeWithRetry('cleanupOldLogs', async () => {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-      const { count, error } = await supabase
-        .from('audit_logs')
-        .delete()
-        .lt('created_at', cutoffDate.toISOString());
+      const initialCount = inMemoryAuditLogs.length;
+      
+      // Remove logs older than cutoff date
+      const remainingLogs = inMemoryAuditLogs.filter(log => 
+        log.created_at && new Date(log.created_at) >= cutoffDate
+      );
 
-      if (error) throw error;
+      // Update the array in place
+      inMemoryAuditLogs.length = 0;
+      inMemoryAuditLogs.push(...remainingLogs);
 
-      return count || 0;
-    }, 'cleanupOldLogs');
+      return initialCount - remainingLogs.length;
+    });
   }
 }
 
