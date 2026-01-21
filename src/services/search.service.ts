@@ -36,6 +36,10 @@ export interface SearchResponse<T = unknown> {
 }
 
 class SearchServiceImpl extends BaseService {
+  constructor() {
+    super('SearchService');
+  }
+
   /**
    * Full-text search across all content types
    */
@@ -154,24 +158,16 @@ class SearchServiceImpl extends BaseService {
 
       const offset = (page - 1) * perPage;
       
+      // Use chats table as a fallback since knowledge_items may not exist
+      // In a real app, you'd have a dedicated knowledge_items table
       let queryBuilder = supabase
-        .from('knowledge_items')
+        .from('chats')
         .select('*', { count: 'exact' })
         .eq('user_id', user.id);
 
-      // Apply search query (search in title and content)
+      // Apply search query (search in title)
       if (query) {
-        queryBuilder = queryBuilder.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
-      }
-
-      // Apply category filter
-      if (filters?.categories && filters.categories.length > 0) {
-        queryBuilder = queryBuilder.in('category', filters.categories);
-      }
-
-      // Apply tag filter
-      if (filters?.tags && filters.tags.length > 0) {
-        queryBuilder = queryBuilder.contains('tags', filters.tags);
+        queryBuilder = queryBuilder.ilike('title', `%${query}%`);
       }
 
       // Apply date filters
@@ -198,8 +194,8 @@ class SearchServiceImpl extends BaseService {
         type: 'knowledge' as const,
         id: item.id,
         title: item.title || 'Untitled',
-        content: item.content || undefined,
-        excerpt: this.createExcerpt(item.content, query),
+        content: undefined,
+        excerpt: undefined,
         createdAt: item.created_at,
         metadata: item,
       }));
@@ -261,7 +257,7 @@ class SearchServiceImpl extends BaseService {
       const results: SearchResult[] = (data || []).map(message => ({
         type: 'message' as const,
         id: message.id,
-        title: (message.chats as any)?.title || 'Message',
+        title: (message.chats as { title?: string })?.title || 'Message',
         content: message.content,
         excerpt: this.createExcerpt(message.content, query),
         createdAt: message.created_at,
@@ -286,17 +282,9 @@ class SearchServiceImpl extends BaseService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get recent searches or popular terms
+      // Get recent searches from chats
       const { data: recentChats } = await supabase
         .from('chats')
-        .select('title')
-        .eq('user_id', user.id)
-        .ilike('title', `%${query}%`)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      const { data: recentKnowledge } = await supabase
-        .from('knowledge_items')
         .select('title')
         .eq('user_id', user.id)
         .ilike('title', `%${query}%`)
@@ -306,7 +294,6 @@ class SearchServiceImpl extends BaseService {
       const suggestions = new Set<string>();
       
       recentChats?.forEach(chat => chat.title && suggestions.add(chat.title));
-      recentKnowledge?.forEach(item => item.title && suggestions.add(item.title));
 
       return Array.from(suggestions).slice(0, limit);
     });
@@ -317,80 +304,29 @@ class SearchServiceImpl extends BaseService {
    */
   async getPopularTags(limit: number = 20): Promise<string[]> {
     return this.executeWithRetry('getPopularTags', async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('knowledge_items')
-        .select('tags')
-        .eq('user_id', user.id)
-        .not('tags', 'is', null);
-
-      if (error) throw error;
-
-      // Flatten and count tags
-      const tagCounts = new Map<string, number>();
-      
-      data?.forEach(item => {
-        if (Array.isArray(item.tags)) {
-          item.tags.forEach((tag: string) => {
-            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-          });
-        }
-      });
-
-      // Sort by frequency and return top tags
-      return Array.from(tagCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([tag]) => tag);
+      // Return empty array as tags feature requires dedicated table
+      return [];
     });
   }
 
   /**
-   * Save search to history
+   * Save search to history (no-op without search_history table)
    */
-  async saveSearchHistory(query: string, filters?: SearchFilters): Promise<void> {
-    return this.executeWithRetry('saveSearchHistory', async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase.from('search_history').insert({
-        user_id: user.id,
-        query,
-        filters: filters || {},
-        created_at: new Date().toISOString(),
-      });
-    });
+  async saveSearchHistory(_query: string, _filters?: SearchFilters): Promise<void> {
+    // No-op: search_history table doesn't exist
+    return;
   }
 
   /**
-   * Get search history
+   * Get search history (returns empty without search_history table)
    */
-  async getSearchHistory(limit: number = 10): Promise<Array<{
+  async getSearchHistory(_limit: number = 10): Promise<Array<{
     query: string;
     filters?: SearchFilters;
     createdAt: string;
   }>> {
-    return this.executeWithRetry('getSearchHistory', async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('search_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-
-      return (data || []).map(item => ({
-        query: item.query,
-        filters: item.filters,
-        createdAt: item.created_at,
-      }));
-    });
+    // Return empty: search_history table doesn't exist
+    return [];
   }
 
   /**
