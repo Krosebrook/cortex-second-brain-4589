@@ -8,10 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Brain, Mail, Lock, User, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { Brain, Mail, Lock, User, ArrowRight, AlertCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
+
+interface LockoutStatus {
+  isLocked: boolean;
+  remainingAttempts: number;
+  lockoutUntil: string | null;
+  lockoutReason: string | null;
+}
 
 const AuthPage = () => {
   const [loading, setLoading] = useState(false);
@@ -21,6 +28,7 @@ const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [lockoutStatus, setLockoutStatus] = useState<LockoutStatus | null>(null);
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
 
@@ -116,6 +124,58 @@ const AuthPage = () => {
     }
   };
 
+  const checkAccountLockout = async (emailToCheck: string): Promise<LockoutStatus | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('account-lockout', {
+        body: { email: emailToCheck },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (error) {
+        console.warn('Lockout check failed:', error);
+        return null;
+      }
+
+      return data as LockoutStatus;
+    } catch (err) {
+      console.warn('Lockout check error:', err);
+      return null;
+    }
+  };
+
+  const recordLoginFailure = async (emailToRecord: string, reason?: string): Promise<LockoutStatus | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('account-lockout?action=record-failure', {
+        body: { email: emailToRecord, reason },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (error) {
+        console.warn('Failed to record login failure:', error);
+        return null;
+      }
+
+      return data as LockoutStatus;
+    } catch (err) {
+      console.warn('Record failure error:', err);
+      return null;
+    }
+  };
+
+  const clearLoginAttempts = async (emailToClear: string): Promise<void> => {
+    try {
+      await supabase.functions.invoke('account-lockout?action=record-success', {
+        body: { email: emailToClear },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      console.warn('Failed to clear login attempts:', err);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -128,33 +188,37 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
+      // Check if account is locked before attempting login
+      const lockout = await checkAccountLockout(email);
+      if (lockout?.isLocked) {
+        setLockoutStatus(lockout);
+        toast.error(lockout.lockoutReason || 'Account is temporarily locked');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        // Record failed login attempt for rate limiting
-        try {
-          // Get client IP (will be 0.0.0.0 from client-side, but server can log actual IP)
-          const { data: result } = await supabase.rpc('record_failed_login', {
-            p_email: email,
-            p_ip_address: '0.0.0.0', // Client doesn't know real IP, server-side tracking preferred
-            p_user_agent: navigator.userAgent
-          });
-          
-          const typedResult = result as { blocked?: boolean } | null;
-          if (typedResult?.blocked) {
-            toast.error('Your access has been temporarily blocked due to too many failed attempts. Please try again later.');
-            setLoading(false);
-            return;
-          }
-        } catch (trackingError) {
-          console.error('Failed to record login attempt:', trackingError);
-        }
+        // Record failed login attempt via edge function
+        const failureStatus = await recordLoginFailure(email, error.message);
         
-        toast.error(getAuthErrorMessage(error));
+        if (failureStatus?.isLocked) {
+          setLockoutStatus(failureStatus);
+          toast.error('Too many failed attempts. Account temporarily locked.');
+        } else if (failureStatus) {
+          setLockoutStatus(failureStatus);
+          toast.error(`${getAuthErrorMessage(error)}. ${failureStatus.remainingAttempts} attempts remaining.`);
+        } else {
+          toast.error(getAuthErrorMessage(error));
+        }
       } else {
+        // Clear failed attempts on successful login
+        await clearLoginAttempts(email);
+        setLockoutStatus(null);
         toast.success('Welcome back!');
         navigate('/dashboard');
       }
@@ -211,6 +275,24 @@ const AuthPage = () => {
                     </>
                   )}
                 </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Account Lockout Alert */}
+          {lockoutStatus?.isLocked && (
+            <Alert variant="destructive">
+              <ShieldAlert className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Account Locked</strong>
+                <p className="text-sm mt-1">
+                  {lockoutStatus.lockoutReason || 'Too many failed login attempts.'}
+                  {lockoutStatus.lockoutUntil && (
+                    <span className="block mt-1">
+                      Try again after: {new Date(lockoutStatus.lockoutUntil).toLocaleTimeString()}
+                    </span>
+                  )}
+                </p>
               </AlertDescription>
             </Alert>
           )}

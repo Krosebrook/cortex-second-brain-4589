@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.ip-geolocation]
 verify_jwt = false
+
+[functions.security-headers]
+verify_jwt = false
+
+[functions.account-lockout]
+verify_jwt = false
