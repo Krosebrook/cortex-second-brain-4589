@@ -192,14 +192,25 @@ Comprehensive documentation is available in the `docs/` directory:
 
 | Document | Description |
 |----------|-------------|
-| [🚀 Product Audit & Launch Roadmap](PRODUCT_AUDIT_AND_ROADMAP.md) | **Executive guide for 3-month launch plan** |
-| [📚 OpenAPI Specification](docs/openapi.yaml) | **Interactive REST API documentation ([View](docs/api.html))** |
+| [📋 **Documentation Audit Report**](DOCUMENTATION_AUDIT_REPORT.md) | **Principal-level audit of documentation standards (2024-2026)** |
+| [🚀 Product Audit & Launch Roadmap](PRODUCT_AUDIT_AND_ROADMAP.md) | Executive guide for 3-month launch plan |
+| [📚 OpenAPI Specification](docs/openapi.yaml) | Interactive REST API documentation ([View](docs/api.html)) |
 | [Architecture](docs/ARCHITECTURE.md) | System design, component relationships, and data flow |
 | [API Reference](docs/API.md) | Edge function endpoints with request/response examples |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Instructions for Vercel, Netlify, and self-hosting |
 | [Testing Guide](docs/TESTING.md) | Testing strategies, examples, and best practices |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and debugging solutions |
-| [Audit Report](docs/AUDIT_REPORT.md) | Comprehensive multi-level audit with recommendations |
+
+### Production Readiness Documentation
+
+| Document | Status | Priority |
+|----------|--------|----------|
+| [Database Schema](docs/DATABASE_SCHEMA.md) | 🔴 Not Started | P0 |
+| [Failure Modes & Edge Cases](docs/FAILURE_MODES.md) | 🔴 Not Started | P0 |
+| [Observability & Monitoring](docs/OBSERVABILITY.md) | 🔴 Not Started | P0 |
+| [Operational Runbook](docs/RUNBOOK.md) | 🔴 Not Started | P0 |
+| [Error Handling Guide](docs/ERROR_HANDLING_GUIDE.md) | 🔴 Not Started | P0 |
+| [Configuration Management](docs/CONFIGURATION_MANAGEMENT.md) | 🟠 Not Started | P1 |
 
 ### Additional Resources
 
