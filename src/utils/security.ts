@@ -124,33 +124,38 @@ export class RateLimiter {
   }
 }
 
-// Secure localStorage with encryption
-export const secureStorage = {
-  setItem: (key: string, value: any, expirationHours: number = 24) => {
+// Re-export secure storage from crypto module for backward compatibility
+// Note: The old secureStorage used Base64 encoding (insecure)
+// New code should use secureStorageV2 from '@/utils/crypto'
+export { secureStorageV2 as secureStorage } from './crypto';
+
+// Legacy secureStorage is deprecated - kept for reference only
+// DO NOT USE - insecure Base64 encoding
+export const legacySecureStorage = {
+  /** @deprecated Use secureStorageV2 from '@/utils/crypto' instead */
+  setItem: (key: string, value: unknown, expirationHours: number = 24) => {
+    console.warn('[DEPRECATED] legacySecureStorage.setItem - use secureStorageV2 instead');
     const item = {
       value,
       timestamp: Date.now(),
       expiration: Date.now() + (expirationHours * 60 * 60 * 1000)
     };
-    
-    // Simple encoding (for basic obfuscation, not cryptographic security)
     const encoded = btoa(JSON.stringify(item));
     localStorage.setItem(key, encoded);
   },
   
+  /** @deprecated Use secureStorageV2 from '@/utils/crypto' instead */
   getItem: (key: string) => {
+    console.warn('[DEPRECATED] legacySecureStorage.getItem - use secureStorageV2 instead');
     try {
       const encoded = localStorage.getItem(key);
       if (!encoded) return null;
       
       const item = JSON.parse(atob(encoded));
-      
-      // Check expiration
       if (Date.now() > item.expiration) {
         localStorage.removeItem(key);
         return null;
       }
-      
       return item.value;
     } catch {
       localStorage.removeItem(key);
