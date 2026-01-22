@@ -1,6 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseAdminClient = SupabaseClient<any, "public", any>;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +24,7 @@ interface RateLimitConfig {
 
 // Database-backed rate limiting that persists across function instances
 async function checkRateLimit(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   userId: string,
   config: RateLimitConfig
 ): Promise<{ allowed: boolean; remainingRequests: number; resetAt: Date | null }> {
@@ -62,7 +65,7 @@ async function checkRateLimit(
 
 // Record rate limit hit in database
 async function recordRateLimitHit(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   userId: string
 ): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
@@ -84,7 +87,7 @@ async function recordRateLimitHit(
 
 // Get rate limit configuration from database
 async function getRateLimitConfig(
-  supabaseAdmin: ReturnType<typeof createClient>
+  supabaseAdmin: SupabaseAdminClient
 ): Promise<RateLimitConfig> {
   const defaultConfig: RateLimitConfig = {
     max_attempts: 20,
@@ -104,10 +107,10 @@ async function getRateLimitConfig(
   }
 
   return {
-    max_attempts: data.max_attempts ?? defaultConfig.max_attempts,
-    time_window_minutes: data.time_window_minutes ?? defaultConfig.time_window_minutes,
-    block_duration_minutes: data.block_duration_minutes ?? defaultConfig.block_duration_minutes,
-    enabled: data.enabled ?? defaultConfig.enabled
+    max_attempts: (data.max_attempts as number) ?? defaultConfig.max_attempts,
+    time_window_minutes: (data.time_window_minutes as number) ?? defaultConfig.time_window_minutes,
+    block_duration_minutes: (data.block_duration_minutes as number) ?? defaultConfig.block_duration_minutes,
+    enabled: (data.enabled as boolean) ?? defaultConfig.enabled
   };
 }
 
@@ -392,9 +395,9 @@ ${contextString}
           } 
         }
       );
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         console.error('OpenAI request timed out');
         return new Response(
           JSON.stringify({ success: false, error: 'AI service request timed out' }),
