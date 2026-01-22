@@ -19,7 +19,8 @@ interface GeolocationResponse {
 async function lookupIP(ip: string): Promise<GeolocationResponse | null> {
   try {
     // Using ip-api.com (free, no API key required, 45 req/min limit)
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,lat,lon`);
+    // Using HTTPS for secure communication
+    const response = await fetch(`https://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,lat,lon`);
     
     if (!response.ok) {
       console.error("IP lookup failed:", response.status);

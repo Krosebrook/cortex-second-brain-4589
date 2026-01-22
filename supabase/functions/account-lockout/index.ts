@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseAdminClient = SupabaseClient<any, "public", any>;
 
 /**
  * Account Lockout Edge Function
@@ -189,7 +192,7 @@ serve(async (req) => {
 });
 
 async function checkLockoutStatus(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseAdminClient,
   email: string,
   ip: string,
   config: LockoutConfig
@@ -209,8 +212,8 @@ async function checkLockoutStatus(
     return {
       isLocked: true,
       remainingAttempts: 0,
-      lockoutUntil: blockedIp.blocked_until,
-      lockoutReason: blockedIp.reason,
+      lockoutUntil: blockedIp.blocked_until as string | null,
+      lockoutReason: blockedIp.reason as string | null,
     };
   }
 
@@ -250,7 +253,7 @@ async function checkLockoutStatus(
 }
 
 async function recordFailedAttempt(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseAdminClient,
   email: string,
   ip: string,
   userAgent: string,
@@ -304,7 +307,7 @@ async function recordFailedAttempt(
 }
 
 async function clearFailedAttempts(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseAdminClient,
   email: string,
   ip: string
 ): Promise<void> {
@@ -325,7 +328,7 @@ async function clearFailedAttempts(
 }
 
 async function adminUnlock(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseAdminClient,
   email?: string,
   ip?: string
 ): Promise<void> {
