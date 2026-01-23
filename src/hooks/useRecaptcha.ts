@@ -28,83 +28,136 @@ declare global {
       getResponse: (widgetId?: number) => string;
     };
     onRecaptchaLoad?: () => void;
+    recaptchaScriptLoaded?: boolean;
+    recaptchaLoadCallbacks?: Array<() => void>;
   }
 }
 
-export const useRecaptcha = (): UseRecaptchaReturn => {
+// Global script loading state
+let scriptLoadPromise: Promise<void> | null = null;
+
+const loadRecaptchaScript = (): Promise<void> => {
+  if (scriptLoadPromise) {
+    return scriptLoadPromise;
+  }
+
+  if (window.grecaptcha && window.recaptchaScriptLoaded) {
+    return Promise.resolve();
+  }
+
+  scriptLoadPromise = new Promise((resolve) => {
+    // Initialize callback array if not exists
+    if (!window.recaptchaLoadCallbacks) {
+      window.recaptchaLoadCallbacks = [];
+    }
+
+    // Add our callback
+    window.recaptchaLoadCallbacks.push(resolve);
+
+    // Define the global callback only once
+    if (!window.onRecaptchaLoad) {
+      window.onRecaptchaLoad = () => {
+        window.recaptchaScriptLoaded = true;
+        // Call all waiting callbacks
+        window.recaptchaLoadCallbacks?.forEach(cb => cb());
+        window.recaptchaLoadCallbacks = [];
+      };
+
+      // Load script
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  });
+
+  return scriptLoadPromise;
+};
+
+export const useRecaptcha = (containerId: string = 'recaptcha-container'): UseRecaptchaReturn => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const widgetIdRef = useRef<number | null>(null);
-  const containerIdRef = useRef('recaptcha-container');
+  const containerIdRef = useRef(containerId);
+  const isRenderingRef = useRef(false);
 
   // Load reCAPTCHA script
   useEffect(() => {
-    // Check if already loaded
-    if (window.grecaptcha) {
+    loadRecaptchaScript().then(() => {
       setIsLoaded(true);
-      return;
-    }
-
-    // Define callback before loading script
-    window.onRecaptchaLoad = () => {
-      setIsLoaded(true);
-    };
-
-    // Load script
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit`;
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup callback
-      delete window.onRecaptchaLoad;
-    };
+    });
   }, []);
 
   // Render the widget once loaded
   useEffect(() => {
-    if (!isLoaded || widgetIdRef.current !== null) return;
+    if (!isLoaded || widgetIdRef.current !== null || isRenderingRef.current) return;
 
-    const container = document.getElementById(containerIdRef.current);
-    if (!container) return;
-
-    window.grecaptcha.ready(() => {
-      try {
-        const id = window.grecaptcha.render(containerIdRef.current, {
-          sitekey: RECAPTCHA_SITE_KEY,
-          callback: (responseToken: string) => {
-            setToken(responseToken);
-            setIsVerified(true);
-            setError(null);
-          },
-          'expired-callback': () => {
-            setToken(null);
-            setIsVerified(false);
-            setError('reCAPTCHA expired. Please try again.');
-          },
-          'error-callback': () => {
-            setToken(null);
-            setError('reCAPTCHA error. Please try again.');
-            setIsVerified(false);
-          },
-          theme: 'light',
-          size: 'normal',
-        });
-        widgetIdRef.current = id;
-      } catch (err) {
-        console.error('Failed to render reCAPTCHA:', err);
-        setError('Failed to load reCAPTCHA');
+    const renderWidget = () => {
+      const container = document.getElementById(containerIdRef.current);
+      if (!container) {
+        // Container not ready yet, retry after a short delay
+        const timeoutId = setTimeout(renderWidget, 100);
+        return () => clearTimeout(timeoutId);
       }
-    });
+
+      // Check if already has a widget rendered (by checking for iframe)
+      if (container.querySelector('iframe')) {
+        return;
+      }
+
+      isRenderingRef.current = true;
+
+      window.grecaptcha.ready(() => {
+        try {
+          // Double-check container is still empty and we haven't rendered
+          if (widgetIdRef.current !== null) {
+            isRenderingRef.current = false;
+            return;
+          }
+
+          const id = window.grecaptcha.render(containerIdRef.current, {
+            sitekey: RECAPTCHA_SITE_KEY,
+            callback: (responseToken: string) => {
+              setToken(responseToken);
+              setIsVerified(true);
+              setError(null);
+            },
+            'expired-callback': () => {
+              setToken(null);
+              setIsVerified(false);
+              setError('reCAPTCHA expired. Please try again.');
+            },
+            'error-callback': () => {
+              setToken(null);
+              setError('reCAPTCHA error. Please try again.');
+              setIsVerified(false);
+            },
+            theme: 'light',
+            size: 'normal',
+          });
+          widgetIdRef.current = id;
+        } catch (err) {
+          console.error('Failed to render reCAPTCHA:', err);
+          setError('Failed to load reCAPTCHA');
+        } finally {
+          isRenderingRef.current = false;
+        }
+      });
+    };
+
+    renderWidget();
   }, [isLoaded]);
 
   const resetRecaptcha = useCallback(() => {
     if (widgetIdRef.current !== null && window.grecaptcha) {
-      window.grecaptcha.reset(widgetIdRef.current);
+      try {
+        window.grecaptcha.reset(widgetIdRef.current);
+      } catch (err) {
+        console.warn('Failed to reset reCAPTCHA:', err);
+      }
       setToken(null);
       setIsVerified(false);
       setError(null);
