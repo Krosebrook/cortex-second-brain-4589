@@ -1,15 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // Your reCAPTCHA v2 site key - this is public/publishable
 const RECAPTCHA_SITE_KEY = '6LdS7oIrAAAAAHGH8f7g5h6i7j8k9l0m1n2o3p4q5r';
 
 interface UseRecaptchaReturn {
   isLoaded: boolean;
-  isVerifying: boolean;
   isVerified: boolean;
   error: string | null;
-  executeRecaptcha: () => void;
+  token: string | null;
   resetRecaptcha: () => void;
   recaptchaContainerId: string;
 }
@@ -35,12 +33,11 @@ declare global {
 
 export const useRecaptcha = (): UseRecaptchaReturn => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [widgetId, setWidgetId] = useState<number | null>(null);
-  
-  const containerId = 'recaptcha-container';
+  const [token, setToken] = useState<string | null>(null);
+  const widgetIdRef = useRef<number | null>(null);
+  const containerIdRef = useRef('recaptcha-container');
 
   // Load reCAPTCHA script
   useEffect(() => {
@@ -63,90 +60,64 @@ export const useRecaptcha = (): UseRecaptchaReturn => {
     document.head.appendChild(script);
 
     return () => {
-      // Cleanup
-      const existingScript = document.querySelector('script[src*="recaptcha"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
+      // Cleanup callback
       delete window.onRecaptchaLoad;
     };
   }, []);
 
   // Render the widget once loaded
   useEffect(() => {
-    if (!isLoaded || widgetId !== null) return;
+    if (!isLoaded || widgetIdRef.current !== null) return;
 
-    const container = document.getElementById(containerId);
+    const container = document.getElementById(containerIdRef.current);
     if (!container) return;
 
     window.grecaptcha.ready(() => {
       try {
-        const id = window.grecaptcha.render(containerId, {
+        const id = window.grecaptcha.render(containerIdRef.current, {
           sitekey: RECAPTCHA_SITE_KEY,
-          callback: async (token: string) => {
-            setIsVerifying(true);
+          callback: (responseToken: string) => {
+            setToken(responseToken);
+            setIsVerified(true);
             setError(null);
-            
-            try {
-              // Verify token server-side
-              const { data, error: verifyError } = await supabase.functions.invoke('verify-recaptcha', {
-                body: { token },
-              });
-
-              if (verifyError || !data?.success) {
-                setError(data?.error || 'Verification failed');
-                setIsVerified(false);
-              } else {
-                setIsVerified(true);
-                setError(null);
-              }
-            } catch (err) {
-              setError('Failed to verify reCAPTCHA');
-              setIsVerified(false);
-            } finally {
-              setIsVerifying(false);
-            }
           },
           'expired-callback': () => {
+            setToken(null);
             setIsVerified(false);
             setError('reCAPTCHA expired. Please try again.');
           },
           'error-callback': () => {
+            setToken(null);
             setError('reCAPTCHA error. Please try again.');
             setIsVerified(false);
           },
           theme: 'light',
           size: 'normal',
         });
-        setWidgetId(id);
+        widgetIdRef.current = id;
       } catch (err) {
         console.error('Failed to render reCAPTCHA:', err);
         setError('Failed to load reCAPTCHA');
       }
     });
-  }, [isLoaded, widgetId]);
-
-  const executeRecaptcha = useCallback(() => {
-    // For v2 checkbox, user clicks the widget directly
-    // This is here for API consistency
-  }, []);
+  }, [isLoaded]);
 
   const resetRecaptcha = useCallback(() => {
-    if (widgetId !== null && window.grecaptcha) {
-      window.grecaptcha.reset(widgetId);
+    if (widgetIdRef.current !== null && window.grecaptcha) {
+      window.grecaptcha.reset(widgetIdRef.current);
+      setToken(null);
       setIsVerified(false);
       setError(null);
     }
-  }, [widgetId]);
+  }, []);
 
   return {
     isLoaded,
-    isVerifying,
     isVerified,
     error,
-    executeRecaptcha,
+    token,
     resetRecaptcha,
-    recaptchaContainerId: containerId,
+    recaptchaContainerId: containerIdRef.current,
   };
 };
 

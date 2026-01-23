@@ -34,7 +34,7 @@ const AuthPage = () => {
   const showContent = useAnimateIn(false, 300);
   
   // reCAPTCHA hook
-  const { isLoaded: recaptchaLoaded, isVerifying: recaptchaVerifying, isVerified: recaptchaVerified, error: recaptchaError, resetRecaptcha, recaptchaContainerId } = useRecaptcha();
+  const { isLoaded: recaptchaLoaded, isVerified: recaptchaVerified, error: recaptchaError, token: recaptchaToken, resetRecaptcha, recaptchaContainerId } = useRecaptcha();
 
   useEffect(() => {
     const initializePage = async () => {
@@ -211,6 +211,9 @@ const AuthPage = () => {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          captchaToken: recaptchaToken || undefined,
+        },
       });
 
       if (error) {
@@ -371,12 +374,6 @@ const AuthPage = () => {
                           <div id={recaptchaContainerId} />
                         )}
                       </div>
-                      {recaptchaVerifying && (
-                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Verifying...</span>
-                        </div>
-                      )}
                       {recaptchaVerified && (
                         <div className="flex items-center justify-center gap-2 text-green-600">
                           <CheckCircle2 className="h-4 w-4" />
