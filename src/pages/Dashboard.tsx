@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useFeatureTour } from '@/hooks/useFeatureTour';
 import { Spotlight } from '@/components/onboarding/Spotlight';
+import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
 import { 
   Brain, 
   Search, 
@@ -51,6 +52,9 @@ const Dashboard = () => {
           title="Welcome Back"
           description="Tessa is ready to help you explore your knowledge base with advanced AI capabilities."
         />
+
+        {/* Email Verification Status Banner */}
+        <EmailVerificationBanner />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" data-tour="stats">
