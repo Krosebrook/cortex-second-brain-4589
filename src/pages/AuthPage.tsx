@@ -13,6 +13,7 @@ import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
 
 interface LockoutStatus {
   isLocked: boolean;
@@ -418,6 +419,11 @@ const AuthPage = () => {
                       {loading ? 'Signing in...' : 'Sign In'}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
+                    
+                    {/* Forgot Password Link */}
+                    <div className="text-center">
+                      <ForgotPasswordDialog />
+                    </div>
                   </form>
                 </TabsContent>
                 
