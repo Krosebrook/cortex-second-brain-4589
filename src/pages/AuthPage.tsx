@@ -8,10 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Brain, Mail, Lock, User, ArrowRight, AlertCircle, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Brain, Mail, Lock, User, ArrowRight, AlertCircle, RefreshCw, ShieldAlert, CheckCircle2, Loader2 } from 'lucide-react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
+import { useRecaptcha } from '@/hooks/useRecaptcha';
 
 interface LockoutStatus {
   isLocked: boolean;
@@ -31,6 +32,9 @@ const AuthPage = () => {
   const [lockoutStatus, setLockoutStatus] = useState<LockoutStatus | null>(null);
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
+  
+  // reCAPTCHA hook
+  const { isLoaded: recaptchaLoaded, isVerifying: recaptchaVerifying, isVerified: recaptchaVerified, error: recaptchaError, resetRecaptcha, recaptchaContainerId } = useRecaptcha();
 
   useEffect(() => {
     const initializePage = async () => {
@@ -185,6 +189,12 @@ const AuthPage = () => {
       return;
     }
 
+    // Check reCAPTCHA verification
+    if (!recaptchaVerified) {
+      toast.error('Please complete the reCAPTCHA verification.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -194,6 +204,7 @@ const AuthPage = () => {
         setLockoutStatus(lockout);
         toast.error(lockout.lockoutReason || 'Account is temporarily locked');
         setLoading(false);
+        resetRecaptcha();
         return;
       }
 
@@ -215,6 +226,8 @@ const AuthPage = () => {
         } else {
           toast.error(getAuthErrorMessage(error));
         }
+        // Reset reCAPTCHA on failed login
+        resetRecaptcha();
       } else {
         // Clear failed attempts on successful login
         await clearLoginAttempts(email);
@@ -227,6 +240,7 @@ const AuthPage = () => {
         ? getAuthErrorMessage(error)
         : 'An unexpected error occurred';
       toast.error(errorMessage);
+      resetRecaptcha();
       
       // Recheck health if fetch failed
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
@@ -344,10 +358,40 @@ const AuthPage = () => {
                         />
                       </div>
                     </div>
+                    
+                    {/* reCAPTCHA Widget */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center">
+                        {!recaptchaLoaded ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Loading reCAPTCHA...</span>
+                          </div>
+                        ) : (
+                          <div id={recaptchaContainerId} />
+                        )}
+                      </div>
+                      {recaptchaVerifying && (
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">Verifying...</span>
+                        </div>
+                      )}
+                      {recaptchaVerified && (
+                        <div className="flex items-center justify-center gap-2 text-green-600">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="text-sm">Verified</span>
+                        </div>
+                      )}
+                      {recaptchaError && (
+                        <p className="text-sm text-destructive text-center">{recaptchaError}</p>
+                      )}
+                    </div>
+                    
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={loading || !connectionHealthy}
+                      disabled={loading || !connectionHealthy || !recaptchaVerified}
                     >
                       {loading ? 'Signing in...' : 'Sign In'}
                       <ArrowRight className="ml-2 h-4 w-4" />
