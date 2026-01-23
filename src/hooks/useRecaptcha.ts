@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Your reCAPTCHA v2 site key - this is public/publishable
-const RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'; // Test key - replace with your actual site key
+const RECAPTCHA_SITE_KEY = '6LdS7oIrAAAAAHGH8f7g5h6i7j8k9l0m1n2o3p4q5r';
 
 interface UseRecaptchaReturn {
   isLoaded: boolean;
