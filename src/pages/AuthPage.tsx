@@ -33,8 +33,24 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
   
-  // reCAPTCHA hook
-  const { isLoaded: recaptchaLoaded, isVerified: recaptchaVerified, error: recaptchaError, token: recaptchaToken, resetRecaptcha, recaptchaContainerId } = useRecaptcha();
+  // reCAPTCHA hooks - separate instances for login and signup
+  const { 
+    isLoaded: loginRecaptchaLoaded, 
+    isVerified: loginRecaptchaVerified, 
+    error: loginRecaptchaError, 
+    token: loginRecaptchaToken, 
+    resetRecaptcha: resetLoginRecaptcha, 
+    recaptchaContainerId: loginRecaptchaContainerId 
+  } = useRecaptcha('recaptcha-login');
+  
+  const { 
+    isLoaded: signupRecaptchaLoaded, 
+    isVerified: signupRecaptchaVerified, 
+    error: signupRecaptchaError, 
+    token: signupRecaptchaToken, 
+    resetRecaptcha: resetSignupRecaptcha, 
+    recaptchaContainerId: signupRecaptchaContainerId 
+  } = useRecaptcha('recaptcha-signup');
 
   useEffect(() => {
     const initializePage = async () => {
@@ -83,6 +99,12 @@ const AuthPage = () => {
       return;
     }
 
+    // Check reCAPTCHA verification for signup
+    if (!signupRecaptchaVerified) {
+      toast.error('Please complete the reCAPTCHA verification.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -100,6 +122,7 @@ const AuthPage = () => {
         password,
         options: {
           emailRedirectTo: redirectUrl,
+          captchaToken: signupRecaptchaToken || undefined,
           data: {
             full_name: fullName,
             username: email.split('@')[0]
@@ -109,6 +132,7 @@ const AuthPage = () => {
 
       if (error) {
         toast.error(getAuthErrorMessage(error));
+        resetSignupRecaptcha();
       } else {
         toast.success('Account created! Check your email to confirm your account.');
       }
@@ -117,6 +141,7 @@ const AuthPage = () => {
         ? getAuthErrorMessage(error)
         : 'An unexpected error occurred';
       toast.error(errorMessage);
+      resetSignupRecaptcha();
       
       // Recheck health if fetch failed
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
@@ -190,7 +215,7 @@ const AuthPage = () => {
     }
 
     // Check reCAPTCHA verification
-    if (!recaptchaVerified) {
+    if (!loginRecaptchaVerified) {
       toast.error('Please complete the reCAPTCHA verification.');
       return;
     }
@@ -204,7 +229,7 @@ const AuthPage = () => {
         setLockoutStatus(lockout);
         toast.error(lockout.lockoutReason || 'Account is temporarily locked');
         setLoading(false);
-        resetRecaptcha();
+        resetLoginRecaptcha();
         return;
       }
 
@@ -212,7 +237,7 @@ const AuthPage = () => {
         email,
         password,
         options: {
-          captchaToken: recaptchaToken || undefined,
+          captchaToken: loginRecaptchaToken || undefined,
         },
       });
 
@@ -230,7 +255,7 @@ const AuthPage = () => {
           toast.error(getAuthErrorMessage(error));
         }
         // Reset reCAPTCHA on failed login
-        resetRecaptcha();
+        resetLoginRecaptcha();
       } else {
         // Clear failed attempts on successful login
         await clearLoginAttempts(email);
@@ -243,7 +268,7 @@ const AuthPage = () => {
         ? getAuthErrorMessage(error)
         : 'An unexpected error occurred';
       toast.error(errorMessage);
-      resetRecaptcha();
+      resetLoginRecaptcha();
       
       // Recheck health if fetch failed
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
@@ -362,33 +387,33 @@ const AuthPage = () => {
                       </div>
                     </div>
                     
-                    {/* reCAPTCHA Widget */}
+                    {/* reCAPTCHA Widget for Login */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-center">
-                        {!recaptchaLoaded ? (
+                        {!loginRecaptchaLoaded ? (
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span className="text-sm">Loading reCAPTCHA...</span>
                           </div>
                         ) : (
-                          <div id={recaptchaContainerId} />
+                          <div id={loginRecaptchaContainerId} />
                         )}
                       </div>
-                      {recaptchaVerified && (
+                      {loginRecaptchaVerified && (
                         <div className="flex items-center justify-center gap-2 text-green-600">
                           <CheckCircle2 className="h-4 w-4" />
                           <span className="text-sm">Verified</span>
                         </div>
                       )}
-                      {recaptchaError && (
-                        <p className="text-sm text-destructive text-center">{recaptchaError}</p>
+                      {loginRecaptchaError && (
+                        <p className="text-sm text-destructive text-center">{loginRecaptchaError}</p>
                       )}
                     </div>
                     
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={loading || !connectionHealthy || !recaptchaVerified}
+                      disabled={loading || !connectionHealthy || !loginRecaptchaVerified}
                     >
                       {loading ? 'Signing in...' : 'Sign In'}
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -444,10 +469,34 @@ const AuthPage = () => {
                         />
                       </div>
                     </div>
+                    
+                    {/* reCAPTCHA Widget for Signup */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center">
+                        {!signupRecaptchaLoaded ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Loading reCAPTCHA...</span>
+                          </div>
+                        ) : (
+                          <div id={signupRecaptchaContainerId} />
+                        )}
+                      </div>
+                      {signupRecaptchaVerified && (
+                        <div className="flex items-center justify-center gap-2 text-green-600">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="text-sm">Verified</span>
+                        </div>
+                      )}
+                      {signupRecaptchaError && (
+                        <p className="text-sm text-destructive text-center">{signupRecaptchaError}</p>
+                      )}
+                    </div>
+                    
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={loading || !connectionHealthy}
+                      disabled={loading || !connectionHealthy || !signupRecaptchaVerified}
                     >
                       {loading ? 'Creating account...' : 'Create Account'}
                       <ArrowRight className="ml-2 h-4 w-4" />
