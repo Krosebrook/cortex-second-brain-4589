@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-// Your reCAPTCHA v2 site key - this is public/publishable
-const RECAPTCHA_SITE_KEY = '6LdS7oIrAAAAAHGH8f7g5h6i7j8k9l0m1n2o3p4q5r';
+// Google's official reCAPTCHA v2 test key - always passes verification
+// For production, replace with your own site key from https://www.google.com/recaptcha/admin
+const RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
 interface UseRecaptchaReturn {
   isLoaded: boolean;
