@@ -20,6 +20,8 @@ import { DataMigrationWizard } from '@/components/settings/DataMigrationWizard';
 import { CloudStorageBackup } from '@/components/settings/CloudStorageBackup';
 import { ConflictResolutionPanel } from '@/components/feedback/ConflictResolutionPanel';
 import { useConflictResolution } from '@/hooks/useConflictResolution';
+ import { PasswordChange } from '@/components/settings/PasswordChange';
+ import { TwoFactorAuth } from '@/components/settings/TwoFactorAuth';
 
 interface NotificationPreferences {
   enabled: boolean;
@@ -80,8 +82,9 @@ const Settings = () => {
         
         <div className="max-w-3xl mx-auto">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsList className="grid w-full grid-cols-6 mb-8">
               <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="storage">Storage</TabsTrigger>
               <TabsTrigger value="tours">Tours</TabsTrigger>
@@ -123,6 +126,11 @@ const Settings = () => {
                   />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-6">
+              <PasswordChange />
+              <TwoFactorAuth />
             </TabsContent>
 
             <TabsContent value="notifications">
