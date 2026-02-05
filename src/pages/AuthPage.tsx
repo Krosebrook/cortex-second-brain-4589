@@ -14,6 +14,7 @@ import { useAnimateIn } from '@/lib/animations';
 import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
+ import { MFAVerification } from '@/components/auth/MFAVerification';
 
 interface LockoutStatus {
   isLocked: boolean;
@@ -31,6 +32,8 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [lockoutStatus, setLockoutStatus] = useState<LockoutStatus | null>(null);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [showMFA, setShowMFA] = useState(false);
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
   
@@ -243,6 +246,18 @@ const AuthPage = () => {
       });
 
       if (error) {
+        // Check if this is an MFA challenge required scenario
+        // Supabase returns specific indicators when MFA is needed
+        const { data: factorsData } = await supabase.auth.mfa.listFactors();
+        const totpFactor = factorsData?.totp?.find(f => f.status === 'verified');
+        
+        if (totpFactor && error.message?.toLowerCase().includes('requires')) {
+          setMfaFactorId(totpFactor.id);
+          setShowMFA(true);
+          setLoading(false);
+          return;
+        }
+
         // Record failed login attempt via edge function
         const failureStatus = await recordLoginFailure(email, error.message);
         
@@ -279,6 +294,20 @@ const AuthPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMFASuccess = async () => {
+    setShowMFA(false);
+    setMfaFactorId(null);
+    await clearLoginAttempts(email);
+    toast.success('Welcome back!');
+    navigate('/dashboard');
+  };
+
+  const handleMFACancel = () => {
+    setShowMFA(false);
+    setMfaFactorId(null);
+    resetLoginRecaptcha();
   };
 
   return (
@@ -341,7 +370,14 @@ const AuthPage = () => {
           )}
 
           {/* Auth Form */}
-          <Card className="w-full">
+          {showMFA && mfaFactorId ? (
+            <MFAVerification 
+              factorId={mfaFactorId}
+              onSuccess={handleMFASuccess}
+              onCancel={handleMFACancel}
+            />
+          ) : (
+            <Card className="w-full">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl text-center">Welcome</CardTitle>
               <CardDescription className="text-center">
@@ -511,7 +547,8 @@ const AuthPage = () => {
                 </TabsContent>
               </Tabs>
             </CardContent>
-          </Card>
+            </Card>
+          )}
 
           {/* Footer */}
           <div className="text-center text-sm text-muted-foreground">
