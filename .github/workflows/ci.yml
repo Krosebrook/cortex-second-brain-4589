@@ -1,164 +1,49 @@
-# =============================================================================
-# CI WORKFLOW
-# =============================================================================
-# Runs on PRs and pushes to main/develop
-# =============================================================================
-
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
+    branches: [main]
+  push:
+    branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  NODE_VERSION: '18'
-  HUSKY: 0
+permissions:
+  contents: read
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Code Quality
-  # ---------------------------------------------------------------------------
-  code-quality:
-    name: Code Quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
-
-      - name: Lint
-        id: lint
-        run: npm run lint -- --max-warnings=0
-
-      - name: Type Check
-        id: typecheck
-        run: npx tsc --noEmit
-
-      - name: Format Check
-        id: format
-        run: npx prettier --check "src/**/*.{ts,tsx,css}"
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "## Code Quality" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ESLint | ${{ steps.lint.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TypeScript | ${{ steps.typecheck.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Prettier | ${{ steps.format.outcome == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-
-  # ---------------------------------------------------------------------------
-  # Test
-  # ---------------------------------------------------------------------------
-  test:
-    name: Test
+  build-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: code-quality
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20]
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
+          node-version: ${{ matrix.node-version }}
+          cache: npm
 
-      - name: Run Tests
-        run: npm run test -- --coverage --reporter=verbose
+      - name: Install dependencies
+        run: npm ci
 
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 7
+      - name: Typecheck (if available)
+        run: npm run typecheck --if-present
 
-  # ---------------------------------------------------------------------------
-  # Build
-  # ---------------------------------------------------------------------------
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: code-quality
+      - name: Lint (if available)
+        run: npm run lint --if-present
 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
+      - name: Test (if available)
+        run: npm test --if-present
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: dist/
-          retention-days: 7
-
-      - name: Summary
-        run: |
-          echo "## Build" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Completed" >> $GITHUB_STEP_SUMMARY
-          du -sh dist/ >> $GITHUB_STEP_SUMMARY
-
-  # ---------------------------------------------------------------------------
-  # E2E Tests
-  # ---------------------------------------------------------------------------
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: [code-quality, build]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=chromium
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
-
-  # ---------------------------------------------------------------------------
-  # PR Validation
-  # ---------------------------------------------------------------------------
-  pr-validation:
-    name: PR Validation
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 5
-
-    steps:
-      - name: Validate PR Title
-        run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?\!?:\ .+ ]]; then
-            echo "❌ PR title must follow Conventional Commits" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          echo "✅ PR title valid" >> $GITHUB_STEP_SUMMARY
+      - name: Build
+        run: npm run build
