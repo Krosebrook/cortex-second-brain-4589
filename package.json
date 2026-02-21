@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -62,7 +62,7 @@
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "input-otp": "^1.2.4",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.2",
     "lint-staged": "^16.2.7",
     "lucide-react": "^0.462.0",
