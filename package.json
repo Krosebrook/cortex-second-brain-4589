@@ -62,7 +62,7 @@
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "input-otp": "^1.2.4",
-    "jspdf": "^4.1.0",
+    "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.2",
     "lint-staged": "^16.2.7",
     "lucide-react": "^0.537.0",
