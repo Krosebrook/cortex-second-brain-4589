@@ -233,60 +233,42 @@ export function useDashboardData() {
     staleTime: 30000, // 30 seconds
   });
 
-  // Fetch user goals
+  // User goals — table not yet created, use defaults
   const goalsQuery = useQuery({
     queryKey: ['dashboard-goals', user?.id],
     queryFn: async (): Promise<UserGoal[]> => {
-      if (!user?.id) return [];
-
-      const { data, error } = await supabase
-        .from('user_goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // If no goals, return default goals
-      if (!data || data.length === 0) {
-        return [
-          {
-            id: 'default-1',
-            title: 'Import 100 items this month',
-            target_value: 100,
-            current_value: statsQuery.data?.itemsThisMonth || 0,
-            goal_type: 'imports',
-            period: 'monthly',
-            progress: Math.min(100, ((statsQuery.data?.itemsThisMonth || 0) / 100) * 100)
-          },
-          {
-            id: 'default-2',
-            title: 'Perform 500 searches',
-            target_value: 500,
-            current_value: statsQuery.data?.searchesToday || 0,
-            goal_type: 'searches',
-            period: 'monthly',
-            progress: Math.min(100, ((statsQuery.data?.searchesToday || 0) / 500) * 100)
-          },
-          {
-            id: 'default-3',
-            title: 'Create 5 new cortexes',
-            target_value: 5,
-            current_value: 0,
-            goal_type: 'cortexes',
-            period: 'monthly',
-            progress: 0
-          }
-        ];
-      }
-
-      return data.map(goal => ({
-        ...goal,
-        progress: Math.min(100, (goal.current_value / goal.target_value) * 100)
-      }));
+      return [
+        {
+          id: 'default-1',
+          title: 'Import 100 items this month',
+          target_value: 100,
+          current_value: statsQuery.data?.itemsThisMonth || 0,
+          goal_type: 'imports',
+          period: 'monthly',
+          progress: Math.min(100, ((statsQuery.data?.itemsThisMonth || 0) / 100) * 100)
+        },
+        {
+          id: 'default-2',
+          title: 'Perform 500 searches',
+          target_value: 500,
+          current_value: statsQuery.data?.searchesToday || 0,
+          goal_type: 'searches',
+          period: 'monthly',
+          progress: Math.min(100, ((statsQuery.data?.searchesToday || 0) / 500) * 100)
+        },
+        {
+          id: 'default-3',
+          title: 'Create 5 new cortexes',
+          target_value: 5,
+          current_value: 0,
+          goal_type: 'cortexes',
+          period: 'monthly',
+          progress: 0
+        }
+      ];
     },
     enabled: isAuthenticated && !!user?.id,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 
   // Top searched topics (from messages)

@@ -285,10 +285,12 @@ class ChatServiceImpl extends BaseService {
     role: 'user' | 'assistant'
   ): Promise<ChatMessage> {
     return this.executeWithRetry('saveMessage', async () => {
+      const userId = await this.getCurrentUserId();
       const result = await supabase
         .from('messages')
         .insert({
           chat_id: chatId,
+          user_id: userId,
           content,
           role,
         })

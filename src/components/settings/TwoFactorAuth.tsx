@@ -48,7 +48,7 @@
  
        // Check for verified factors
        const verifiedFactor = totpFactors.find(f => f.status === 'verified');
-       const unverifiedFactor = totpFactors.find(f => f.status === 'unverified');
+       const unverifiedFactor = totpFactors.find(f => (f.status as string) === 'unverified');
  
        if (verifiedFactor) {
          setStatus('enabled');
