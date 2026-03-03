@@ -29,11 +29,12 @@ import { exportToJSON, exportToCSV, exportToPDF, ExportFormat, getExportFilename
 import { enhancedToast } from '@/components/feedback/EnhancedToast';
 import { Conflict } from '@/types/conflict';
 
-const typeIcons = {
+const typeIcons: Record<string, any> = {
   note: FileText,
   document: File,
   web_page: Globe,
   file: Database,
+  general: FileText,
 };
 
 export const KnowledgeList: React.FC = () => {
@@ -368,7 +369,7 @@ const {
           estimateSize={100}
           className="h-[calc(100vh-16rem)] overflow-auto"
           renderItem={(item, index) => {
-            const Icon = typeIcons[item.type];
+            const Icon = typeIcons[item.category || 'general'] || FileText;
             const isFocused = focusedIndex === index;
             const isDragging = draggedId === item.id;
             const isDropTarget = dragOverId === item.id;
@@ -428,7 +429,7 @@ const {
       ) : (
         <div className="space-y-2">
           {filteredItems.map((item, index) => {
-            const Icon = typeIcons[item.type];
+            const Icon = typeIcons[item.category || 'general'] || FileText;
             const isFocused = focusedIndex === index;
             const isDragging = draggedId === item.id;
             const isDropTarget = dragOverId === item.id;

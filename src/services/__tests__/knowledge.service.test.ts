@@ -15,7 +15,7 @@ describe('KnowledgeService', () => {
     title: 'Test Knowledge',
     content: 'Test content',
     tags: ['test', 'sample'],
-    type: 'note',
+    category: 'general',
     source_url: null,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',

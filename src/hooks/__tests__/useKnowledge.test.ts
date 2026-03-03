@@ -48,23 +48,21 @@ const mockItems: KnowledgeItem[] = [
     id: 'item-1',
     title: 'Test Item 1',
     content: 'Content 1',
-    type: 'note',
+    category: 'general',
     source_url: null,
     tags: ['tag1', 'tag2'],
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-02T00:00:00Z',
-    order_index: 0,
   },
   {
     id: 'item-2',
     title: 'Test Item 2',
     content: 'Content 2',
-    type: 'document',
+    category: 'general',
     source_url: 'https://example.com',
     tags: ['tag3'],
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
-    order_index: 1,
   },
 ];
 
@@ -86,10 +84,10 @@ describe('useKnowledge', () => {
       expect(result.current.items).toHaveLength(2);
     });
 
-    it('should sort items by order_index', async () => {
+    it('should sort items by updated_at', async () => {
       const unorderedItems: KnowledgeItem[] = [
-        { ...mockItems[1], order_index: 0 },
-        { ...mockItems[0], order_index: 1 },
+        { ...mockItems[1] },
+        { ...mockItems[0] },
       ];
       vi.mocked(KnowledgeService.loadKnowledge).mockResolvedValue(unorderedItems);
 
@@ -151,7 +149,7 @@ describe('useKnowledge', () => {
         await result.current.addKnowledgeItem({
           title: 'Test',
           content: null,
-          type: null,
+          category: 'general',
           source_url: null,
           tags: null,
         });

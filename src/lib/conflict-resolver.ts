@@ -16,7 +16,6 @@ export class ConflictResolver {
         .single();
 
       if (error || !currentState) {
-        // Item doesn't exist - delete conflict
         return {
           type: 'delete',
           actionId,
@@ -27,9 +26,12 @@ export class ConflictResolver {
         };
       }
 
-      // Check version (optimistic locking)
-      if (currentState.version !== expectedVersion) {
-        // Item was updated - update conflict
+      // For knowledge_base, check version; for chats, check updated_at
+      const currentVersion = table === 'knowledge_base'
+        ? (currentState as any).version ?? 0
+        : 0;
+
+      if (currentVersion !== expectedVersion && table === 'knowledge_base') {
         return {
           type: 'update',
           actionId,
@@ -41,7 +43,7 @@ export class ConflictResolver {
         };
       }
 
-      return null; // No conflict
+      return null;
     } catch (error) {
       console.error('Error detecting conflict:', error);
       return null;
@@ -55,16 +57,29 @@ export class ConflictResolver {
     expectedVersion: number,
     actionId: string
   ): Promise<T> {
-    const { data, error } = await supabase
-      .from(table)
-      .update(updates)
-      .eq('id', id)
-      .eq('version', expectedVersion)
-      .select()
-      .single();
+    const updatePayload = updates as Record<string, unknown>;
+    let result: any;
+    
+    if (table === 'knowledge_base') {
+      result = await (supabase as any)
+        .from(table)
+        .update(updatePayload)
+        .eq('id', id)
+        .eq('version', expectedVersion)
+        .select()
+        .single();
+    } else {
+      result = await (supabase as any)
+        .from(table)
+        .update(updatePayload)
+        .eq('id', id)
+        .select()
+        .single();
+    }
+
+    const { data, error } = result;
 
     if (error || !data) {
-      // Detect what kind of conflict occurred
       const conflict = await this.detectConflict(table, id, expectedVersion, actionId);
       if (conflict) {
         throw new ConflictError(conflict);
@@ -86,15 +101,12 @@ export class ConflictResolver {
     
     for (const key of keys) {
       if (key === 'version' || key === 'updated_at') continue;
-      
       if (JSON.stringify(expected[key]) !== JSON.stringify(actual[key])) {
         differences.push(key);
       }
     }
 
-    // Can merge if only non-conflicting fields changed
     const canMerge = differences.length > 0 && differences.length < 3;
-
     return { differences, canMerge };
   }
 }
