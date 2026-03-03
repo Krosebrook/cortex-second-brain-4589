@@ -50,7 +50,7 @@ export const ForgotPasswordDialog = ({ trigger }: ForgotPasswordDialogProps) => 
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
+        redirectTo: `${window.location.origin}/reset-password`,
         captchaToken: recaptchaToken || undefined,
       });
 
