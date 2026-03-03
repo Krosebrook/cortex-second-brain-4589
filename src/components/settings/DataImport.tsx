@@ -183,9 +183,9 @@ export const DataImport: React.FC = () => {
             try {
               const { error } = await supabase.from('messages').insert({
                 chat_id: newChatId,
+                user_id: user!.id,
                 role: message.role,
                 content: message.content,
-                created_at: new Date().toISOString()
               });
 
               if (error) {
