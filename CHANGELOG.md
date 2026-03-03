@@ -5,6 +5,20 @@ All notable changes to Cortex will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-01-18)
+
+
+### Features
+
+* add automated branch cleanup workflow and documentation ([52c81a3](https://github.com/Krosebrook/cortex-second-brain-4589/commit/52c81a3b4600db89abc655430d1366d327e83583))
+* Add comprehensive audit logging service and security audit documentation ([3d0e222](https://github.com/Krosebrook/cortex-second-brain-4589/commit/3d0e222dd7694a6b9fe0ffe8a1809b988a83a8cf))
+* Add test workflow with coverage enforcement and new service modules ([c890a3d](https://github.com/Krosebrook/cortex-second-brain-4589/commit/c890a3db310c1da9b6333e416c82ccaa575c153f))
+
+
+### Bug Fixes
+
+* Address code review feedback ([2034b62](https://github.com/Krosebrook/cortex-second-brain-4589/commit/2034b621f45cd9ddf955a4ca20e1ab5cb388870f))
+
 ## [Unreleased]
 
 ### Planned

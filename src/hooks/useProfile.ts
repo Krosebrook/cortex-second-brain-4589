@@ -72,7 +72,7 @@ export const useProfile = () => {
       if (user?.id) {
         await logProfileAccess(user.id, 'view', true);
       }
-      setProfile(data);
+      setProfile(data as Profile | null);
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
