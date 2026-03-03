@@ -5,15 +5,11 @@ import { toast } from 'sonner';
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
+  username: string | null;
   avatar_url: string | null;
-  subscription_tier: 'starter' | 'professional' | 'enterprise';
-  subscription_status: 'active' | 'trialing' | 'past_due' | 'canceled';
-  stripe_customer_id: string | null;
-  trial_ends_at: string | null;
-  onboarding_completed: boolean;
-  usage_limits: any;
+  bio: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,15 +35,12 @@ export const useProfile = () => {
     failureReason?: string
   ) => {
     try {
-      await supabase.rpc('log_profile_access', {
-        p_accessed_profile_id: profileId,
-        p_access_type: accessType,
-        p_success: success,
-        p_failure_reason: failureReason || null,
-        p_metadata: {}
+      await supabase.from('profile_access_logs').insert({
+        user_id: profileId,
+        action: accessType,
+        metadata: { success, failure_reason: failureReason || null },
       });
     } catch (error) {
-      // Silent fail for audit logging - don't block main operations
       console.warn('Failed to log profile access:', error);
     }
   };
@@ -97,7 +90,6 @@ export const useProfile = () => {
       }
 
       await logProfileAccess(user.id, 'update', true);
-      // Reload profile to get updated data
       await loadProfile();
       toast.success('Profile updated successfully');
     } catch (error) {

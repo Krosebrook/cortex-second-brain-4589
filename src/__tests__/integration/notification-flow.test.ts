@@ -1,3 +1,4 @@
+// @ts-nocheck - Test uses RPC functions not yet in generated Supabase types
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { supabase } from '@/integrations/supabase/client';
 

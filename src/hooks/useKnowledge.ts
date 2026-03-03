@@ -19,13 +19,13 @@ export interface KnowledgeItem {
   id: string;
   title: string;
   content: string | null;
-  type: 'note' | 'document' | 'web_page' | 'file' | null;
+  category?: string | null;
   source_url: string | null;
   tags: string[] | null;
+  is_favorite?: boolean;
   created_at: string;
   updated_at: string;
   version?: number;
-  order_index?: number;
   deleted_at?: string | null;
   user_id?: string;
 }
@@ -75,9 +75,6 @@ export const useKnowledge = (): UseKnowledgeReturn => {
       onSuccess: (data) => {
         // Sort by order_index, then by updated_at
         const sorted = [...data].sort((a, b) => {
-          const orderA = a.order_index ?? Infinity;
-          const orderB = b.order_index ?? Infinity;
-          if (orderA !== orderB) return orderA - orderB;
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
         });
         setItems(sorted);
