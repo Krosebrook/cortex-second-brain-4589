@@ -5,6 +5,15 @@ All notable changes to Cortex will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2](https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.1...v0.1.2) (2026-03-03)
+
+
+### Bug Fixes
+
+* align release-please manifest version with package.json (0.1.1) ([631bff0](https://github.com/Krosebrook/cortex-second-brain-4589/commit/631bff08645068d65c91cf82ca8268845554c5a4))
+* apply review feedback - version 0.1.1, revert zod to ^3.23.8 ([c238547](https://github.com/Krosebrook/cortex-second-brain-4589/commit/c238547d78c4276296c63559bda161121ac15bcb))
+* regenerate package-lock.json to match package.json upgraded versions ([67a9c3f](https://github.com/Krosebrook/cortex-second-brain-4589/commit/67a9c3fe890c06e1ec921221fe7c4bce09590c9b))
+
 ## 1.0.0 (2026-01-18)
 
 
