@@ -212,9 +212,9 @@ export const DataMigrationWizard: React.FC = () => {
       const title = titleMatch?.[1] || 'Untitled Note';
       let content = contentMatch?.[1] || '';
       
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = content;
-      content = tempDiv.textContent || tempDiv.innerText || '';
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      content = doc.body.textContent || '';
       
       const tags = tagMatches?.map(t => t.replace(/<\/?tag>/g, '')) || [];
       const validation = validateItem({ title, content: content.trim(), tags: [...tags, 'evernote-import'] });
