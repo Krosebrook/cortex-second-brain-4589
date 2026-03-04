@@ -1408,36 +1408,6 @@ export type Database = {
         }
         Relationships: []
       }
-      users: {
-        Row: {
-          ai_credits_limit: number
-          ai_credits_used: number
-          created_at: string
-          id: string
-          password: string
-          subscription_tier: string
-          username: string
-        }
-        Insert: {
-          ai_credits_limit?: number
-          ai_credits_used?: number
-          created_at?: string
-          id?: string
-          password: string
-          subscription_tier?: string
-          username: string
-        }
-        Update: {
-          ai_credits_limit?: number
-          ai_credits_used?: number
-          created_at?: string
-          id?: string
-          password?: string
-          subscription_tier?: string
-          username?: string
-        }
-        Relationships: []
-      }
       wardrobe_items: {
         Row: {
           category: string
