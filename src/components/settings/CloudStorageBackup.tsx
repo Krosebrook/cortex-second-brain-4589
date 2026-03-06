@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { supabase } from '@/integrations/supabase/client';
 
-const SUPABASE_URL = "https://gcqfqzhgludrzkfajljp.supabase.co";
+const SUPABASE_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
 
 type CloudProvider = 'google-drive' | 'dropbox' | 'onedrive';
 

@@ -83,13 +83,37 @@ serve(async (req) => {
     }
 
     if (action === 'record-failure') {
-      // Record a failed login attempt
+      // Record a failed login attempt — rate-limit by IP to prevent DoS
       const { email, reason } = await req.json() as { email: string; reason?: string };
       
       if (!email) {
         return new Response(
           JSON.stringify({ error: 'Email is required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Basic email format validation to reduce abuse surface
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid email format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Rate-limit the endpoint itself: max 20 calls per IP per 5 minutes
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { count: recentCalls } = await supabaseAdmin
+        .from('failed_login_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('ip_address', clientIp)
+        .gte('attempted_at', fiveMinAgo);
+
+      if ((recentCalls || 0) >= 20) {
+        return new Response(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -106,12 +130,31 @@ serve(async (req) => {
     }
 
     if (action === 'record-success') {
-      // Clear failed attempts on successful login
-      const { email } = await req.json() as { email: string };
-      
+      // Clear failed attempts on successful login — requires valid auth
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: 'Authorization required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication failed' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const email = user.email;
       if (!email) {
         return new Response(
-          JSON.stringify({ error: 'Email is required' }),
+          JSON.stringify({ error: 'User email not found' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
