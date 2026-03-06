@@ -12,13 +12,16 @@ const corsHeaders = {
 };
 
 // Content Security Policy - adjust based on your needs
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://mlqebvxmavrzousuqyjr.supabase.co';
+const supabaseHost = new URL(supabaseUrl).host;
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval'", // unsafe-eval needed for some React features
-  "style-src 'self' 'unsafe-inline'", // unsafe-inline for Tailwind/styled components
+  "script-src 'self' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://gcqfqzhgludrzkfajljp.supabase.co https://api.openai.com wss://gcqfqzhgludrzkfajljp.supabase.co",
+  `connect-src 'self' https://${supabaseHost} https://api.openai.com wss://${supabaseHost} https://www.google.com`,
+  "frame-src https://www.google.com https://www.recaptcha.net",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
