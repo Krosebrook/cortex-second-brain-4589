@@ -18,8 +18,6 @@ interface GeolocationResponse {
 
 async function lookupIP(ip: string): Promise<GeolocationResponse | null> {
   try {
-    // Using ip-api.com (free, no API key required, 45 req/min limit)
-    // Using HTTPS for secure communication
     const response = await fetch(`https://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,lat,lon`);
     
     if (!response.ok) {
@@ -56,11 +54,46 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // --- Authentication check ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    // --- End authentication check ---
+
     const { ip_address, cache = true } = await req.json();
     
     if (!ip_address) {
       return new Response(
         JSON.stringify({ error: "ip_address is required" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate IP format
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+    if (!ipv4Regex.test(ip_address) && !ipv6Regex.test(ip_address) && ip_address !== 'localhost') {
+      return new Response(
+        JSON.stringify({ error: "Invalid IP address format" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -76,7 +109,6 @@ const handler = async (req: Request): Promise<Response> => {
     ];
     
     if (privateIPPatterns.some(pattern => pattern.test(ip_address))) {
-      console.log("Skipping private IP:", ip_address);
       return new Response(
         JSON.stringify({ 
           ip: ip_address,
@@ -92,8 +124,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
     
+    // Use service role client for DB operations only
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
     
@@ -106,7 +139,6 @@ const handler = async (req: Request): Promise<Response> => {
         .single();
       
       if (cached) {
-        console.log("Returning cached geolocation for:", ip_address);
         return new Response(
           JSON.stringify({ ...cached, cached: true }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -146,8 +178,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
     
-    console.log("Looked up and cached geolocation for:", ip_address, geoData.country);
-    
     return new Response(
       JSON.stringify({ ...geoData, cached: false }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -157,7 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error in ip-geolocation function:", errorMessage);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

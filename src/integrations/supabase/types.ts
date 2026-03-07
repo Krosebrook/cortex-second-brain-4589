@@ -1449,7 +1449,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      social_platforms_safe: {
+        Row: {
+          avatar: string | null
+          connected: boolean | null
+          connected_at: string | null
+          created_at: string | null
+          display_name: string | null
+          follower_count: number | null
+          id: string | null
+          platform: string | null
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          connected?: boolean | null
+          connected_at?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          follower_count?: number | null
+          id?: string | null
+          platform?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          connected?: boolean | null
+          connected_at?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          follower_count?: number | null
+          id?: string | null
+          platform?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_unread_notification_count: { Args: never; Returns: number }
