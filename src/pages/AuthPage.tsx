@@ -281,7 +281,7 @@ const AuthPage = () => {
         await clearLoginAttempts(email);
         setLockoutStatus(null);
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        navigate(returnTo);
       }
     } catch (error) {
       const errorMessage = error instanceof Error 
