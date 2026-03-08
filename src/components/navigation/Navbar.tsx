@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, LogIn, LogOut, Moon, Sun } from 'lucide-react';
+import { Brain, LogIn, LogOut, Moon, Sun, User, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -23,9 +23,19 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CORTEX_NAV_ITEMS, AUTH_NAV_ITEMS, ADMIN_NAV_ITEM, isActiveRoute } from '@/constants/navigation';
 import { ROUTES } from '@/constants';
 import type { NavItem } from '@/types';
+
+// IDs for items that go into the user dropdown
+const USER_MENU_IDS = ['profile', 'settings'];
 
 // ============================================
 // Sub-components
