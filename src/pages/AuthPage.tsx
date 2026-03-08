@@ -305,7 +305,7 @@ const AuthPage = () => {
     setMfaFactorId(null);
     await clearLoginAttempts(email);
     toast.success('Welcome back!');
-    navigate('/dashboard');
+    navigate(returnTo);
   };
 
   const handleMFACancel = () => {
