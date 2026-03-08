@@ -164,17 +164,6 @@ export const Navbar = () => {
     [userMenuItems, currentPath]
   );
 
-  // All items for mobile menu (flat list)
-  const allNavItems = useMemo(() => {
-    const items: NavItem[] = [...CORTEX_NAV_ITEMS];
-    if (isAuthenticated) {
-      const authItems = [...AUTH_NAV_ITEMS];
-      if (isAdmin) authItems.push(ADMIN_NAV_ITEM);
-      items.push(...authItems);
-    }
-    return items;
-  }, [isAuthenticated, isAdmin]);
-
   // ─── Mobile ───
   if (isMobile) {
     return (
