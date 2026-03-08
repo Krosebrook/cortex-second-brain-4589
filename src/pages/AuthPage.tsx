@@ -73,7 +73,7 @@ const AuthPage = () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            navigate('/dashboard');
+            navigate(returnTo);
           }
         } catch (error) {
           console.error('Session check error:', error);
