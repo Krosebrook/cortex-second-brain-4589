@@ -23,7 +23,7 @@ import { initializeCachePolicies } from "@/config/cache-policies";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { LoadingScreen } from "@/components/landing/LoadingScreen";
+
 import Navbar from "./components/navigation/Navbar";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
