@@ -1,216 +1,260 @@
-import { useState } from 'react';
-import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { useAnimateIn } from '@/lib/animations';
-import ProjectRoadmap from '@/components/ProjectRoadmap';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserProfile } from '@/lib/types';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PageWrapper } from '@/components/layout/PageWrapper';
-import { PageHeader } from '@/components/ui/page-header';
-import { cn } from '@/lib/utils';
-import { Mail, Save, X, Plus, ExternalLink } from 'lucide-react';
+import { Loader2, Save, Pencil, X, User } from 'lucide-react';
 
-const initialProfile: UserProfile = {
-  name: 'Alex Johnson',
-  email: 'alex@example.com',
-  description: 'AI researcher and knowledge management enthusiast. Building a digital second brain to enhance creativity and productivity.',
-  links: [
-    { title: 'Personal Website', url: 'https://example.com' },
-    { title: 'GitHub', url: 'https://github.com' },
-    { title: 'Twitter', url: 'https://twitter.com' },
-  ],
-};
+interface ProfileData {
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  email: string | null;
+}
+
+const MAX_NAME_LENGTH = 100;
+const MAX_BIO_LENGTH = 500;
+const MAX_USERNAME_LENGTH = 50;
 
 const Profile = () => {
-  const showContent = useAnimateIn(false, 300);
-  const [profile, setProfile] = useState<UserProfile>(initialProfile);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [tempProfile, setTempProfile] = useState<UserProfile>(initialProfile);
-  const [tempLink, setTempLink] = useState({ title: '', url: '' });
-  
-  const handleEditProfile = () => {
-    setTempProfile({...profile});
-    setIsEditing(true);
-  };
-  
-  const handleSaveProfile = () => {
-    setProfile({...tempProfile});
-    setIsEditing(false);
-  };
-  
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
-  
-  const handleAddLink = () => {
-    if (tempLink.title && tempLink.url) {
-      setTempProfile({
-        ...tempProfile,
-        links: [...(tempProfile.links || []), tempLink]
+  const [form, setForm] = useState<ProfileData>({
+    full_name: '',
+    username: '',
+    avatar_url: '',
+    bio: '',
+    email: '',
+  });
+
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('full_name, username, avatar_url, bio, email')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+      setForm({
+        full_name: data.full_name || '',
+        username: data.username || '',
+        avatar_url: data.avatar_url || '',
+        bio: data.bio || '',
+        email: data.email || user.email || '',
       });
-      setTempLink({ title: '', url: '' });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    if (form.full_name && form.full_name.length > MAX_NAME_LENGTH) {
+      toast.error(`Name must be under ${MAX_NAME_LENGTH} characters`);
+      return;
+    }
+    if (form.bio && form.bio.length > MAX_BIO_LENGTH) {
+      toast.error(`Bio must be under ${MAX_BIO_LENGTH} characters`);
+      return;
+    }
+    if (form.username && form.username.length > MAX_USERNAME_LENGTH) {
+      toast.error(`Username must be under ${MAX_USERNAME_LENGTH} characters`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          full_name: form.full_name || null,
+          username: form.username || null,
+          avatar_url: form.avatar_url || null,
+          bio: form.bio || null,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setProfile({ ...form });
+      setIsEditing(false);
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
-  
-  const handleRemoveLink = (index: number) => {
-    const newLinks = [...(tempProfile.links || [])];
-    newLinks.splice(index, 1);
-    setTempProfile({
-      ...tempProfile,
-      links: newLinks
-    });
+
+  const handleCancel = () => {
+    if (profile) {
+      setForm({
+        full_name: profile.full_name || '',
+        username: profile.username || '',
+        avatar_url: profile.avatar_url || '',
+        bio: profile.bio || '',
+        email: profile.email || '',
+      });
+    }
+    setIsEditing(false);
   };
-  
+
+  const initials = (form.full_name || form.email || '?')
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageWrapper>
+    );
+  }
+
   return (
     <PageWrapper>
-      <AnimatedTransition show={showContent} animation="slide-up">
-        {!isEditing ? (
-          <Card className={cn("w-full mb-8 border-border/50")}>
-            <CardHeader className="flex flex-row items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl font-light text-primary">{profile.name.charAt(0)}</span>
-              </div>
-              
-              <div>
-                <CardTitle className="text-foreground">{profile.name}</CardTitle>
-                <CardDescription className="flex items-center mt-1">
-                  <Mail className="h-4 w-4 mr-1" />
-                  {profile.email}
-                </CardDescription>
-              </div>
-              
-              <div className="ml-auto flex gap-2 flex-wrap">
-                {profile.links?.map((link, index) => (
-                  <a 
-                    key={index} 
-                    href={link.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg",
-                      "bg-primary text-primary-foreground text-sm font-medium",
-                      "hover:bg-primary/90 transition-colors"
-                    )}
-                  >
-                    {link.title}
-                    <ExternalLink size={14} />
-                  </a>
-                ))}
-              </div>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleEditProfile}
-                className="ml-2"
-              >
-                Edit Profile
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={form.avatar_url || undefined} alt={form.full_name || 'User'} />
+              <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                {initials || <User className="h-6 w-6" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <CardTitle className="text-foreground">
+                {profile?.full_name || 'Your Profile'}
+              </CardTitle>
+              <CardDescription>{profile?.email || user?.email}</CardDescription>
+              {profile?.bio && !isEditing && (
+                <p className="text-sm text-muted-foreground mt-1">{profile.bio}</p>
+              )}
+            </div>
+            {!isEditing && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
               </Button>
-            </CardHeader>
-          </Card>
-        ) : (
-          <Card className={cn("w-full mb-8 border-border/50")}>
-            <CardHeader>
-              <CardTitle className="text-foreground">Edit Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            )}
+          </CardHeader>
+
+          {isEditing && (
+            <>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-foreground">Name</Label>
-                  <Input 
-                    id="name" 
-                    value={tempProfile.name}
-                    onChange={(e) => setTempProfile({...tempProfile, name: e.target.value})}
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    value={form.full_name || ''}
+                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                    maxLength={MAX_NAME_LENGTH}
+                    placeholder="Your full name"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email"
-                    value={tempProfile.email}
-                    onChange={(e) => setTempProfile({...tempProfile, email: e.target.value})}
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    value={form.username || ''}
+                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    maxLength={MAX_USERNAME_LENGTH}
+                    placeholder="your-username"
                   />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-foreground">Description</Label>
-                <Input 
-                  id="description" 
-                  value={tempProfile.description || ''}
-                  onChange={(e) => setTempProfile({...tempProfile, description: e.target.value})}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label className="text-foreground">Links</Label>
-                <div className="rounded-md border border-border/50">
-                  <div className="space-y-2 p-4">
-                    {tempProfile.links?.map((link, index) => (
-                      <div key={index} className="flex items-center justify-between gap-2">
-                        <div className="flex-1 truncate text-foreground">
-                          <span className="font-medium">{link.title}</span>: {link.url}
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleRemoveLink(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+
                 <div className="space-y-2">
-                  <Label htmlFor="linkTitle" className="text-foreground">Link Title</Label>
-                  <Input 
-                    id="linkTitle" 
-                    value={tempLink.title}
-                    onChange={(e) => setTempLink({...tempLink, title: e.target.value})}
-                    placeholder="GitHub"
+                  <Label htmlFor="avatar_url">Avatar URL</Label>
+                  <Input
+                    id="avatar_url"
+                    value={form.avatar_url || ''}
+                    onChange={(e) => setForm({ ...form, avatar_url: e.target.value })}
+                    placeholder="https://example.com/avatar.jpg"
+                    type="url"
                   />
+                  {form.avatar_url && (
+                    <div className="mt-2">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={form.avatar_url} alt="Preview" />
+                        <AvatarFallback>?</AvatarFallback>
+                      </Avatar>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="linkUrl" className="text-foreground">URL</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="linkUrl" 
-                      value={tempLink.url}
-                      onChange={(e) => setTempLink({...tempLink, url: e.target.value})}
-                      placeholder="https://github.com/username"
-                    />
-                    <Button onClick={handleAddLink}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={form.bio || ''}
+                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                    maxLength={MAX_BIO_LENGTH}
+                    placeholder="Tell us about yourself..."
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {(form.bio || '').length}/{MAX_BIO_LENGTH}
+                  </p>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
-              <Button onClick={handleSaveProfile}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-        
-        <PageHeader
-          title="Project Roadmap"
-          description="Track your project journey from start to completion and collect reviews"
-          className="text-center"
-        />
-        
-        <ProjectRoadmap />
-      </AnimatedTransition>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    value={form.email || ''}
+                    disabled
+                    className="opacity-60"
+                  />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
+                </div>
+              </CardContent>
+
+              <CardFooter className="flex justify-end gap-2">
+                <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+              </CardFooter>
+            </>
+          )}
+        </Card>
+      </div>
     </PageWrapper>
   );
 };

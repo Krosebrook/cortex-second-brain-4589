@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => ({
         ],
         // Navigation routes fallback
         navigateFallback: '/offline',
-        navigateFallbackDenylist: [/^\/api/, /^\/auth\/callback/],
+        navigateFallbackDenylist: [/^\/api/, /^\/auth\/callback/, /^\/~oauth/],
         // Skip waiting for new service worker
         skipWaiting: true,
         clientsClaim: true,
