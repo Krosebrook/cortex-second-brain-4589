@@ -14,7 +14,9 @@ import { useAnimateIn } from '@/lib/animations';
 import { checkSupabaseHealth, getAuthErrorMessage } from '@/lib/supabase-health';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { ForgotPasswordDialog } from '@/components/auth/ForgotPasswordDialog';
- import { MFAVerification } from '@/components/auth/MFAVerification';
+import { MFAVerification } from '@/components/auth/MFAVerification';
+import { lovable } from '@/integrations/lovable/index';
+import { Separator } from '@/components/ui/separator';
 
 interface LockoutStatus {
   isLocked: boolean;
