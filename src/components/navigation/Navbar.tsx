@@ -142,15 +142,22 @@ export const Navbar = () => {
     return CORTEX_NAV_ITEMS.some(item => isActiveRoute(currentPath, item.to));
   }, [currentPath]);
 
-  // Navigation items based on auth state and role
-  const navItems = useMemo(() => {
-    if (!isAuthenticated) return [];
-    const items = [...AUTH_NAV_ITEMS];
+  // Split nav items: main items vs user menu items
+  const { mainNavItems, userMenuItems } = useMemo(() => {
+    if (!isAuthenticated) return { mainNavItems: [], userMenuItems: [] };
+    const allItems = [...AUTH_NAV_ITEMS];
     if (isAdmin) {
-      items.push(ADMIN_NAV_ITEM);
+      allItems.push(ADMIN_NAV_ITEM);
     }
-    return items;
+    return {
+      mainNavItems: allItems.filter(item => !USER_MENU_IDS.includes(item.id)),
+      userMenuItems: allItems.filter(item => USER_MENU_IDS.includes(item.id)),
+    };
   }, [isAuthenticated, isAdmin]);
+
+  const isUserMenuActive = useMemo(() => {
+    return userMenuItems.some(item => isActiveRoute(currentPath, item.to));
+  }, [userMenuItems, currentPath]);
 
   return (
     <TooltipProvider>
