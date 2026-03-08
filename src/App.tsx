@@ -3,7 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
+import { AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/transitions/PageTransition";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { ShortcutsHelpDialog } from "@/components/feedback/ShortcutsHelpDialog";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -46,20 +48,6 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const queryClient = new QueryClient();
 
 initializeCachePolicies();
-
-const PageTransition = ({ children }: { children: React.ReactNode }) => {
-  const location = useLocation();
-  
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-  
-  return (
-    <div className="transition-opacity duration-300 animate-fade-in">
-      {children}
-    </div>
-  );
-};
 
 const AppRoutes = () => {
   const { open, setOpen, search, setSearch, filteredCommands, executeCommand, toggle } = useCommandPalette();
