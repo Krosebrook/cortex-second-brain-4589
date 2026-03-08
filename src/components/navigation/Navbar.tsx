@@ -204,7 +204,7 @@ export const Navbar = () => {
           </NavigationMenu>
 
           {/* Auth Navigation Items */}
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <NavItemButton
               key={item.id}
               item={item}
@@ -212,6 +212,53 @@ export const Navbar = () => {
               onClick={() => handleNavClick(item.id)}
             />
           ))}
+
+          {/* User Dropdown (Profile + Settings) */}
+          {isAuthenticated && userMenuItems.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-3 rounded-lg transition-base",
+                    "hover:bg-primary/10 hover:text-primary",
+                    isUserMenuActive ? "bg-primary/10 text-primary" : "text-foreground/80"
+                  )}
+                >
+                  <User size={20} className={cn(
+                    "transition-colors",
+                    isUserMenuActive ? "text-primary" : "text-foreground/60"
+                  )} />
+                  <ChevronDown size={14} className="text-foreground/40" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {userMenuItems.map((item, index) => (
+                  <DropdownMenuItem key={item.id} asChild>
+                    <Link
+                      to={item.to}
+                      className={cn(
+                        "flex items-center gap-2 cursor-pointer",
+                        isActiveRoute(currentPath, item.to) && "text-primary"
+                      )}
+                      onClick={() => handleNavClick(item.id)}
+                    >
+                      <span className="text-foreground/60">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={20} />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Sync Status, Conflicts & Notification Center (authenticated only) */}
           {isAuthenticated && (
