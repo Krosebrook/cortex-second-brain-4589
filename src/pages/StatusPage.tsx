@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { RefreshCw, AlertTriangle, Clock } from 'lucide-react';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/navigation/Navbar';
 
 export default function StatusPage() {
   const [currentStatus, setCurrentStatus] = useState(serviceMonitor.getCurrentStatus());
