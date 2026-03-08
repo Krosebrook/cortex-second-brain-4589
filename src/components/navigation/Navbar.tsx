@@ -287,24 +287,8 @@ export const Navbar = () => {
             </TooltipContent>
           </Tooltip>
 
-          {/* Auth Button */}
-          {isAuthenticated ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground"
-                  onClick={handleLogout}
-                  aria-label="Log out"
-                >
-                  <LogOut size={20} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Logout</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
+          {/* Login Button (unauthenticated only) */}
+          {!isAuthenticated && (
             <>
               <StatusIndicator />
               <Tooltip>
