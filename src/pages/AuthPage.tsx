@@ -316,6 +316,28 @@ const AuthPage = () => {
     resetLoginRecaptcha();
   };
 
+  const handleGoogleSignIn = async () => {
+    if (!connectionHealthy) {
+      toast.error('Cannot connect to authentication service. Please retry connection.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (error) {
+        toast.error('Google sign-in failed. Please try again.');
+        console.error('Google OAuth error:', error);
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred during Google sign-in.');
+      console.error('Google OAuth error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-background flex items-center justify-center p-4">
       <AnimatedTransition show={showContent} animation="slide-up">
