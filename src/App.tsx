@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/transitions/PageTransition";
+import { DashboardSkeleton, FormSkeleton, ContentSkeleton, LandingSkeleton } from "@/components/loading/PageSkeletons";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { ShortcutsHelpDialog } from "@/components/feedback/ShortcutsHelpDialog";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -22,7 +23,7 @@ import { initializeCachePolicies } from "@/config/cache-policies";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { LoadingScreen } from "@/components/landing/LoadingScreen";
+
 import Navbar from "./components/navigation/Navbar";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
@@ -95,29 +96,27 @@ const AppRoutes = () => {
         open={helpOpen}
         onOpenChange={closeHelp}
       />
-      <Suspense fallback={<LoadingScreen />}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<PageTransition><Index /></PageTransition>} />
-            <Route path="/why" element={<PageTransition variant="slide-up"><WhyPage /></PageTransition>} />
-            <Route path="/how" element={<PageTransition variant="slide-up"><HowPage /></PageTransition>} />
-            <Route path="/auth" element={<PageTransition variant="scale"><AuthPage /></PageTransition>} />
-            <Route path="/reset-password" element={<PageTransition variant="scale"><ResetPassword /></PageTransition>} />
-            <Route path="/dashboard" element={<PageTransition variant="slide-up"><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
-            <Route path="/manage" element={<PageTransition variant="slide-up"><ProtectedRoute><ManagePage /></ProtectedRoute></PageTransition>} />
-            <Route path="/profile" element={<PageTransition variant="scale"><ProtectedRoute><Profile /></ProtectedRoute></PageTransition>} />
-            <Route path="/import" element={<PageTransition variant="slide-left"><ProtectedRoute><Import /></ProtectedRoute></PageTransition>} />
-            <Route path="/search" element={<PageTransition variant="slide-up"><ProtectedRoute><SearchPage /></ProtectedRoute></PageTransition>} />
-            <Route path="/tessa" element={<PageTransition variant="slide-up"><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition>} />
-            <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
-            <Route path="/settings" element={<PageTransition variant="scale"><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
-            <Route path="/admin" element={<PageTransition variant="slide-up"><ProtectedRoute><AdminDashboard /></ProtectedRoute></PageTransition>} />
-            <Route path="/install" element={<PageTransition><Install /></PageTransition>} />
-            <Route path="/offline" element={<PageTransition><Offline /></PageTransition>} />
-            <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-          </Routes>
-        </AnimatePresence>
-      </Suspense>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><Index /></PageTransition></Suspense>} />
+          <Route path="/why" element={<Suspense fallback={<LandingSkeleton />}><PageTransition variant="slide-up"><WhyPage /></PageTransition></Suspense>} />
+          <Route path="/how" element={<Suspense fallback={<LandingSkeleton />}><PageTransition variant="slide-up"><HowPage /></PageTransition></Suspense>} />
+          <Route path="/auth" element={<Suspense fallback={<FormSkeleton />}><PageTransition variant="scale"><AuthPage /></PageTransition></Suspense>} />
+          <Route path="/reset-password" element={<Suspense fallback={<FormSkeleton />}><PageTransition variant="scale"><ResetPassword /></PageTransition></Suspense>} />
+          <Route path="/dashboard" element={<Suspense fallback={<DashboardSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/manage" element={<Suspense fallback={<ContentSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><ManagePage /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/profile" element={<Suspense fallback={<FormSkeleton />}><PageTransition variant="scale"><ProtectedRoute><Profile /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/import" element={<Suspense fallback={<ContentSkeleton />}><PageTransition variant="slide-left"><ProtectedRoute><Import /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/search" element={<Suspense fallback={<ContentSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><SearchPage /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/tessa" element={<Suspense fallback={<ContentSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/status" element={<Suspense fallback={<ContentSkeleton />}><PageTransition><StatusPage /></PageTransition></Suspense>} />
+          <Route path="/settings" element={<Suspense fallback={<FormSkeleton />}><PageTransition variant="scale"><ProtectedRoute><Settings /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/admin" element={<Suspense fallback={<DashboardSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><AdminDashboard /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/install" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><Install /></PageTransition></Suspense>} />
+          <Route path="/offline" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><Offline /></PageTransition></Suspense>} />
+          <Route path="*" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><NotFound /></PageTransition></Suspense>} />
+        </Routes>
+      </AnimatePresence>
     </>
   );
 };
