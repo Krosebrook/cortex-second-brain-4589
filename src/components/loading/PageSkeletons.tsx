@@ -4,7 +4,7 @@
  */
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+
 
 /** Generic full-page skeleton with sidebar + content area (dashboard-like) */
 export const DashboardSkeleton = () => (
