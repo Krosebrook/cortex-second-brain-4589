@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
-import { WaitlistModal } from '@/components/waitlist/WaitlistModal';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  const [showWaitlist, setShowWaitlist] = useState(false);
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -18,8 +19,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       if (!hasCompletedOnboarding) {
         setShowOnboarding(true);
       }
-    } else {
-      setShowWaitlist(true);
     }
   }, [isAuthenticated]);
 
@@ -27,17 +26,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     setShowOnboarding(false);
   };
 
-  const handleWaitlistClose = () => {
-    setShowWaitlist(false);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    return (
-      <>
-        {children}
-        <WaitlistModal isOpen={showWaitlist} onClose={handleWaitlistClose} />
-      </>
-    );
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   if (showOnboarding) {

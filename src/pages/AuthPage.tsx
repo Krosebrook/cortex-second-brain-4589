@@ -37,6 +37,10 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
   
+  // Support returnTo query param for post-login redirect
+  const searchParams = new URLSearchParams(window.location.search);
+  const returnTo = searchParams.get('returnTo') || '/dashboard';
+  
   // reCAPTCHA hooks - separate instances for login and signup
   const { 
     isLoaded: loginRecaptchaLoaded, 
@@ -69,7 +73,7 @@ const AuthPage = () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            navigate('/dashboard');
+            navigate(returnTo);
           }
         } catch (error) {
           console.error('Session check error:', error);
@@ -277,7 +281,7 @@ const AuthPage = () => {
         await clearLoginAttempts(email);
         setLockoutStatus(null);
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        navigate(returnTo);
       }
     } catch (error) {
       const errorMessage = error instanceof Error 
@@ -301,7 +305,7 @@ const AuthPage = () => {
     setMfaFactorId(null);
     await clearLoginAttempts(email);
     toast.success('Welcome back!');
-    navigate('/dashboard');
+    navigate(returnTo);
   };
 
   const handleMFACancel = () => {
