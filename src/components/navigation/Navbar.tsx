@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, LogIn, LogOut, Moon, Sun, User, ChevronDown, Menu, X } from 'lucide-react';
+import { Brain, LogIn, LogOut, Moon, Sun, User, ChevronDown, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
