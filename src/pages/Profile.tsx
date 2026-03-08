@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PageWrapper } from '@/components/layout/PageWrapper';
-import { Loader2, Save, Pencil, X, User } from 'lucide-react';
+import { Loader2, Save, Pencil, X, User, Upload, Trash2 } from 'lucide-react';
 
 interface ProfileData {
   full_name: string | null;
@@ -22,13 +22,17 @@ interface ProfileData {
 const MAX_NAME_LENGTH = 100;
 const MAX_BIO_LENGTH = 500;
 const MAX_USERNAME_LENGTH = 50;
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 const Profile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<ProfileData>({
     full_name: '',
     username: '',
@@ -66,6 +70,63 @@ const Profile = () => {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  const uploadAvatar = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Please upload a JPEG, PNG, WebP, or GIF image.');
+      return null;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Image must be under 2MB.');
+      return null;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      // Remove old avatar files in the user's folder
+      const { data: existing } = await supabase.storage.from('avatars').list(user.id);
+      if (existing && existing.length > 0) {
+        await supabase.storage.from('avatars').remove(existing.map(f => `${user.id}/${f.name}`));
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      // Append cache-buster to force refresh
+      return `${urlData.publicUrl}?t=${Date.now()}`;
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Failed to upload avatar');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadAvatar(file);
+    if (url) {
+      setForm(prev => ({ ...prev, avatar_url: url }));
+      toast.success('Avatar uploaded');
+    }
+    // Reset input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveAvatar = () => {
+    setForm(prev => ({ ...prev, avatar_url: '' }));
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -169,6 +230,57 @@ const Profile = () => {
           {isEditing && (
             <>
               <CardContent className="space-y-4">
+                {/* Avatar upload */}
+                <div className="space-y-2">
+                  <Label>Avatar</Label>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={form.avatar_url || undefined} alt="Preview" />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {initials || <User className="h-6 w-6" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        {uploading ? 'Uploading…' : 'Upload Image'}
+                      </Button>
+                      {form.avatar_url && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveAvatar}
+                          disabled={uploading}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    JPEG, PNG, WebP, or GIF. Max 2MB.
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="full_name">Full Name</Label>
                   <Input
@@ -189,25 +301,6 @@ const Profile = () => {
                     maxLength={MAX_USERNAME_LENGTH}
                     placeholder="your-username"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="avatar_url">Avatar URL</Label>
-                  <Input
-                    id="avatar_url"
-                    value={form.avatar_url || ''}
-                    onChange={(e) => setForm({ ...form, avatar_url: e.target.value })}
-                    placeholder="https://example.com/avatar.jpg"
-                    type="url"
-                  />
-                  {form.avatar_url && (
-                    <div className="mt-2">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={form.avatar_url} alt="Preview" />
-                        <AvatarFallback>?</AvatarFallback>
-                      </Avatar>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -242,7 +335,7 @@ const Profile = () => {
                   <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving}>
+                <Button onClick={handleSave} disabled={saving || uploading}>
                   {saving ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
