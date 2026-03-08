@@ -79,6 +79,8 @@ const AppRoutes = () => {
     },
   ]);
 
+  const location = useLocation();
+
   return (
     <>
       <CommandPalette
@@ -94,25 +96,27 @@ const AppRoutes = () => {
         onOpenChange={closeHelp}
       />
       <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          <Route path="/" element={<PageTransition><Index /></PageTransition>} />
-          <Route path="/why" element={<PageTransition><WhyPage /></PageTransition>} />
-          <Route path="/how" element={<PageTransition><HowPage /></PageTransition>} />
-          <Route path="/auth" element={<PageTransition><AuthPage /></PageTransition>} />
-          <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
-          <Route path="/dashboard" element={<PageTransition><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
-          <Route path="/manage" element={<PageTransition><ProtectedRoute><ManagePage /></ProtectedRoute></PageTransition>} />
-          <Route path="/profile" element={<PageTransition><ProtectedRoute><Profile /></ProtectedRoute></PageTransition>} />
-          <Route path="/import" element={<PageTransition><ProtectedRoute><Import /></ProtectedRoute></PageTransition>} />
-          <Route path="/search" element={<PageTransition><ProtectedRoute><SearchPage /></ProtectedRoute></PageTransition>} />
-          <Route path="/tessa" element={<PageTransition><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition>} />
-          <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
-          <Route path="/settings" element={<PageTransition><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
-          <Route path="/admin" element={<PageTransition><ProtectedRoute><AdminDashboard /></ProtectedRoute></PageTransition>} />
-          <Route path="/install" element={<PageTransition><Install /></PageTransition>} />
-          <Route path="/offline" element={<PageTransition><Offline /></PageTransition>} />
-          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-        </Routes>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+            <Route path="/why" element={<PageTransition variant="slide-up"><WhyPage /></PageTransition>} />
+            <Route path="/how" element={<PageTransition variant="slide-up"><HowPage /></PageTransition>} />
+            <Route path="/auth" element={<PageTransition variant="scale"><AuthPage /></PageTransition>} />
+            <Route path="/reset-password" element={<PageTransition variant="scale"><ResetPassword /></PageTransition>} />
+            <Route path="/dashboard" element={<PageTransition variant="slide-up"><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />
+            <Route path="/manage" element={<PageTransition variant="slide-up"><ProtectedRoute><ManagePage /></ProtectedRoute></PageTransition>} />
+            <Route path="/profile" element={<PageTransition variant="scale"><ProtectedRoute><Profile /></ProtectedRoute></PageTransition>} />
+            <Route path="/import" element={<PageTransition variant="slide-left"><ProtectedRoute><Import /></ProtectedRoute></PageTransition>} />
+            <Route path="/search" element={<PageTransition variant="slide-up"><ProtectedRoute><SearchPage /></ProtectedRoute></PageTransition>} />
+            <Route path="/tessa" element={<PageTransition variant="slide-up"><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition>} />
+            <Route path="/status" element={<PageTransition><StatusPage /></PageTransition>} />
+            <Route path="/settings" element={<PageTransition variant="scale"><ProtectedRoute><Settings /></ProtectedRoute></PageTransition>} />
+            <Route path="/admin" element={<PageTransition variant="slide-up"><ProtectedRoute><AdminDashboard /></ProtectedRoute></PageTransition>} />
+            <Route path="/install" element={<PageTransition><Install /></PageTransition>} />
+            <Route path="/offline" element={<PageTransition><Offline /></PageTransition>} />
+            <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+          </Routes>
+        </AnimatePresence>
       </Suspense>
     </>
   );
