@@ -37,6 +37,10 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const showContent = useAnimateIn(false, 300);
   
+  // Support returnTo query param for post-login redirect
+  const searchParams = new URLSearchParams(window.location.search);
+  const returnTo = searchParams.get('returnTo') || '/dashboard';
+  
   // reCAPTCHA hooks - separate instances for login and signup
   const { 
     isLoaded: loginRecaptchaLoaded, 
