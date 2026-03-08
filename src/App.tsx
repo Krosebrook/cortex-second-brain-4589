@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/transitions/PageTransition";
+import { DashboardSkeleton, FormSkeleton, ContentSkeleton, LandingSkeleton } from "@/components/loading/PageSkeletons";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { ShortcutsHelpDialog } from "@/components/feedback/ShortcutsHelpDialog";
 import { AuthProvider } from "@/contexts/AuthContext";
