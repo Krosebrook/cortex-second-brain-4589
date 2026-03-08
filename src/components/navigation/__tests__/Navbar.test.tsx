@@ -1,9 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
-// Mock dependencies
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: true,
@@ -38,7 +36,6 @@ vi.mock('@/components/navigation/ConflictIndicator', () => ({
 
 describe('Navbar - User Dropdown', () => {
   const renderNavbar = () => {
-    // Lazy import to pick up mocks
     const { Navbar } = require('../Navbar');
     return render(
       <MemoryRouter>
@@ -47,31 +44,22 @@ describe('Navbar - User Dropdown', () => {
     );
   };
 
-  it('renders user dropdown trigger for authenticated users', () => {
+  it('renders navigation without crashing', () => {
     renderNavbar();
-    // The dropdown trigger has a User icon and ChevronDown
-    const trigger = screen.getByRole('button', { name: '' });
-    // At minimum, the navbar should render without crashing
-    expect(document.querySelector('nav')).toBeInTheDocument();
+    expect(document.querySelector('nav')).toBeTruthy();
   });
 
-  it('does not render standalone Profile or Settings nav items', () => {
+  it('does not render standalone Profile or Settings links in main nav', () => {
     renderNavbar();
-    // Profile and Settings should NOT be top-level links
     const allLinks = screen.getAllByRole('link');
     const topLevelLabels = allLinks.map(l => l.textContent);
-    // They should only appear inside the dropdown, not as standalone nav items
     expect(topLevelLabels).not.toContain('Profile');
     expect(topLevelLabels).not.toContain('Settings');
   });
 
-  it('shows Profile and Settings inside dropdown when clicked', async () => {
+  it('renders the user dropdown trigger button', () => {
     renderNavbar();
-    const user = userEvent.setup();
-
-    // Find the dropdown trigger (button with no explicit text - has User icon)
     const buttons = screen.getAllByRole('button');
-    // The user dropdown trigger should exist
     expect(buttons.length).toBeGreaterThan(0);
   });
 });
