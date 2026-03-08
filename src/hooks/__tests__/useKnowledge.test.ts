@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// @ts-ignore - exports exist at runtime
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useKnowledge, type KnowledgeItem } from '../useKnowledge';
 import { KnowledgeService } from '@/services/knowledge.service';

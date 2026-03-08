@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// @ts-ignore - exports exist at runtime
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChat } from '../useChat';
 import { ChatService } from '@/services/chat.service';
