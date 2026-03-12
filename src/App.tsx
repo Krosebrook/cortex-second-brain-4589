@@ -112,7 +112,7 @@ const AppRoutes = () => {
           <Route path="/tessa" element={<Suspense fallback={<ContentSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><TessaPage /></ProtectedRoute></PageTransition></Suspense>} />
           <Route path="/status" element={<Suspense fallback={<ContentSkeleton />}><PageTransition><StatusPage /></PageTransition></Suspense>} />
           <Route path="/settings" element={<Suspense fallback={<FormSkeleton />}><PageTransition variant="scale"><ProtectedRoute><Settings /></ProtectedRoute></PageTransition></Suspense>} />
-          <Route path="/admin" element={<Suspense fallback={<DashboardSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><AdminDashboard /></ProtectedRoute></PageTransition></Suspense>} />
+          <Route path="/admin" element={<Suspense fallback={<DashboardSkeleton />}><PageTransition variant="slide-up"><ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute></PageTransition></Suspense>} />
           <Route path="/install" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><Install /></PageTransition></Suspense>} />
           <Route path="/offline" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><Offline /></PageTransition></Suspense>} />
           <Route path="*" element={<Suspense fallback={<LandingSkeleton />}><PageTransition><NotFound /></PageTransition></Suspense>} />
