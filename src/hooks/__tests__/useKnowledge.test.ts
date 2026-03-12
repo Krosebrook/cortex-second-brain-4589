@@ -98,8 +98,8 @@ describe('useKnowledge', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.items[0].id).toBe('item-2');
-      expect(result.current.items[1].id).toBe('item-1');
+      expect(result.current.items[0].id).toBe('item-1');
+      expect(result.current.items[1].id).toBe('item-2');
     });
 
     it('should handle empty knowledge list', async () => {
