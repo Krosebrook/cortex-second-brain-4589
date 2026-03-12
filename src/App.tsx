@@ -26,6 +26,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 import Navbar from "./components/navigation/Navbar";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { AdminRoute } from "./components/layout/AdminRoute";
 
 // Lazy load pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
