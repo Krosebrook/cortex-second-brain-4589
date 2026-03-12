@@ -118,12 +118,13 @@ describe('Notification System Integration', () => {
 
       // Fetch unread notifications
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({
-          data: mockNotifications,
-          error: null,
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: mockNotifications,
+              error: null,
+            }),
+          }),
         }),
       } as any);
 
@@ -147,12 +148,11 @@ describe('Notification System Integration', () => {
 
       // Verify all are now read
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({
-          data: mockNotifications.map(n => ({ ...n, is_read: true })),
-          error: null,
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            data: mockNotifications.map(n => ({ ...n, is_read: true })),
+            error: null,
+          }),
         }),
       } as any);
 
@@ -166,9 +166,11 @@ describe('Notification System Integration', () => {
 
     it('should delete a notification', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        then: vi.fn().mockResolvedValue({ error: null }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
       } as any);
 
       const deleteResult = await supabase
@@ -446,13 +448,13 @@ supabase
 
       // Only active notifications should be returned
       vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        or: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({
-          data: [activeNotification],
-          error: null,
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            or: vi.fn().mockResolvedValue({
+              data: [activeNotification],
+              error: null,
+            }),
+          }),
         }),
       } as any);
 

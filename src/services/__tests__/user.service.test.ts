@@ -264,7 +264,7 @@ describe('UserService', () => {
                   eq: vi.fn().mockReturnValue({
                     order: vi.fn().mockReturnValue({
                       limit: vi.fn().mockReturnValue({
-                        single: vi.fn().mockResolvedValue({
+                        maybeSingle: vi.fn().mockResolvedValue({
                           data: { created_at: '2024-01-01T00:00:00.000Z' },
                           error: null,
                         }),
@@ -306,7 +306,7 @@ describe('UserService', () => {
             return {
               order: vi.fn().mockReturnValue({
                 limit: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
                     data: null,
                     error: null,
                   }),

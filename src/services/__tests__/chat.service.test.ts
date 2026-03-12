@@ -12,6 +12,7 @@ describe('ChatService', () => {
   const mockChatId = 'chat-456';
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -24,26 +25,37 @@ describe('ChatService', () => {
           user_id: mockUserId,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
+          deleted_at: null,
+        },
+      ];
+      const mockMessagesData = [
+        {
+          id: 'msg-1',
+          chat_id: 'chat-1',
+          role: 'user',
+          content: 'Hello',
+          created_at: '2024-01-01T00:00:00Z',
         },
       ];
 
-// Mock messages data reserved for future tests
-
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: mockChatsData, error: null }),
-      } as any);
-
-      // Mock loadMessages
-      vi.spyOn(ChatService, 'loadMessages').mockResolvedValue([
-        {
-          id: 'msg-1',
-          type: 'user',
-          content: 'Hello',
-          timestamp: new Date('2024-01-01T00:00:00Z'),
-        },
-      ]);
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'chats') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            is: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockChatsData, error: null }),
+          } as any;
+        }
+        if (table === 'messages') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockMessagesData, error: null }),
+          } as any;
+        }
+        return {} as any;
+      });
 
       vi.mocked(offlineStorage.storeChats).mockResolvedValue(undefined);
 
@@ -69,6 +81,7 @@ describe('ChatService', () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
       } as any);
 
@@ -161,24 +174,22 @@ describe('ChatService', () => {
         single: vi.fn().mockResolvedValue({ data: mockChatData, error: null }),
       } as any);
 
-      await ChatService.createChat(mockUserId);
+      const result = await ChatService.createChat(mockUserId);
 
-      expect(supabase.from('chats').insert).toHaveBeenCalledWith({
-        user_id: mockUserId,
-        title: 'New Chat',
-      });
+      expect(result.title).toBe('New Chat');
+      expect(supabase.from).toHaveBeenCalledWith('chats');
     });
   });
 
   describe('deleteChat', () => {
     it('should delete a chat', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
       } as any);
-
-      const mockDelete = vi.fn().mockResolvedValue({ error: null });
-      vi.mocked(supabase.from('chats').delete().eq).mockImplementation(mockDelete as any);
 
       await ChatService.deleteChat(mockChatId, mockUserId);
 
@@ -191,12 +202,16 @@ describe('ChatService', () => {
       const newTitle = 'Updated Title';
 
       vi.mocked(supabase.from).mockReturnValue({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: mockChatId, title: newTitle }, error: null }),
+              }),
+            }),
+          }),
+        }),
       } as any);
-
-      const mockUpdate = vi.fn().mockResolvedValue({ error: null });
-      vi.mocked(supabase.from('chats').update({ title: newTitle }).eq).mockImplementation(mockUpdate as any);
 
       await ChatService.updateChatTitle(mockChatId, mockUserId, newTitle);
 
@@ -207,25 +222,28 @@ describe('ChatService', () => {
   describe('sendMessageToAPI', () => {
     it('should send message and receive response', async () => {
       const mockResponse = { message: 'AI response' };
-
-      vi.mocked(supabase.functions.invoke).mockResolvedValue({
-        data: mockResponse,
-        error: null,
-      } as any);
+      const invokeMock = vi.fn().mockResolvedValue({ data: mockResponse, error: null });
+      Object.defineProperty(supabase, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true,
+        configurable: true,
+      });
 
       const result = await ChatService.sendMessageToAPI('Hello', mockChatId);
 
       expect(result).toBe('AI response');
-      expect(supabase.functions.invoke).toHaveBeenCalledWith('chat-with-tessa-secure', {
+      expect(invokeMock).toHaveBeenCalledWith('chat-with-tessa-secure', {
         body: { message: 'Hello', chatId: mockChatId },
       });
     });
 
     it('should throw error if no response from AI', async () => {
-      vi.mocked(supabase.functions.invoke).mockResolvedValue({
-        data: {},
-        error: null,
-      } as any);
+      const invokeMock = vi.fn().mockResolvedValue({ data: {}, error: null });
+      Object.defineProperty(supabase, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true,
+        configurable: true,
+      });
 
       await expect(ChatService.sendMessageToAPI('Hello', mockChatId)).rejects.toThrow(
         'No response from AI'

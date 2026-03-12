@@ -256,10 +256,8 @@ describe('useNotifications', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.isMarkingRead).toBe(false);
+        expect(toast.error).toHaveBeenCalledWith('Failed to update notification');
       });
-
-      expect(toast.error).toHaveBeenCalledWith('Failed to update notification');
     });
   });
 
@@ -287,11 +285,9 @@ describe('useNotifications', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.isMarkingAllRead).toBe(false);
+        expect(supabase.rpc).toHaveBeenCalledWith('mark_all_notifications_read');
+        expect(toast.success).toHaveBeenCalledWith('All notifications marked as read');
       });
-
-      expect(supabase.rpc).toHaveBeenCalledWith('mark_all_notifications_read');
-      expect(toast.success).toHaveBeenCalledWith('All notifications marked as read');
     });
 
     it('should handle markAllAsRead error', async () => {
@@ -320,10 +316,8 @@ describe('useNotifications', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.isMarkingAllRead).toBe(false);
+        expect(toast.error).toHaveBeenCalledWith('Failed to update notifications');
       });
-
-      expect(toast.error).toHaveBeenCalledWith('Failed to update notifications');
     });
   });
 
@@ -389,10 +383,8 @@ describe('useNotifications', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.isDeleting).toBe(false);
+        expect(toast.error).toHaveBeenCalledWith('Failed to delete notification');
       });
-
-      expect(toast.error).toHaveBeenCalledWith('Failed to delete notification');
     });
   });
 

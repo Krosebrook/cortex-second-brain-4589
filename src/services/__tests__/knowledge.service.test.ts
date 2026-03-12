@@ -168,15 +168,11 @@ describe('KnowledgeService', () => {
   describe('deleteKnowledgeItem', () => {
     it('should delete a knowledge item', async () => {
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-      } as any);
-
-      // Mock the chained eq calls
-      const mockEq = vi.fn().mockReturnThis();
-      mockEq.mockResolvedValueOnce({ error: null });
-      vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnValue({ eq: mockEq }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
       } as any);
 
       await KnowledgeService.deleteKnowledgeItem('kb-1', mockUserId);
@@ -185,10 +181,12 @@ describe('KnowledgeService', () => {
     });
 
     it('should throw error on delete failure', async () => {
-      const mockEq = vi.fn().mockReturnThis();
-      mockEq.mockResolvedValueOnce({ error: new Error('Delete failed') });
       vi.mocked(supabase.from).mockReturnValue({
-        delete: vi.fn().mockReturnValue({ eq: mockEq }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: new Error('Delete failed') }),
+          }),
+        }),
       } as any);
 
       await expect(KnowledgeService.deleteKnowledgeItem('kb-1', mockUserId)).rejects.toThrow();

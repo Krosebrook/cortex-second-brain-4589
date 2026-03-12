@@ -32,12 +32,13 @@ describe('PageTransition', () => {
   it('accepts variant prop without crashing', () => {
     const variants = ['fade', 'slide-up', 'slide-left', 'scale'] as const;
     variants.forEach((variant) => {
-      const { getByTestId } = renderWithRouter(
+      const { getByTestId, unmount } = renderWithRouter(
         <PageTransition variant={variant}>
           <span>Content</span>
         </PageTransition>
       );
       expect(getByTestId('motion-div')).toBeTruthy();
+      unmount();
     });
   });
 
