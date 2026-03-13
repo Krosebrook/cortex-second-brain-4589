@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 const importSources: ImportSource[] = [
   { id: 'csv', name: 'CSV File', type: 'csv', icon: 'FileText', description: 'Import structured data from CSV files' },
