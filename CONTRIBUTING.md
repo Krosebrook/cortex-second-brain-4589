@@ -7,6 +7,7 @@ Thank you for your interest in contributing to TESSA! 🎉 This comprehensive gu
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
+- [Branch Management](#branch-management)
 - [Coding Standards](#coding-standards)
 - [Pull Request Process](#pull-request-process)
 - [Testing Guidelines](#testing-guidelines)
@@ -121,21 +122,6 @@ npm run test:coverage
 
 ## Development Workflow
 
-### Branch Naming Convention
-
-Use descriptive branch names with prefixes:
-
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `feat/` | New features | `feat/knowledge-export` |
-| `fix/` | Bug fixes | `fix/chat-scroll-issue` |
-| `docs/` | Documentation | `docs/api-examples` |
-| `refactor/` | Code refactoring | `refactor/auth-context` |
-| `test/` | Test additions | `test/chat-service` |
-| `perf/` | Performance improvements | `perf/virtualized-list` |
-| `style/` | Code style changes | `style/consistent-formatting` |
-| `chore/` | Maintenance tasks | `chore/update-deps` |
-
 ### Commit Message Format
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
@@ -216,6 +202,164 @@ git push origin main
 git checkout feature/your-feature
 git rebase main
 ```
+
+---
+
+## Branch Management
+
+Effective branch management is crucial for maintaining a clean, organized repository and enabling smooth collaboration. This section outlines our branch management practices and guidelines.
+
+### Branch Naming Convention
+
+Use descriptive branch names with the following prefixes:
+
+| Prefix | Purpose | Example | When to Use |
+|--------|---------|---------|-------------|
+| `feature/` | New features | `feature/knowledge-export` | Adding new functionality |
+| `fix/` | Bug fixes | `fix/chat-scroll-issue` | Fixing bugs |
+| `bugfix/` | Alternative to fix/ | `bugfix/login-error` | Alternative bug fix prefix |
+| `hotfix/` | Production hotfixes | `hotfix/security-patch` | Urgent production fixes |
+| `docs/` | Documentation updates | `docs/api-examples` | Documentation changes |
+| `refactor/` | Code refactoring | `refactor/auth-context` | Code restructuring |
+| `test/` | Testing additions | `test/chat-service` | Adding or updating tests |
+| `perf/` | Performance improvements | `perf/virtualized-list` | Performance optimizations |
+| `style/` | Code style/formatting | `style/consistent-formatting` | Style and formatting changes |
+| `chore/` | Maintenance tasks | `chore/update-deps` | Maintenance and tooling |
+
+**Best Practices:**
+- Be descriptive: `feature/user-authentication` not `feature/new-stuff`
+- Use kebab-case: `feature/real-time-notifications`
+- Keep it concise: Aim for 2-4 words after the prefix
+- Reference issues when applicable: `fix/123-memory-leak`
+
+### Branch Lifecycle
+
+#### Creating Branches
+
+Always create branches from an up-to-date `main`:
+
+```bash
+# Update main
+git checkout main
+git pull origin main
+
+# Create new branch
+git checkout -b feature/your-feature-name
+```
+
+#### Keeping Branches Up to Date
+
+Regularly sync your branch with `main`:
+
+```bash
+# Using rebase (recommended for clean history)
+git fetch origin
+git rebase origin/main
+git push --force-with-lease origin feature/your-feature-name
+
+# Using merge (simpler, creates merge commits)
+git fetch origin
+git merge origin/main
+git push origin feature/your-feature-name
+```
+
+#### Deleting After Merge
+
+Clean up branches after they've been merged:
+
+```bash
+# Delete local branch
+git branch -d feature/your-feature-name
+
+# Delete remote branch
+git push origin --delete feature/your-feature-name
+
+# Prune remote tracking branches
+git fetch --prune origin
+```
+
+### Local and Remote Cleanup Commands
+
+#### Clean Up Merged Branches
+
+```bash
+# Delete all local merged branches
+git branch --merged main | grep -v "main" | xargs -r git branch -d
+
+# Prune remote tracking branches
+git fetch --prune origin
+```
+
+#### Check for Stale Branches
+
+```bash
+# List branches with last commit date
+git for-each-ref --sort=-committerdate refs/heads/ \
+  --format='%(committerdate:short) %(refname:short)'
+```
+
+### Protection Rules
+
+#### Main Branch Protection
+
+The `main` branch has the following protection rules:
+
+- ✅ **Required pull request reviews** (1 approval minimum)
+- ✅ **Required status checks** (linting, tests, build)
+- ✅ **Require conversation resolution** before merging
+- ✅ **Require linear history** (optional)
+
+#### Auto-Delete Merged Branches
+
+The repository is configured to automatically delete head branches after PR merge. This reduces manual cleanup work and keeps the branch list manageable.
+
+### Stale Branch Detection
+
+#### When to Delete Branches
+
+Delete branches when:
+- ✅ PR has been merged to main
+- ✅ PR has been closed without merging
+- ✅ Branch is a temporary artifact
+- ✅ No commits in the last 90 days
+- ✅ All stakeholders confirm it's no longer needed
+
+#### When to Preserve Branches
+
+Preserve branches when:
+- ⚠️ Contains experimental work that may be revisited
+- ⚠️ Long-term feature development in progress
+- ⚠️ Release or maintenance branch
+- ⚠️ Purpose is uncertain — verify first
+
+#### Communication Before Deletion
+
+Before deleting stale branches:
+
+1. **Check the branch author:**
+   ```bash
+   git log -1 --format='%an <%ae>' origin/branch-name
+   ```
+
+2. **Review branch contents:**
+   ```bash
+   git log main..branch-name --oneline
+   git diff main...branch-name
+   ```
+
+3. **Announce bulk deletions** with 3–7 day notice
+4. **Document the deletion** with reason and date
+
+### Best Practices Summary
+
+1. ✅ Always create branches from up-to-date main
+2. ✅ Use meaningful, consistent branch names
+3. ✅ Keep branches short-lived (days to weeks, not months)
+4. ✅ Sync regularly with main to avoid conflicts
+5. ✅ Delete branches immediately after merge
+6. ✅ Use pull requests for all changes to main
+7. ✅ Perform regular branch audits (monthly or quarterly)
+8. ✅ Communicate before bulk deletions
 
 ---
 
