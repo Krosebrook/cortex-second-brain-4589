@@ -1,516 +1,335 @@
-# Operational Runbook
+# Operations Runbook — Cortex Second Brain
 
-**Status**: 🔴 Not Started  
-**Priority**: P0 - Production Blocker  
-**Owner**: TBD  
-**Last Updated**: 2026-01-21  
-**Estimated Effort**: 8 hours
-
----
-
-## Purpose
-
-This runbook provides step-by-step procedures for common operational tasks, incident response, and emergency procedures for the Tessa AI Platform.
-
-## Why This Is Critical
-
-Without operational runbooks:
-- Mean Time to Resolution (MTTR) increases 5-10x
-- Inconsistent incident response
-- Knowledge locked in individual team members' heads
-- New on-call engineers cannot respond effectively
-- Emergency procedures are improvised under pressure
+This runbook covers deployment, monitoring, incident response, and common operational procedures.
 
 ---
 
 ## Table of Contents
 
-1. [Emergency Contacts](#emergency-contacts)
-2. [Quick Reference](#quick-reference)
-3. [Health Check Procedures](#health-check-procedures)
-4. [Common Issues & Solutions](#common-issues--solutions)
-5. [Incident Response Procedures](#incident-response-procedures)
-6. [Rollback Procedures](#rollback-procedures)
-7. [Database Maintenance](#database-maintenance)
-8. [Performance Troubleshooting](#performance-troubleshooting)
-9. [Security Incidents](#security-incidents)
+1. [Deployment](#deployment)
+2. [Environment Configuration](#environment-configuration)
+3. [Database Operations](#database-operations)
+4. [Edge Functions](#edge-functions)
+5. [Monitoring & Alerts](#monitoring--alerts)
+6. [Incident Response](#incident-response)
+7. [Common Issues & Fixes](#common-issues--fixes)
+8. [Backup & Recovery](#backup--recovery)
+9. [Scaling Considerations](#scaling-considerations)
 
 ---
 
-## 1. Emergency Contacts
+## Deployment
 
-### On-Call Rotation
-- **Primary On-Call**: [Name/Phone/Slack]
-- **Secondary On-Call**: [Name/Phone/Slack]
-- **Manager/Escalation**: [Name/Phone/Slack]
+### Production Build
 
-### Third-Party Support
-- **Supabase Support**: [Contact info]
-- **OpenAI Support**: [Contact info]
-- **Hosting Provider**: [Contact info]
+```bash
+# Install dependencies
+npm ci
 
-### Communication Channels
-- **Incident Slack Channel**: #incidents
-- **Status Page**: [URL]
-- **Monitoring Dashboard**: [URL]
+# Type-check and lint
+npm run type-check
+npm run lint
+
+# Run tests
+npm run test
+
+# Build for production
+npm run build
+
+# Preview build locally (optional)
+npm run preview
+```
+
+The build outputs to `dist/`. Deploy the contents of `dist/` to your hosting provider (Vercel, Netlify, Cloudflare Pages, etc.).
+
+### Vite Build Output
+
+| File | Description |
+|---|---|
+| `dist/index.html` | App entry point |
+| `dist/assets/react-vendor-*.js` | React + React Router |
+| `dist/assets/ui-vendor-*.js` | Radix UI + Framer Motion |
+| `dist/assets/supabase-*.js` | Supabase JS SDK |
+| `dist/assets/query-*.js` | TanStack Query |
+| `dist/assets/charts-*.js` | Recharts |
+| `dist/sw.js` | Service worker |
+| `dist/manifest.webmanifest` | PWA manifest |
+
+### Deploying Edge Functions
+
+```bash
+# Deploy all functions
+supabase functions deploy
+
+# Deploy a single function
+supabase functions deploy chat-with-tessa-secure
+
+# Check deployed functions
+supabase functions list
+```
+
+### Setting Secrets
+
+```bash
+supabase secrets set OPENAI_API_KEY=sk-...
+supabase secrets set RESEND_API_KEY=re_...
+supabase secrets set GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+supabase secrets set GOOGLE_CLIENT_SECRET=GOCSPX-...
+
+# Verify (shows names only, not values)
+supabase secrets list
+```
 
 ---
 
-## 2. Quick Reference
+## Environment Configuration
 
-### Service URLs
-```
-Production Frontend:  https://[production-url]
-Staging Frontend:     https://[staging-url]
-Supabase Dashboard:   https://app.supabase.com/project/[project-id]
-Monitoring Dashboard: [URL]
-Log Aggregation:      [URL]
-```
+See [`.env.example`](../.env.example) for all variables. Required for production:
 
-### Common Commands
+| Variable | Source |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase Dashboard → Settings → API |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Settings → API (anon key) |
+| `VITE_SUPABASE_PROJECT_ID` | Supabase project reference |
 
-**Check Service Status**:
-```bash
-# Frontend health check
-curl https://[production-url]/health
-
-# Database connectivity
-curl https://[production-url]/health/database
-```
-
-**View Recent Logs**:
-```bash
-# Supabase CLI
-supabase logs --project [project-id] --limit 100
-
-# Filter by service
-supabase logs --project [project-id] --service edge-functions
-```
-
-**Restart Edge Function**:
-```bash
-# Redeploy edge function
-supabase functions deploy [function-name] --project-ref [project-id]
-```
+> ⚠️ The variable name is `VITE_SUPABASE_PUBLISHABLE_KEY`, **not** `VITE_SUPABASE_ANON_KEY`. Ensure hosting environment variables use the correct name.
 
 ---
 
-## 3. Health Check Procedures
+## Database Operations
 
-### Daily Health Check (5 minutes)
-
-**Procedure**:
-1. [ ] Check monitoring dashboard for alerts
-2. [ ] Verify all services are green
-3. [ ] Check error rate (should be <1%)
-4. [ ] Check API latency (p95 <2 seconds)
-5. [ ] Review overnight incidents
-6. [ ] Check backup status
-
-**Commands**:
-```bash
-# TBD: Add specific health check commands
-```
-
-### Weekly Health Review (30 minutes)
-
-**Procedure**:
-1. [ ] Review error trends (week-over-week)
-2. [ ] Check slow query log
-3. [ ] Review database growth
-4. [ ] Check storage usage
-5. [ ] Review cost trends
-6. [ ] Update capacity planning
-
----
-
-## 4. Common Issues & Solutions
-
-### Issue: "Service Unavailable" Error
-
-**Symptoms**:
-- Users seeing 503 errors
-- High error rate in monitoring
-
-**Diagnosis**:
-```bash
-# Check service status
-curl https://[production-url]/health
-
-# Check recent deployments
-git log --oneline -10
-
-# Check error logs
-[TBD: Log query command]
-```
-
-**Resolution**:
-1. Check if recent deployment caused issue
-2. If yes, proceed to [Rollback Procedures](#rollback-procedures)
-3. If no, check database connectivity
-4. Check edge function status
-5. Escalate if unresolved within 15 minutes
-
-**Time to Resolution**: 5-15 minutes
-
----
-
-### Issue: "Login Failures Spike"
-
-**Symptoms**:
-- Login failure rate >10%
-- Users reporting cannot login
-
-**Diagnosis**:
-```bash
-# Check Supabase Auth status
-[TBD: Auth status check]
-
-# Check recent failed login attempts
-[TBD: Query failed_login_attempts table]
-```
-
-**Resolution**:
-1. Check Supabase Auth status page
-2. If Supabase issue, update status page and wait
-3. If local issue, check RLS policies
-4. Check if rate limiting too aggressive
-5. Review recent auth configuration changes
-
-**Time to Resolution**: 10-30 minutes
-
----
-
-### Issue: "AI Chat Not Responding"
-
-**Symptoms**:
-- Chat messages timing out
-- AI request failure rate >5%
-
-**Diagnosis**:
-```bash
-# Check OpenAI status
-curl https://status.openai.com/api/v2/status.json
-
-# Check edge function logs
-[TBD: Edge function log query]
-```
-
-**Resolution**:
-1. Check OpenAI status page
-2. If OpenAI issue, implement fallback message
-3. Check rate limits (both OpenAI and application)
-4. Check edge function timeout settings
-5. Review recent OpenAI API key changes
-
-**Time to Resolution**: 5-20 minutes
-
----
-
-### Issue: "Database Slow Queries"
-
-**Symptoms**:
-- API latency p95 >5 seconds
-- Slow query count increasing
-
-**Diagnosis**:
-```bash
-# Check database performance
-[TBD: Database performance query]
-
-# View slow queries
-[TBD: Slow query log]
-```
-
-**Resolution**:
-1. Identify slow queries from logs
-2. Check if missing index (add if needed)
-3. Check database connection pool saturation
-4. Consider query optimization
-5. Scale database if needed
-
-**Time to Resolution**: 30-60 minutes
-
----
-
-### Issue: "Sync Failures"
-
-**Symptoms**:
-- Sync failure rate >5%
-- Users reporting data not syncing
-
-**Diagnosis**:
-```bash
-# Check sync queue length
-[TBD: Query sync status]
-
-# Check network connectivity issues
-[TBD: Network check]
-```
-
-**Resolution**:
-1. Check database connectivity
-2. Check real-time subscription status
-3. Review conflict resolution logs
-4. Check IndexedDB quota issues
-5. Consider manual sync retry
-
-**Time to Resolution**: 15-30 minutes
-
----
-
-## 5. Incident Response Procedures
-
-### Incident Severity Levels
-
-| Severity | Description | Response Time | Example |
-|----------|-------------|---------------|---------|
-| **SEV1** | Service Down | <15 minutes | Complete outage |
-| **SEV2** | Major Feature Down | <30 minutes | Auth down, AI chat down |
-| **SEV3** | Degraded Performance | <2 hours | Slow queries, high latency |
-| **SEV4** | Minor Issue | <24 hours | UI bug, typo |
-
-### SEV1: Service Down
-
-**Immediate Actions (0-5 minutes)**:
-1. [ ] Acknowledge alert in PagerDuty
-2. [ ] Post in #incidents Slack channel
-3. [ ] Update status page: "Investigating"
-4. [ ] Check recent deployments (last 2 hours)
-
-**Investigation (5-15 minutes)**:
-1. [ ] Run health checks on all services
-2. [ ] Check monitoring dashboard for root cause
-3. [ ] Review error logs
-4. [ ] Identify affected component
-
-**Resolution (15-30 minutes)**:
-1. [ ] If recent deployment, rollback immediately
-2. [ ] If infrastructure, contact hosting provider
-3. [ ] If third-party (Supabase, OpenAI), update status page
-4. [ ] Implement workaround if possible
-
-**Post-Incident (After resolution)**:
-1. [ ] Update status page: "Resolved"
-2. [ ] Post resolution in #incidents
-3. [ ] Schedule post-mortem within 48 hours
-4. [ ] Document in incident log
-
-### SEV2: Major Feature Down
-
-**Follow SEV1 procedure with extended timelines**
-
-Response time: 30 minutes
-
-### Post-Mortem Template
-
-**Incident Summary**:
-- Date/Time:
-- Duration:
-- Severity:
-- Services Affected:
-- User Impact:
-
-**Timeline**:
-- HH:MM - Incident began
-- HH:MM - Detected (how?)
-- HH:MM - On-call acknowledged
-- HH:MM - Root cause identified
-- HH:MM - Resolution applied
-- HH:MM - Verified resolved
-
-**Root Cause**:
-- What happened?
-- Why did it happen?
-- Why wasn't it caught earlier?
-
-**Resolution**:
-- What fixed it?
-
-**Action Items**:
-- [ ] [Owner] - Prevent recurrence (e.g., add monitoring)
-- [ ] [Owner] - Update runbook
-- [ ] [Owner] - Improve detection
-
----
-
-## 6. Rollback Procedures
-
-### Frontend Rollback
-
-**Vercel/Netlify**:
-```bash
-# Via dashboard:
-1. Go to Deployments
-2. Find previous stable deployment
-3. Click "Promote to Production"
-```
-
-**Time to Rollback**: 2-5 minutes
-
-### Edge Function Rollback
+### Running Migrations
 
 ```bash
-# Identify previous working commit
-git log --oneline supabase/functions/[function-name]
+# Push all pending migrations to remote
+supabase db push
 
-# Checkout previous version
-git checkout [commit-hash] -- supabase/functions/[function-name]
+# Check migration status
+supabase migration list
 
-# Redeploy
-supabase functions deploy [function-name] --project-ref [project-id]
+# Generate a new migration from schema diff
+supabase db diff --schema public -f my_migration_name
 ```
 
-**Time to Rollback**: 5-10 minutes
-
-### Database Migration Rollback
-
-**⚠️ CRITICAL**: Database rollbacks are dangerous
-
-**Procedure**:
-1. [ ] Assess data loss risk
-2. [ ] Create database backup
-3. [ ] Run rollback migration (if available)
-4. [ ] Verify data integrity
-5. [ ] Communicate data loss (if any)
-
-**Time to Rollback**: 15-30 minutes
-
----
-
-## 7. Database Maintenance
-
-### Create Database Backup
+### Resetting Local Database
 
 ```bash
-# Manual backup
-[TBD: Supabase backup command]
+supabase db reset
 ```
 
-### Restore Database from Backup
+### Connecting Directly (psql)
 
 ```bash
-# ⚠️ CRITICAL: Test restore procedure in staging first
-[TBD: Supabase restore command]
+# Via Supabase CLI
+supabase db connect
+
+# Via psql directly
+psql "postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
 ```
 
-### Vacuum Database
+### Checking RLS Policies
 
 ```sql
--- Analyze database statistics
-ANALYZE;
-
--- Vacuum tables (reclaim space)
-VACUUM ANALYZE;
+-- List all RLS policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
 ```
 
-**Frequency**: Weekly (automated)
+### Manually Unlocking a Locked Account
 
-### Check Database Size
+```bash
+# Via Edge Function (requires service role)
+curl -X GET \
+  "https://<ref>.supabase.co/functions/v1/account-lockout?action=unlock&userId=<uuid>" \
+  -H "Authorization: Bearer <service-role-key>"
+```
 
+---
+
+## Edge Functions
+
+### Checking Function Logs
+
+```bash
+# View logs for a specific function
+supabase functions logs chat-with-tessa-secure
+
+# Follow logs (streaming)
+supabase functions logs chat-with-tessa-secure --follow
+```
+
+### Testing Functions Locally
+
+```bash
+# Start Supabase locally
+supabase start
+
+# Serve functions locally
+supabase functions serve
+
+# Test with curl
+curl -X POST http://localhost:54321/functions/v1/system-status \
+  -H "Content-Type: application/json" \
+  -d '{"ping": true}'
+```
+
+### Function Health Check
+
+```bash
+curl -X POST https://<ref>.supabase.co/functions/v1/system-status \
+  -H "Content-Type: application/json" \
+  -d '{"ping": true}'
+# Expected: {"status": "operational", "timestamp": "..."}
+```
+
+---
+
+## Monitoring & Alerts
+
+### Key Metrics to Watch
+
+| Metric | Warning Threshold | Critical Threshold |
+|---|---|---|
+| Edge function error rate | > 1% | > 5% |
+| Database connection pool | > 70% utilised | > 90% utilised |
+| AI chat rate limit hits | > 10/min | > 50/min |
+| Failed login attempts | > 20/hr | > 100/hr |
+| Service worker cache miss rate | > 20% | > 50% |
+
+### Supabase Dashboard
+
+- **Database**: [supabase.com/dashboard/project/{ref}/database](https://supabase.com/dashboard/project/{ref}/database)
+- **Auth logs**: [supabase.com/dashboard/project/{ref}/auth/users](https://supabase.com/dashboard/project/{ref}/auth/users)
+- **Edge Function logs**: [supabase.com/dashboard/project/{ref}/functions](https://supabase.com/dashboard/project/{ref}/functions)
+
+### Application Status Page
+
+`GET /status` route shows the system status page (backed by `system-status` edge function).
+
+---
+
+## Incident Response
+
+### P0 — Application Down
+
+1. Check Supabase status: [status.supabase.com](https://status.supabase.com)
+2. Check hosting provider status page
+3. Test health endpoint: `curl https://your-app.com/functions/v1/system-status -X POST -d '{"ping":true}'`
+4. Check recent deployments — roll back if a deploy coincided with the incident
+5. Check edge function logs for errors
+
+### P1 — Authentication Failures Spike
+
+1. Check `account-lockout` function for unusual lockout activity:
+   ```bash
+   supabase functions logs account-lockout
+   ```
+2. Check `auth.audit_log_entries` in Supabase for login patterns
+3. If brute-force suspected, review IP addresses in `profile_access_logs`
+4. Consider temporarily increasing lockout threshold
+
+### P2 — AI Chat Not Responding
+
+1. Check `chat-with-tessa-secure` function logs
+2. Verify `OPENAI_API_KEY` secret is set: `supabase secrets list`
+3. Check [status.openai.com](https://status.openai.com)
+4. Check `usage_tracking` table for rate limit exhaustion
+5. Users can still use the app; TESSA is non-critical path
+
+### P3 — PDF Import Failing
+
+1. Check `parse-pdf` function logs
+2. Test with a simple PDF:
+   ```bash
+   curl -X POST https://<ref>.supabase.co/functions/v1/parse-pdf \
+     -F "file=@test.pdf"
+   ```
+3. Check for file size issues (large PDFs may hit function memory limits)
+
+---
+
+## Common Issues & Fixes
+
+### "VITE_SUPABASE_PUBLISHABLE_KEY is undefined"
+
+**Cause**: Environment variable is set as `VITE_SUPABASE_ANON_KEY` (old name).
+
+**Fix**: Rename the variable to `VITE_SUPABASE_PUBLISHABLE_KEY` in your hosting dashboard.
+
+### Offline Sync Not Resolving
+
+**Cause**: Service worker queue may be stuck.
+
+**Fix**:
+1. Open browser DevTools → Application → Service Workers
+2. Click "Update" to force SW refresh
+3. Check IndexedDB for pending sync items
+4. Clear site data if issues persist (users will need to re-login)
+
+### Knowledge Entries Not Appearing After Import
+
+**Cause**: Optimistic update or background sync delay.
+
+**Fix**:
+1. Wait 30 seconds for background sync to complete
+2. Force refresh the page
+3. Check browser console for sync errors
+4. If errors persist, check `knowledge_base` RLS policies
+
+### Admin Dashboard Not Loading
+
+**Cause**: User missing `admin` role.
+
+**Fix** (via SQL):
 ```sql
-SELECT 
-  schemaname,
-  tablename,
-  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
-FROM pg_tables
-WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
-LIMIT 10;
+INSERT INTO user_roles (user_id, role)
+VALUES ('<user-uuid>', 'admin')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
 ---
 
-## 8. Performance Troubleshooting
+## Backup & Recovery
 
-### High CPU Usage
+### Automated Backups
 
-**Diagnosis**:
-1. Check slow query log
-2. Identify expensive queries
-3. Check for missing indexes
+Supabase Pro+ plans include automated daily database backups. Configure via Dashboard → Settings → Database → Backups.
 
-**Resolution**:
-1. Add missing indexes
-2. Optimize queries
-3. Consider database scaling
+### Manual Database Backup
 
-### High Memory Usage
+```bash
+# Dump via Supabase CLI
+supabase db dump -f backup-$(date +%Y%m%d).sql
 
-**Diagnosis**:
-1. Check connection pool usage
-2. Check for memory leaks in edge functions
-3. Review long-running queries
+# Dump via pg_dump
+pg_dump "postgresql://postgres:<pass>@db.<ref>.supabase.co:5432/postgres" \
+  > backup-$(date +%Y%m%d).sql
+```
 
-**Resolution**:
-1. Tune connection pool settings
-2. Restart edge functions
-3. Kill long-running queries
+### User Data Export (via App)
 
-### High Latency
+Users can export their own data via:
+1. Settings → Export Data
+2. Or POST to `send-backup-email` edge function
 
-**Diagnosis**:
-1. Check API latency dashboard
-2. Identify slow endpoints
-3. Check database query performance
+### Restoring from Backup
 
-**Resolution**:
-1. Add caching where appropriate
-2. Optimize slow queries
-3. Consider CDN for static assets
+```bash
+# Restore to local Supabase
+supabase db reset
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" < backup.sql
+```
 
 ---
 
-## 9. Security Incidents
+## Scaling Considerations
 
-### Suspected Account Compromise
-
-**Procedure**:
-1. [ ] Lock affected user account
-2. [ ] Review audit logs for suspicious activity
-3. [ ] Force password reset
-4. [ ] Notify user via email
-5. [ ] Document incident
-
-### Suspected Data Breach
-
-**⚠️ CRITICAL - Escalate immediately**
-
-**Procedure**:
-1. [ ] Notify security team immediately
-2. [ ] Do NOT discuss publicly
-3. [ ] Preserve logs and evidence
-4. [ ] Follow incident response plan
-5. [ ] Notify legal/compliance team
-
-### DDoS Attack
-
-**Procedure**:
-1. [ ] Check rate limiting effectiveness
-2. [ ] Block malicious IPs
-3. [ ] Enable additional DDoS protection
-4. [ ] Contact hosting provider
-5. [ ] Update status page
-
----
-
-## Next Steps
-
-1. **Complete Missing Sections**: Add TBD commands and queries
-2. **Test Procedures**: Run through each procedure in staging
-3. **Create Checklists**: Convert procedures to checklists
-4. **Train Team**: Ensure all on-call engineers familiar with runbook
-5. **Review Quarterly**: Update based on new incidents
-
----
-
-## Related Documentation
-
-- [Incident Response](INCIDENT_RESPONSE.md) - Incomplete
-- [Observability](OBSERVABILITY.md) - Not Started
-- [Failure Modes](FAILURE_MODES.md) - Not Started
-- [Deployment Guide](DEPLOYMENT.md)
-
----
-
-**⚠️ PRODUCTION BLOCKER**: This runbook must be completed and tested before production deployment.
+| Concern | Current | Recommendation |
+|---|---|---|
+| Supabase plan | Assess based on usage | Upgrade to Pro for > 50k MAU |
+| Database connections | Pooler (default) | Enable PgBouncer for high concurrency |
+| Edge Function timeouts | 2s default | Increase for PDF parsing if large files expected |
+| Rate limiting | 60 req/min default | Adjust `VITE_RATE_LIMIT_MAX` per user tier |
+| CDN/hosting | Single region | Enable edge caching for static assets |

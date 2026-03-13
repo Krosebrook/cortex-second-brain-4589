@@ -1,144 +1,138 @@
 # Changelog
 
-All notable changes to Cortex will be documented in this file.
+All notable changes to Cortex Second Brain are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 1.0.0 (2026-01-18)
-
-
-### Features
-
-* add automated branch cleanup workflow and documentation ([52c81a3](https://github.com/Krosebrook/cortex-second-brain-4589/commit/52c81a3b4600db89abc655430d1366d327e83583))
-* Add comprehensive audit logging service and security audit documentation ([3d0e222](https://github.com/Krosebrook/cortex-second-brain-4589/commit/3d0e222dd7694a6b9fe0ffe8a1809b988a83a8cf))
-* Add test workflow with coverage enforcement and new service modules ([c890a3d](https://github.com/Krosebrook/cortex-second-brain-4589/commit/c890a3db310c1da9b6333e416c82ccaa575c153f))
-
-
-### Bug Fixes
-
-* Address code review feedback ([2034b62](https://github.com/Krosebrook/cortex-second-brain-4589/commit/2034b621f45cd9ddf955a4ca20e1ab5cb388870f))
+---
 
 ## [Unreleased]
 
-### Planned
-- Enhanced search with semantic capabilities
-- Real-time collaboration features
-- Mobile-responsive improvements
-- Accessibility enhancements (WCAG 2.1 AA compliance)
+### Added
+- Documentation: comprehensive docs suite (ARCHITECTURE, API, DATABASE, SECURITY, RUNBOOK, ROADMAP, PRD, ADRs, DEAD-CODE-TRIAGE, AUDIT-REPORT)
+- `.env.example`: Added all `VITE_` variables from `app-config.ts` with descriptions; fixed `VITE_SUPABASE_PUBLISHABLE_KEY` variable name (was incorrectly `VITE_SUPABASE_ANON_KEY`)
 
 ---
 
-## [0.3.0] - 2024-12-18
+## [0.1.2] — 2025-01-14
 
 ### Added
-- Comprehensive API documentation (`docs/API.md`)
-- Contributing guidelines (`CONTRIBUTING.md`)
-- Architecture documentation (`docs/ARCHITECTURE.md`)
-- Getting Started guide in README
+- `parse-pdf` Supabase Edge Function for PDF text extraction without external dependencies
+- PDF import support in the Import page
 
 ### Changed
-- Updated README with detailed setup instructions
-- Improved project structure documentation
-- Enhanced ROADMAP with recent changes section
-
-### Removed
-- E-commerce/store management functionality (out of scope)
-  - Removed `StoresManager`, `SyncedProductsTable`, `StoreConnectionModal` components
-  - Removed database tables: `stores`, `synced_products`, `synced_orders`, `store_sync_logs`
-  - Removed `sync-store` edge function
-  - Removed `docs/SECURITY_STORES_ENCRYPTION.md`
-
-### Security
-- Cleaned up unused store-related RLS policies
+- Upgraded Framer Motion to 12.35.1
 
 ---
 
-## [0.2.0] - 2024-12-15
+## [0.1.1] — 2025-01-10
 
 ### Added
-- Secure chat endpoint with rate limiting (`chat-with-tessa-secure`)
-- Input validation and sanitization for chat messages
-- Chat ownership verification
-- System status endpoint for health monitoring
-- Offline support with service worker
-- PWA manifest and install prompts
-- Connection status indicators
-- Conflict detection and resolution system
-
-### Changed
-- Enhanced error handling across edge functions
-- Improved toast notifications with undo support
-- Better loading states and progress indicators
+- `send-backup-email` Edge Function (Resend API integration)
+- Email backup option in Settings
 
 ### Fixed
-- Session persistence issues in authentication
-- Chat scroll behavior on new messages
-- Filter preset ordering and drag-and-drop
+- Background sync queue retry delay now respects `VITE_SYNC_MAX_DELAY` cap
+- Service worker registration failure no longer blocks app boot
 
 ---
 
-## [0.1.0] - 2024-12-01
+## [0.1.0] — 2025-01-01
 
 ### Added
-- Initial release of Cortex knowledge management platform
-- **Core Features:**
-  - Knowledge base management (notes, documents, web pages)
-  - AI chat interface (Tessa) powered by OpenAI
-  - Import system for external content
-  - Search and filtering with saved presets
-  - Tag-based organization
 
-- **Authentication:**
-  - Email/password authentication via Supabase Auth
-  - Protected routes and session management
-  - User profiles
+**Core Application**
+- React 18.3.1 + TypeScript 5.5.3 + Vite 5.4.1 project scaffold
+- React Router v6 with protected route guard (`ProtectedRoute`)
+- TanStack Query 5.84.1 for server state management
+- Tailwind CSS 3.4.11 + shadcn/ui component library
+- Framer Motion animations and page transitions
+- Dark/light theme with system preference detection
+- Command palette (`Ctrl+K`) via `cmdk`
+- Keyboard shortcuts throughout the app
 
-- **UI Components:**
-  - Responsive navigation with mobile support
-  - Dark/light theme toggle
-  - Toast notifications
-  - Loading states and skeletons
-  - Dialog and modal system
+**Authentication**
+- Supabase Auth: email/password sign-up and sign-in
+- Email verification banner
+- Password reset via email
+- TOTP Multi-Factor Authentication (`TwoFactorAuth` component)
+- Session persistence in `localStorage` with auto-refresh
+- Connection error detection with retry UI
 
-- **Backend:**
-  - Supabase database integration
-  - Edge functions for AI chat
-  - Row Level Security policies
-  - Real-time subscriptions
+**Knowledge Base**
+- Full CRUD for knowledge entries (notes, documents, web pages, files)
+- Tagging and categorisation
+- Favourite/star entries
+- Soft-delete with restore capability
+- Undo/redo history for edits
+- Bulk operations: select all, delete selected, bulk tag
+- Filter presets (save/load/delete custom filters)
+- Conflict detection and resolution on concurrent edits
+- Optimistic UI updates via TanStack Query mutations
+- Virtualised list rendering (`@tanstack/react-virtual`) for large datasets
 
-- **Developer Experience:**
-  - TypeScript throughout
-  - Tailwind CSS with design system
-  - shadcn/ui component library
-  - Vitest for testing
-  - ESLint configuration
+**Import**
+- CSV import with column mapping
+- URL import (web scraping)
+- File upload (PDF, plain text, markdown)
+- Plain text paste import
+- Google Drive OAuth integration (list and import files)
+- PDF text extraction via `parse-pdf` Edge Function
+
+**TESSA AI Chat**
+- Multi-session chat with persistent history
+- OpenAI-powered responses via `chat-with-tessa-secure` Edge Function
+- Rate limiting via `usage_tracking` table
+- Chat session management (create, rename, delete)
+
+**PWA & Offline**
+- Installable PWA via `vite-plugin-pwa` / Workbox
+- Service worker with caching strategies:
+  - CacheFirst for fonts and images
+  - StaleWhileRevalidate for JS/CSS
+  - NetworkFirst for Supabase API calls
+- Offline fallback page (`/offline` route)
+- Background sync queue with exponential backoff
+- Offline indicator in UI
+
+**Notifications**
+- In-app notification centre
+- Notification types: info, warning, error, success
+- Category filtering (sync, import, security)
+- Mark as read / mark all as read
+
+**Admin Dashboard**
+- Usage metrics and charts (Recharts)
+- Rate limit monitoring
+- Failed login attempt tracking
+- System health status
+
+**Edge Functions (Deno)**
+- `chat-with-tessa-secure`: Authenticated AI chat with rate limiting
+- `account-lockout`: Login attempt tracking and account lockout
+- `google-drive-oauth`: Full OAuth 2.0 flow for Google Drive
+- `ip-geolocation`: IP-to-location lookup via ip-api.com
+- `security-headers`: Security header configuration endpoint
+- `system-status`: Health check with public/admin response tiers
+- `send-backup-email`: Data backup via Resend API
+
+**Infrastructure**
+- Supabase PostgreSQL with 9 tables and full RLS
+- `has_role()` RPC for admin access control
+- `handle_new_user()` trigger for automatic profile creation
+- Audit logging via `profile_access_logs`
+- `ApplicationError` class with `ErrorCode` enum for typed error handling
+- Centralised `AppConfig` in `src/config/app-config.ts` (all VITE_ vars)
+- Vite code-splitting: 5 vendor chunks (react, ui, supabase, query, charts)
+
+**Testing**
+- Vitest 4.0.18 test suite with 206 passing tests
+- Coverage thresholds: 70% statements, 65% branches, 70% functions, 70% lines
+- Playwright E2E test scaffold
 
 ---
 
-## Version History Summary
-
-| Version | Date | Highlights |
-|---------|------|------------|
-| 0.3.0 | 2024-12-18 | Documentation improvements, scope cleanup |
-| 0.2.0 | 2024-12-15 | Security enhancements, offline support |
-| 0.1.0 | 2024-12-01 | Initial release |
-
----
-
-## Migration Notes
-
-### Upgrading to 0.3.0
-
-No breaking changes. E-commerce features were removed but were not part of the public API.
-
-### Upgrading to 0.2.0
-
-- Update Supabase client to use new secure chat endpoint for production
-- Review rate limiting configuration if customization needed
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to propose changes and submit pull requests.
+[Unreleased]: https://github.com/your-org/cortex-second-brain/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/your-org/cortex-second-brain/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/your-org/cortex-second-brain/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/your-org/cortex-second-brain/releases/tag/v0.1.0
