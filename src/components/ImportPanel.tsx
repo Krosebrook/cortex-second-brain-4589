@@ -136,6 +136,25 @@ const CsvImportPanel: React.FC<{ onImport: (title: string, content: string) => P
   );
 };
 
+// ---- Helper: Parse PDF via edge function ----
+async function parsePdfFile(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+
+  const { data, error } = await supabase.functions.invoke('parse-pdf', {
+    body: { file_base64: base64, file_name: file.name },
+  });
+
+  if (error) throw new Error(error.message || 'PDF parsing failed');
+  if (data?.warning && !data?.text) throw new Error(data.warning);
+  return data?.text || '';
+}
+
 // ---- Document Upload Panel ----
 const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => Promise<void> }> = ({ onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,13 +166,22 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const text = await file.text();
         const title = file.name.replace(/\.[^.]+$/, '');
-        await onImport(title, text);
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+          const text = await parsePdfFile(file);
+          if (!text) {
+            toast.warning(`No text extracted from ${file.name}. It may contain only images.`);
+            continue;
+          }
+          await onImport(title, text);
+        } else {
+          const text = await file.text();
+          await onImport(title, text);
+        }
       }
       toast.success(`Imported ${files.length} file(s) successfully`);
-    } catch {
-      toast.error('Failed to import file(s)');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to import file(s)');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -163,7 +191,7 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-medium">Document Upload</h3>
-      <p className="text-muted-foreground">Upload documents and text files to import into your knowledge base.</p>
+      <p className="text-muted-foreground">Upload documents, PDFs, and text files to import into your knowledge base.</p>
       <div
         className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 transition-colors"
         onClick={() => fileInputRef.current?.click()}
@@ -187,11 +215,11 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
         <p className="text-muted-foreground">
           {uploading ? 'Importing...' : 'Drag and drop files here, or click to browse'}
         </p>
-        <p className="text-xs text-muted-foreground mt-2">Supported: TXT, MD, CSV, JSON</p>
+        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, TXT, MD, CSV, JSON</p>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".txt,.md,.csv,.json,.log"
+          accept=".pdf,.txt,.md,.csv,.json,.log"
           multiple
           className="hidden"
           onChange={handleFiles}
