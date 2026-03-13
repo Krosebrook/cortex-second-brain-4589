@@ -45,7 +45,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 // Mock window.matchMedia
-Object.defineProperty(globalThis.window || globalThis, 'matchMedia', {
+Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
     matches: false,
