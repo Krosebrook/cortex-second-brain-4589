@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, Globe, Database, Type, CheckCircle2, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { ImportSource } from '@/lib/types';
 import AnimatedTransition from './AnimatedTransition';
 import { cn } from '@/lib/utils';
@@ -181,52 +182,57 @@ async function parseXlsxFile(file: File): Promise<string> {
 }
 
 // ---- Document Upload Panel ----
+type FileStatus = { name: string; status: 'pending' | 'processing' | 'done' | 'error'; error?: string };
+
 const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => Promise<void> }> = ({ onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
+
+  const updateStatus = (index: number, update: Partial<FileStatus>) => {
+    setFileStatuses(prev => prev.map((f, i) => i === index ? { ...f, ...update } : f));
+  };
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    setFileStatuses(fileArray.map(f => ({ name: f.name, status: 'pending' })));
     setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
+    let successCount = 0;
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      updateStatus(i, { status: 'processing' });
+      try {
         const title = file.name.replace(/\.[^.]+$/, '');
         const lowerName = file.name.toLowerCase();
+        let text: string | null = null;
         if (lowerName.endsWith('.pdf')) {
-          const text = await parsePdfFile(file);
-          if (!text) {
-            toast.warning(`No text extracted from ${file.name}. It may contain only images.`);
-            continue;
-          }
-          await onImport(title, text);
+          text = await parsePdfFile(file);
+          if (!text) { updateStatus(i, { status: 'error', error: 'No text extracted' }); continue; }
         } else if (lowerName.endsWith('.docx')) {
-          const text = await parseDocxFile(file);
-          if (!text) {
-            toast.warning(`No text extracted from ${file.name}.`);
-            continue;
-          }
-          await onImport(title, text);
+          text = await parseDocxFile(file);
+          if (!text) { updateStatus(i, { status: 'error', error: 'No text extracted' }); continue; }
         } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
-          const text = await parseXlsxFile(file);
-          if (!text) {
-            toast.warning(`No data extracted from ${file.name}.`);
-            continue;
-          }
-          await onImport(title, text);
+          text = await parseXlsxFile(file);
+          if (!text) { updateStatus(i, { status: 'error', error: 'No data extracted' }); continue; }
         } else {
-          const text = await file.text();
-          await onImport(title, text);
+          text = await file.text();
         }
+        await onImport(title, text);
+        updateStatus(i, { status: 'done' });
+        successCount++;
+      } catch (err) {
+        updateStatus(i, { status: 'error', error: err instanceof Error ? err.message : 'Failed' });
       }
-      toast.success(`Imported ${files.length} file(s) successfully`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to import file(s)');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+    if (successCount > 0) toast.success(`Imported ${successCount} of ${fileArray.length} file(s)`);
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const completedCount = fileStatuses.filter(f => f.status === 'done' || f.status === 'error').length;
+  const overallProgress = fileStatuses.length > 0 ? (completedCount / fileStatuses.length) * 100 : 0;
 
   return (
     <div className="space-y-4">
@@ -234,12 +240,12 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
       <p className="text-muted-foreground">Upload documents, PDFs, and text files to import into your knowledge base.</p>
       <div
         className="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 transition-colors"
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !uploading && fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onDrop={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (e.dataTransfer.files.length && fileInputRef.current) {
+          if (!uploading && e.dataTransfer.files.length && fileInputRef.current) {
             const dt = new DataTransfer();
             Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
             fileInputRef.current.files = dt.files;
@@ -268,6 +274,32 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
           Browse Files
         </Button>
       </div>
+
+      {fileStatuses.length > 0 && (
+        <div className="space-y-3 glass-panel p-4 rounded-xl">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">
+              {uploading ? 'Importing files...' : 'Import complete'}
+            </span>
+            <span className="text-muted-foreground">
+              {completedCount} / {fileStatuses.length}
+            </span>
+          </div>
+          <Progress value={overallProgress} className="h-2" />
+          <div className="space-y-1.5 max-h-40 overflow-y-auto">
+            {fileStatuses.map((f, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                {f.status === 'pending' && <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />}
+                {f.status === 'processing' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                {f.status === 'done' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                {f.status === 'error' && <span className="h-4 w-4 text-destructive font-bold text-center leading-4">✕</span>}
+                <span className={cn("truncate", f.status === 'error' && "text-destructive")}>{f.name}</span>
+                {f.error && <span className="text-xs text-destructive ml-auto shrink-0">{f.error}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
