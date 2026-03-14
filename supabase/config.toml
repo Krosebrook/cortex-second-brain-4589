@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.parse-docx]
 verify_jwt = false
+
+[functions.parse-xlsx]
+verify_jwt = false
