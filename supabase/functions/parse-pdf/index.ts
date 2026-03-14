@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,24 +8,20 @@ const corsHeaders = {
 };
 
 // Simple PDF text extraction without external dependencies
-// Handles both text-based PDFs by extracting readable strings
 function extractTextFromPdfBytes(bytes: Uint8Array): string {
   const text: string[] = [];
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const raw = decoder.decode(bytes);
 
-  // Extract text between BT (Begin Text) and ET (End Text) operators
   const btEtRegex = /BT\s([\s\S]*?)ET/g;
   let match;
 
   while ((match = btEtRegex.exec(raw)) !== null) {
     const block = match[1];
-
-    // Match Tj (show string) and TJ (show strings array) operators
     const tjRegex = /\(([^)]*)\)\s*Tj/g;
     const tjArrayRegex = /\[([^\]]*)\]\s*TJ/gi;
-
     let tjMatch;
+
     while ((tjMatch = tjRegex.exec(block)) !== null) {
       const decoded = decodePdfString(tjMatch[1]);
       if (decoded.trim()) text.push(decoded);
@@ -42,15 +39,12 @@ function extractTextFromPdfBytes(bytes: Uint8Array): string {
     }
   }
 
-  // Also try to extract text from streams (for some PDF encoders)
   if (text.length === 0) {
-    // Fallback: extract any printable ASCII sequences of reasonable length
     const printableRegex = /[\x20-\x7E]{4,}/g;
     let printMatch;
     const seen = new Set<string>();
     while ((printMatch = printableRegex.exec(raw)) !== null) {
       const s = printMatch[0].trim();
-      // Filter out PDF operators and metadata
       if (
         s.length > 10 &&
         !s.startsWith("/") &&
@@ -79,13 +73,62 @@ function decodePdfString(s: string): string {
     .replace(/\\\\/g, "\\");
 }
 
+// OCR fallback using Lovable AI (Gemini vision) for scanned/image-based PDFs
+async function ocrWithAI(pdfBase64: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY not configured — cannot perform OCR");
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an OCR assistant. Extract ALL text content from the provided PDF document. Return ONLY the extracted text, preserving paragraph structure. Do not add commentary or summaries.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Please extract all text from this PDF document. Return only the raw text content.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:application/pdf;base64,${pdfBase64}`,
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("AI OCR error:", response.status, errText);
+    throw new Error(`AI OCR failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -100,19 +143,18 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Parse the request body
     const contentType = req.headers.get("content-type") || "";
     let pdfBytes: Uint8Array;
     let fileName = "document.pdf";
+    let rawBase64 = "";
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
@@ -125,8 +167,8 @@ Deno.serve(async (req) => {
       }
       fileName = file.name;
       pdfBytes = new Uint8Array(await file.arrayBuffer());
+      rawBase64 = base64Encode(pdfBytes);
     } else {
-      // Expect JSON with base64-encoded PDF
       const body = await req.json();
       if (!body.file_base64) {
         return new Response(
@@ -135,8 +177,8 @@ Deno.serve(async (req) => {
         );
       }
       fileName = body.file_name || fileName;
-      
-      // Decode base64
+      rawBase64 = body.file_base64;
+
       const binaryString = atob(body.file_base64);
       pdfBytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -144,7 +186,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Validate it's a PDF (check magic bytes)
     if (pdfBytes.length < 5 || String.fromCharCode(...pdfBytes.slice(0, 5)) !== "%PDF-") {
       return new Response(
         JSON.stringify({ error: "Invalid PDF file" }),
@@ -152,7 +193,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Limit file size to 10MB
     if (pdfBytes.length > 10 * 1024 * 1024) {
       return new Response(
         JSON.stringify({ error: "File too large. Maximum size is 10MB." }),
@@ -160,15 +200,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract text
-    const extractedText = extractTextFromPdfBytes(pdfBytes);
+    // Step 1: Try basic text extraction
+    let extractedText = extractTextFromPdfBytes(pdfBytes);
+    let method = "text-extraction";
+
+    // Step 2: If no text found, try OCR via AI
+    if (!extractedText) {
+      try {
+        console.log("No text extracted, attempting OCR via AI...");
+        extractedText = await ocrWithAI(rawBase64);
+        method = "ai-ocr";
+      } catch (ocrError) {
+        console.error("OCR fallback failed:", ocrError);
+      }
+    }
 
     if (!extractedText) {
       return new Response(
         JSON.stringify({
           text: "",
           file_name: fileName,
-          warning: "No text could be extracted. The PDF may contain only images or use unsupported encoding.",
+          method,
+          warning: "No text could be extracted. The PDF may contain only images with unsupported encoding.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -179,6 +232,7 @@ Deno.serve(async (req) => {
         text: extractedText,
         file_name: fileName,
         char_count: extractedText.length,
+        method,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

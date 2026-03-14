@@ -136,21 +136,35 @@ const CsvImportPanel: React.FC<{ onImport: (title: string, content: string) => P
   );
 };
 
-// ---- Helper: Parse PDF via edge function ----
-async function parsePdfFile(file: File): Promise<string> {
+// ---- Helper: Convert file to base64 ----
+async function fileToBase64(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  const base64 = btoa(binary);
+  return btoa(binary);
+}
 
+// ---- Helper: Parse PDF via edge function ----
+async function parsePdfFile(file: File): Promise<string> {
+  const base64 = await fileToBase64(file);
   const { data, error } = await supabase.functions.invoke('parse-pdf', {
     body: { file_base64: base64, file_name: file.name },
   });
-
   if (error) throw new Error(error.message || 'PDF parsing failed');
+  if (data?.warning && !data?.text) throw new Error(data.warning);
+  return data?.text || '';
+}
+
+// ---- Helper: Parse DOCX via edge function ----
+async function parseDocxFile(file: File): Promise<string> {
+  const base64 = await fileToBase64(file);
+  const { data, error } = await supabase.functions.invoke('parse-docx', {
+    body: { file_base64: base64, file_name: file.name },
+  });
+  if (error) throw new Error(error.message || 'DOCX parsing failed');
   if (data?.warning && !data?.text) throw new Error(data.warning);
   return data?.text || '';
 }
@@ -167,10 +181,18 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
     try {
       for (const file of Array.from(files)) {
         const title = file.name.replace(/\.[^.]+$/, '');
-        if (file.name.toLowerCase().endsWith('.pdf')) {
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.pdf')) {
           const text = await parsePdfFile(file);
           if (!text) {
             toast.warning(`No text extracted from ${file.name}. It may contain only images.`);
+            continue;
+          }
+          await onImport(title, text);
+        } else if (lowerName.endsWith('.docx')) {
+          const text = await parseDocxFile(file);
+          if (!text) {
+            toast.warning(`No text extracted from ${file.name}.`);
             continue;
           }
           await onImport(title, text);
@@ -215,11 +237,11 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
         <p className="text-muted-foreground">
           {uploading ? 'Importing...' : 'Drag and drop files here, or click to browse'}
         </p>
-        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, TXT, MD, CSV, JSON</p>
+        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, DOCX, TXT, MD, CSV, JSON</p>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.txt,.md,.csv,.json,.log"
+          accept=".pdf,.docx,.txt,.md,.csv,.json,.log"
           multiple
           className="hidden"
           onChange={handleFiles}
