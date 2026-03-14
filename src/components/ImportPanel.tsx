@@ -169,6 +169,17 @@ async function parseDocxFile(file: File): Promise<string> {
   return data?.text || '';
 }
 
+// ---- Helper: Parse XLSX via edge function ----
+async function parseXlsxFile(file: File): Promise<string> {
+  const base64 = await fileToBase64(file);
+  const { data, error } = await supabase.functions.invoke('parse-xlsx', {
+    body: { file_base64: base64, file_name: file.name },
+  });
+  if (error) throw new Error(error.message || 'XLSX parsing failed');
+  if (data?.warning && !data?.text) throw new Error(data.warning);
+  return data?.text || '';
+}
+
 // ---- Document Upload Panel ----
 const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => Promise<void> }> = ({ onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +204,13 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
           const text = await parseDocxFile(file);
           if (!text) {
             toast.warning(`No text extracted from ${file.name}.`);
+            continue;
+          }
+          await onImport(title, text);
+        } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+          const text = await parseXlsxFile(file);
+          if (!text) {
+            toast.warning(`No data extracted from ${file.name}.`);
             continue;
           }
           await onImport(title, text);
@@ -237,11 +255,11 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
         <p className="text-muted-foreground">
           {uploading ? 'Importing...' : 'Drag and drop files here, or click to browse'}
         </p>
-        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, DOCX, TXT, MD, CSV, JSON</p>
+        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, DOCX, XLSX, TXT, MD, CSV, JSON</p>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.docx,.txt,.md,.csv,.json,.log"
+          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.log"
           multiple
           className="hidden"
           onChange={handleFiles}
