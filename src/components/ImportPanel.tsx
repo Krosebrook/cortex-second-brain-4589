@@ -237,11 +237,11 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
         <p className="text-muted-foreground">
           {uploading ? 'Importing...' : 'Drag and drop files here, or click to browse'}
         </p>
-        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, TXT, MD, CSV, JSON</p>
+        <p className="text-xs text-muted-foreground mt-2">Supported: PDF, DOCX, TXT, MD, CSV, JSON</p>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.txt,.md,.csv,.json,.log"
+          accept=".pdf,.docx,.txt,.md,.csv,.json,.log"
           multiple
           className="hidden"
           onChange={handleFiles}
