@@ -207,6 +207,13 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
             continue;
           }
           await onImport(title, text);
+        } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+          const text = await parseXlsxFile(file);
+          if (!text) {
+            toast.warning(`No data extracted from ${file.name}.`);
+            continue;
+          }
+          await onImport(title, text);
         } else {
           const text = await file.text();
           await onImport(title, text);
