@@ -181,10 +181,18 @@ const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => 
     try {
       for (const file of Array.from(files)) {
         const title = file.name.replace(/\.[^.]+$/, '');
-        if (file.name.toLowerCase().endsWith('.pdf')) {
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.endsWith('.pdf')) {
           const text = await parsePdfFile(file);
           if (!text) {
             toast.warning(`No text extracted from ${file.name}. It may contain only images.`);
+            continue;
+          }
+          await onImport(title, text);
+        } else if (lowerName.endsWith('.docx')) {
+          const text = await parseDocxFile(file);
+          if (!text) {
+            toast.warning(`No text extracted from ${file.name}.`);
             continue;
           }
           await onImport(title, text);
