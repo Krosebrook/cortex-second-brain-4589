@@ -169,6 +169,17 @@ async function parseDocxFile(file: File): Promise<string> {
   return data?.text || '';
 }
 
+// ---- Helper: Parse XLSX via edge function ----
+async function parseXlsxFile(file: File): Promise<string> {
+  const base64 = await fileToBase64(file);
+  const { data, error } = await supabase.functions.invoke('parse-xlsx', {
+    body: { file_base64: base64, file_name: file.name },
+  });
+  if (error) throw new Error(error.message || 'XLSX parsing failed');
+  if (data?.warning && !data?.text) throw new Error(data.warning);
+  return data?.text || '';
+}
+
 // ---- Document Upload Panel ----
 const FileImportPanel: React.FC<{ onImport: (title: string, content: string) => Promise<void> }> = ({ onImport }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
