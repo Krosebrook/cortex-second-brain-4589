@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, Globe, Database, Type, CheckCircle2, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { ImportSource } from '@/lib/types';
 import AnimatedTransition from './AnimatedTransition';
 import { cn } from '@/lib/utils';
