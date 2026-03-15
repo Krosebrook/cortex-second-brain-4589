@@ -15,7 +15,11 @@ export const StatusIndicator = () => {
 
   useEffect(() => {
     // Initial check
-    connectionManager.checkAllServices().then(setStatus);
+    const fetchInitialStatus = async () => {
+      const initialStatus = await connectionManager.checkAllServices();
+      setStatus(initialStatus);
+    };
+    void fetchInitialStatus();
 
     // Subscribe to status changes
     const unsubscribe = connectionManager.onStatusChange(setStatus);

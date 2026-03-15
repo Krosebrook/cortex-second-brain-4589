@@ -121,18 +121,19 @@ class OfflineStorage {
     const db = await this.ensureDB();
     const stores = storeName ? [storeName] : [CHATS_STORE, KNOWLEDGE_STORE, SYNC_QUEUE_STORE];
     
-    return Promise.all(
-      stores.map(store => 
-        new Promise<void>((resolve, reject) => {
-          const transaction = db.transaction([store], 'readwrite');
-          const objectStore = transaction.objectStore(store);
-          const request = objectStore.clear();
+    await Promise.all(
+      stores.map(
+        (store) =>
+          new Promise<void>((resolve, reject) => {
+            const transaction = db.transaction([store], 'readwrite');
+            const objectStore = transaction.objectStore(store);
+            const request = objectStore.clear();
 
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        })
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          })
       )
-    ).then(() => {});
+    );
   }
 
   // Chat-specific operations

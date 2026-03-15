@@ -190,7 +190,7 @@ export function initializeCachePolicies() {
   
   // Log cache status in development
   if (import.meta.env.DEV) {
-    getCacheUsage().then(usage => {
+    void getCacheUsage().then((usage) => {
       if (usage) {
         console.log(`[Cache] Usage: ${(usage.used / 1024 / 1024).toFixed(2)}MB / ${(usage.quota / 1024 / 1024).toFixed(2)}MB`);
       }
