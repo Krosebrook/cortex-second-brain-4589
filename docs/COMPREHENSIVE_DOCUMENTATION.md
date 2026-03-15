@@ -174,7 +174,7 @@ Create a `.env` file with the following variables:
 ```env
 # Required
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
 
 # Optional
 VITE_APP_ENV=development
@@ -918,7 +918,7 @@ See the auto-generated types in `src/integrations/supabase/types.ts` for complet
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `VITE_SUPABASE_URL` | Yes | — | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Yes | — | Supabase anonymous key |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | — | Supabase anon/public key |
 | `VITE_APP_ENV` | No | `development` | Environment name |
 | `VITE_DEBUG` | No | `false` | Enable debug logging |
 

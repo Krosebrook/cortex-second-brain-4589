@@ -96,7 +96,7 @@ The simplest deployment option with zero configuration.
    
    ```env
    VITE_SUPABASE_URL=https://gcqfqzhgludrzkfajljp.supabase.co
-   VITE_SUPABASE_ANON_KEY=your_anon_key
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
    ```
 
 ### vercel.json Configuration
@@ -164,7 +164,7 @@ vercel --prod
    
    ```env
    VITE_SUPABASE_URL=https://gcqfqzhgludrzkfajljp.supabase.co
-   VITE_SUPABASE_ANON_KEY=your_anon_key
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
    ```
 
 ### netlify.toml Configuration
@@ -440,7 +440,7 @@ server {
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `VITE_SUPABASE_URL` | Supabase project URL | `https://xxx.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | `eyJhbG...` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon/public key | `eyJhbG...` |
 
 ### Optional Variables
 
@@ -454,7 +454,7 @@ server {
 ```bash
 # Create .env.production
 echo "VITE_SUPABASE_URL=https://gcqfqzhgludrzkfajljp.supabase.co" > .env.production
-echo "VITE_SUPABASE_ANON_KEY=your_key" >> .env.production
+echo "VITE_SUPABASE_PUBLISHABLE_KEY=your_key" >> .env.production
 ```
 
 ## Supabase Configuration
