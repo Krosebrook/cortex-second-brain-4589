@@ -55,7 +55,7 @@ cd cortex-second-brain-4589
 npm install
 npx husky install
 cp .env.example .env
-# Fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+# Fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 # (get values from the team password manager)
 npm run dev
 ```

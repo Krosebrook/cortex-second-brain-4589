@@ -8,9 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.1.3] — 2026-03-15
+
 ### Added
 - Documentation: comprehensive docs suite (ARCHITECTURE, API, DATABASE, SECURITY, RUNBOOK, ROADMAP, PRD, ADRs, DEAD-CODE-TRIAGE, AUDIT-REPORT)
 - `.env.example`: Added all `VITE_` variables from `app-config.ts` with descriptions; fixed `VITE_SUPABASE_PUBLISHABLE_KEY` variable name (was incorrectly `VITE_SUPABASE_ANON_KEY`)
+
+### Fixed
+- Updated all documentation files to use the correct `VITE_SUPABASE_PUBLISHABLE_KEY` environment variable name (previously referenced as `VITE_SUPABASE_ANON_KEY` in DEPLOYMENT.md, DEVELOPER_GUIDE.md, ONBOARDING_CHECKLIST.md, DOCUMENTATION_FRAMEWORK.md, CONFIGURATION_MANAGEMENT.md, CICD.md, COMPREHENSIVE_DOCUMENTATION.md)
+- Updated `docs/CONFIGURATION_MANAGEMENT.md`: replaced `SENDGRID_API_KEY` with the correct `RESEND_API_KEY`, updated document status to reflect completed state
 
 ---
 
@@ -132,7 +140,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-[Unreleased]: https://github.com/your-org/cortex-second-brain/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/your-org/cortex-second-brain/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/your-org/cortex-second-brain/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/your-org/cortex-second-brain/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/Krosebrook/cortex-second-brain-4589/releases/tag/v0.1.0

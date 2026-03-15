@@ -50,7 +50,7 @@ npm install
 npx husky install
 
 # 4. Configure environment
-cp .env.example .env   # then fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+cp .env.example .env   # then fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 
 # 5. Start development server
 npm run dev
@@ -610,7 +610,7 @@ describe('KnowledgeCard', () => {
 |---|---|
 | **Sanitise all user HTML** | Use `DOMPurify.sanitize()` before rendering or storing user-supplied HTML |
 | **Validate on both sides** | Client validation for UX; server/DB validation for security |
-| **No secrets in frontend** | Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are safe in the browser |
+| **No secrets in frontend** | Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are safe in the browser |
 | **Use parameterised queries** | Always use Supabase query builder; never string-concatenate SQL |
 | **RLS on every table** | New tables must have RLS enabled before the PR is merged |
 | **Content Security Policy** | Ensure CSP headers are set via the `security-headers` edge function |

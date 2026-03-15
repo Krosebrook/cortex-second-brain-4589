@@ -259,7 +259,7 @@ Release Please reads Conventional Commits to determine the version bump automati
 | Rule | Detail |
 |---|---|
 | Never in source control | `.env` is git-ignored; secrets managed per environment. |
-| Frontend secrets | None — only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are public-safe. |
+| Frontend secrets | None — only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are public-safe. |
 | Backend secrets | Stored as Supabase Edge Function secrets (encrypted at rest). |
 | CI secrets | GitHub Actions secrets only; never echoed in logs. |
 | Rotation cadence | AI API keys: 90 days; DB passwords: 90 days; document in secure vault. |
@@ -296,7 +296,7 @@ Release Please reads Conventional Commits to determine the version bump automati
 ## Quick Start
 \`\`\`bash
 npm install
-cp .env.example .env   # fill in VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+cp .env.example .env   # fill in VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
 npm run dev
 \`\`\`
 
