@@ -209,45 +209,82 @@ Enable automatic deletion of head branches after PR merge:
 
 This automatically cleans up branches after merge, reducing manual cleanup work.
 
-## Cleanup Scripts
+## Safely Merging or Pruning Branches
 
-### Automated Branch Cleanup Script
+The repository provides two mechanisms for safely merging or pruning branches:
 
-Use the following script to clean up merged branches:
+### 1. Automatic Deletion After PR Merge (GitHub Actions)
+
+The **Branch Cleanup** workflow (`.github/workflows/branch-cleanup.yml`) fires
+automatically whenever a pull request is merged and deletes the head branch.
+Before deletion it performs the following safety checks:
+
+- **Protected branches** (`main`, `master`, `develop`, `staging`, `production`)
+  are never deleted.
+- **Branches with open PRs** are skipped — the branch must have no other
+  outstanding pull requests before it is removed.
+
+No third-party action is used; the workflow calls the GitHub REST API directly
+via `actions/github-script`.
+
+### 2. Manual Merge-or-Prune Workflow (workflow_dispatch)
+
+Trigger the **Branch Cleanup** workflow manually from **Actions → Branch Cleanup
+→ Run workflow** to clean up stale branches.
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `operation` | `prune-merged` | `prune-merged` — delete branches already merged. `merge-and-prune` — merge unmerged stale branches into the default branch first, then delete. |
+| `dry-run` | `true` | Preview changes without applying them (recommended for first use). |
+| `stale-days` | `7` | Branches with no commits newer than this many days are candidates for cleanup. |
+
+**Safety checks applied to every candidate branch:**
+
+- Protected branches are never touched.
+- Branches with open PRs are automatically skipped.
+- Merge status is determined via two signals:
+  1. Git graph comparison (`ahead_by === 0` means all commits are in the default branch).
+  2. Closed + merged PR history — this correctly handles squash-merge and rebase-merge scenarios where commit SHAs differ.
+
+### 3. Command-Line Cleanup Script
+
+The `scripts/cleanup-stale-branches.sh` script provides the same functionality
+locally with dry-run, merge, and force modes.
 
 ```bash
-#!/bin/bash
-# cleanup-branches.sh
-# Cleans up merged branches locally and prunes remote references
+# Make the script executable (first time only)
+chmod +x scripts/cleanup-stale-branches.sh
 
-echo "🧹 Cleaning up merged branches..."
+# Preview what would be deleted (safe — no changes made)
+./scripts/cleanup-stale-branches.sh --dry-run
 
-# Delete local branches that have been merged to main
-git branch --merged main | grep -v "main" | xargs -r git branch -d
+# Delete only branches already merged into the default branch (safe default)
+./scripts/cleanup-stale-branches.sh --no-dry-run
 
-# Prune remote tracking branches
-git fetch --prune origin
+# Merge unmerged stale branches into the default branch first, then delete
+# (use with caution — review merge commits before pushing)
+./scripts/cleanup-stale-branches.sh --merge
 
-echo "✅ Cleanup complete!"
-
-# Optional: Show remaining branches
-echo ""
-echo "📋 Remaining branches:"
-git branch -a
+# Force-delete unmerged branches (WARNING: work will be permanently lost)
+./scripts/cleanup-stale-branches.sh --force
 ```
 
-### Usage
+#### Script safety guarantees
+
+- Protected branches (`main`, `master`, `develop`, `staging`, `production`)
+  are never deleted, regardless of flags.
+- Without `--force`, only branches confirmed as merged by the git graph are
+  deleted.
+- `--merge` creates a no-fast-forward merge commit on the default branch before
+  deleting the stale branch so that no work is silently discarded.
+- The script always runs a `git fetch --prune origin` after any deletions to
+  keep local remote-tracking references up to date.
+
+## Cleanup Scripts (Quick Reference)
+
+### Basic cleanup — delete local merged branches
+
 ```bash
-# Make the script executable
-chmod +x cleanup-branches.sh
-
-# Run the cleanup
-./cleanup-branches.sh
-```
-
-### Advanced Cleanup Script
-
-For more control, use this enhanced version:
 
 ```bash
 #!/bin/bash
