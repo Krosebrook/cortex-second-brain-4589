@@ -9,12 +9,13 @@ Thank you for your interest in contributing! This guide covers everything you ne
 1. [Code of Conduct](#code-of-conduct)
 2. [Getting Started](#getting-started)
 3. [Development Workflow](#development-workflow)
-4. [Project Structure](#project-structure)
-5. [Coding Standards](#coding-standards)
-6. [Testing](#testing)
-7. [Submitting Changes](#submitting-changes)
-8. [Edge Functions](#edge-functions)
-9. [Documentation](#documentation)
+4. [Branch Management](#branch-management)
+5. [Project Structure](#project-structure)
+6. [Coding Standards](#coding-standards)
+7. [Testing](#testing)
+8. [Submitting Changes](#submitting-changes)
+9. [Edge Functions](#edge-functions)
+10. [Documentation](#documentation)
 
 ---
 
@@ -104,6 +105,104 @@ fix(auth): prevent duplicate auth state change callbacks
 docs(api): add parse-pdf endpoint documentation
 chore(deps): upgrade DOMPurify to 3.2.6
 ```
+
+---
+
+## Branch Management
+
+Effective branch management is crucial for maintaining a clean, organized repository and enabling smooth collaboration. This section outlines our branch management practices and guidelines.
+
+### Branch Naming Convention
+
+Use descriptive branch names with the following prefixes:
+
+| Prefix | Purpose | Example | When to Use |
+|--------|---------|---------|-------------|
+| `feature/` | New features | `feature/knowledge-export` | Adding new functionality |
+| `fix/` | Bug fixes | `fix/chat-scroll-issue` | Fixing bugs |
+| `bugfix/` | Alternative to fix/ | `bugfix/login-error` | Alternative bug fix prefix |
+| `hotfix/` | Production hotfixes | `hotfix/security-patch` | Urgent production fixes |
+| `docs/` | Documentation updates | `docs/api-examples` | Documentation changes |
+| `refactor/` | Code refactoring | `refactor/auth-context` | Code restructuring |
+| `test/` | Testing additions | `test/chat-service` | Adding or updating tests |
+| `perf/` | Performance improvements | `perf/virtualized-list` | Performance optimizations |
+| `style/` | Code style/formatting | `style/consistent-formatting` | Style and formatting changes |
+| `chore/` | Maintenance tasks | `chore/update-deps` | Maintenance and tooling |
+
+**Best Practices:**
+- Be descriptive: `feature/user-authentication` not `feature/new-stuff`
+- Use kebab-case: `feature/real-time-notifications`
+- Keep it concise: Aim for 2-4 words after the prefix
+- Reference issues when applicable: `fix/123-memory-leak`
+
+### Branch Lifecycle
+
+#### Creating Branches
+
+Always create branches from an up-to-date `main`:
+
+```bash
+# Update main
+git checkout main
+git pull origin main
+
+# Create new branch
+git checkout -b feature/your-feature-name
+```
+
+#### Keeping Branches Up to Date
+
+Regularly sync your branch with `main`:
+
+```bash
+# Using rebase (recommended for clean history)
+git fetch origin
+git rebase origin/main
+git push --force-with-lease origin feature/your-feature-name
+
+# Using merge (simpler, creates merge commits)
+git fetch origin
+git merge origin/main
+git push origin feature/your-feature-name
+```
+
+#### Deleting After Merge
+
+Clean up branches after they've been merged:
+
+```bash
+# Delete local branch
+git branch -d feature/your-feature-name
+
+# Delete remote branch
+git push origin --delete feature/your-feature-name
+
+# Prune remote tracking branches
+git fetch --prune origin
+```
+
+### Branch Protection Rules
+
+The `main` branch has the following protection rules:
+
+- ✅ **Required pull request reviews** (1 approval minimum)
+- ✅ **Required status checks** (linting, tests, build)
+- ✅ **Require conversation resolution** before merging
+- ✅ **Auto-delete head branches** after PR merge
+
+### Stale Branch Guidance
+
+Delete branches when:
+- PR has been merged to main
+- PR has been closed without merging
+- No commits in the last 90 days and no active work planned
+
+Preserve branches when:
+- Contains experimental work that may be revisited
+- Long-term feature development is in progress
+- It is a release or maintenance branch
+
+For comprehensive branch management procedures, see [docs/BRANCH_MANAGEMENT.md](docs/BRANCH_MANAGEMENT.md).
 
 ---
 
