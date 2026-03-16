@@ -6,7 +6,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-2.98.0-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.11-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![PWA](https://img.shields.io/badge/PWA-Enabled-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
-[![Tests](https://img.shields.io/badge/Tests-206%20passing-22C55E?logo=vitest&logoColor=white)](./TESTING.md)
+[![Tests](https://img.shields.io/badge/Tests-206%20passing-22C55E?logo=vitest&logoColor=white)](./docs/TESTING.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 An AI-powered, offline-capable personal knowledge management Progressive Web App. Capture notes, documents, and web content into a searchable knowledge base, then chat with **TESSA** — your AI assistant — to surface insights across everything you've saved.
