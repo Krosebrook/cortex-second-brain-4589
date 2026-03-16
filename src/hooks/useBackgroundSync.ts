@@ -55,10 +55,10 @@ export function useBackgroundSync() {
     });
 
     // Get initial pending count
-    backgroundSync.getPendingCount().then(count => {
-      setState(prev => ({
+    void backgroundSync.getPendingCount().then((count) => {
+      setState((prev) => ({
         ...prev,
-        stats: { ...prev.stats, pending: count }
+        stats: { ...prev.stats, pending: count },
       }));
     });
 

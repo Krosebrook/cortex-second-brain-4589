@@ -87,9 +87,11 @@ export const useRecaptcha = (containerId: string = 'recaptcha-container'): UseRe
 
   // Load reCAPTCHA script
   useEffect(() => {
-    loadRecaptchaScript().then(() => {
+    const initialize = async () => {
+      await loadRecaptchaScript();
       setIsLoaded(true);
-    });
+    };
+    void initialize();
   }, []);
 
   // Render the widget once loaded
