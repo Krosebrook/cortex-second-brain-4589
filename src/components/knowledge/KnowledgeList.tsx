@@ -16,6 +16,7 @@ import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { KnowledgeDetailDialog } from '@/components/knowledge/KnowledgeDetailDialog';
 import { ConflictDialog } from '@/components/feedback/ConflictDialog';
 import { ShortcutsHelpDialog } from '@/components/feedback/ShortcutsHelpDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
