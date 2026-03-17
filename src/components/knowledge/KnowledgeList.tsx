@@ -219,9 +219,13 @@ const {
 
   const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
     const itemsToExport = selectedCount > 0 ? items.filter(item => selectedIds.includes(item.id)) : filteredItems;
+    
+    // Always include content in the export data even if not in selectedFields
+    const fieldsWithContent = selectedFields.includes('content') ? selectedFields : [...selectedFields, 'content'];
+    
     const data = itemsToExport.map(item => {
       const filtered: any = { id: item.id };
-      selectedFields.forEach(field => { 
+      fieldsWithContent.forEach(field => { 
         filtered[field] = item[field as keyof typeof item]; 
       });
       return filtered;
