@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as base64Encode } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
       }
       fileName = file.name;
       pdfBytes = new Uint8Array(await file.arrayBuffer());
-      rawBase64 = base64Encode(pdfBytes);
+      rawBase64 = encodeBase64(pdfBytes);
     } else {
       const body = await req.json();
       if (!body.file_base64) {
