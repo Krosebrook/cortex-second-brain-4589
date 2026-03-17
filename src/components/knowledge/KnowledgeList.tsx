@@ -211,7 +211,9 @@ const {
     if (isMultiSelectMode) {
       handleClick(index, itemId, e.shiftKey, filteredItems.map(item => item.id), isSelected, toggleSelect, selectAll);
     } else {
-      toggleSelect(itemId);
+      // Open detail view instead of toggling selection
+      const item = filteredItems[index];
+      if (item) setDetailItem(item);
     }
   };
 
