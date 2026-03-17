@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
       }
       fileName = file.name;
       pdfBytes = new Uint8Array(await file.arrayBuffer());
-      rawBase64 = base64Encode(pdfBytes);
+      rawBase64 = encodeBase64(pdfBytes);
     } else {
       const body = await req.json();
       if (!body.file_base64) {
