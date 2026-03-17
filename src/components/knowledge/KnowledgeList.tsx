@@ -94,6 +94,7 @@ const {
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<typeof filteredItems[0] | null>(null);
   
   const { handleClick, resetLastClicked } = useRangeSelection();
 
