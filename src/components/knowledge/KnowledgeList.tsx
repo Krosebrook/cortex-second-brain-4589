@@ -460,7 +460,7 @@ const {
                     isDragging && "opacity-50",
                     "hover:shadow-md"
                   )}
-                  onClick={(e) => !isMultiSelectMode && handleItemClick(index, item.id, e)}
+                  onClick={(e) => handleItemClick(index, item.id, e)}
                 >
                   <div className="flex items-start gap-3">
                     {!isMultiSelectMode && (
