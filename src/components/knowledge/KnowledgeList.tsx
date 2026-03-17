@@ -535,6 +535,12 @@ const {
         }}
       />
 
+      <KnowledgeDetailDialog
+        item={detailItem}
+        open={!!detailItem}
+        onOpenChange={(open) => { if (!open) setDetailItem(null); }}
+      />
+
       <ShortcutsHelpDialog
         open={shortcutsOpen}
         onOpenChange={toggleShortcuts}
