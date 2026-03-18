@@ -7,8 +7,10 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Calendar, Link } from 'lucide-react';
+import { FileText, Calendar, Link, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 interface KnowledgeItem {
   id: string;
@@ -27,6 +29,23 @@ interface KnowledgeDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const CopyButton: React.FC<{ content: string }> = ({ content }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 gap-1.5 text-xs text-muted-foreground">
+      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
+  );
+};
 
 export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
   item,
@@ -78,6 +97,10 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
           </div>
         )}
 
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground font-medium">Content</span>
+          {item.content && <CopyButton content={item.content} />}
+        </div>
         <ScrollArea className="flex-1 min-h-0 max-h-[50vh] rounded-md border p-4 bg-muted/30">
           {item.content ? (
             <pre className="whitespace-pre-wrap break-words text-sm text-foreground font-sans leading-relaxed">
