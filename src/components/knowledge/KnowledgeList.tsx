@@ -43,7 +43,8 @@ export const KnowledgeList: React.FC = () => {
 const { 
     items, 
     loading, 
-    deleteKnowledgeItem, 
+    deleteKnowledgeItem,
+    updateKnowledgeItem,
     softDeleteBulkKnowledgeItems,
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder, 
