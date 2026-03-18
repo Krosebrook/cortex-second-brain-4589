@@ -43,7 +43,8 @@ export const KnowledgeList: React.FC = () => {
 const { 
     items, 
     loading, 
-    deleteKnowledgeItem, 
+    deleteKnowledgeItem,
+    updateKnowledgeItem,
     softDeleteBulkKnowledgeItems,
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder, 
@@ -539,6 +540,10 @@ const {
         item={detailItem}
         open={!!detailItem}
         onOpenChange={(open) => { if (!open) setDetailItem(null); }}
+        onUpdate={async (id, updates) => {
+          await updateKnowledgeItem(id, updates);
+          setDetailItem(prev => prev ? { ...prev, ...updates } : null);
+        }}
       />
 
       <ShortcutsHelpDialog
