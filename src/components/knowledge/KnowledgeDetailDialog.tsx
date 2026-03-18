@@ -7,8 +7,10 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Calendar, Link } from 'lucide-react';
+import { FileText, Calendar, Link, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 interface KnowledgeItem {
   id: string;
