@@ -30,6 +30,23 @@ interface KnowledgeDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const CopyButton: React.FC<{ content: string }> = ({ content }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 gap-1.5 text-xs text-muted-foreground">
+      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
+  );
+};
+
 export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
   item,
   open,
