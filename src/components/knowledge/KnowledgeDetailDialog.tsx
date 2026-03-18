@@ -80,6 +80,10 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
           </div>
         )}
 
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground font-medium">Content</span>
+          {item.content && <CopyButton content={item.content} />}
+        </div>
         <ScrollArea className="flex-1 min-h-0 max-h-[50vh] rounded-md border p-4 bg-muted/30">
           {item.content ? (
             <pre className="whitespace-pre-wrap break-words text-sm text-foreground font-sans leading-relaxed">
