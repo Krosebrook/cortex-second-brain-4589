@@ -1,10 +1,9 @@
 # Configuration Management
 
-**Status**: 🟠 Not Started  
+**Status**: ✅ Complete  
 **Priority**: P1 - High Priority  
-**Owner**: TBD  
-**Last Updated**: 2026-01-21  
-**Estimated Effort**: 6 hours
+**Owner**: Tech Lead  
+**Last Updated**: 2026-03-15
 
 ---
 
@@ -32,7 +31,7 @@ Without configuration documentation:
 ```bash
 # Supabase Configuration (Required)
 VITE_SUPABASE_URL=                    # Supabase project URL
-VITE_SUPABASE_ANON_KEY=               # Supabase anonymous key
+VITE_SUPABASE_PUBLISHABLE_KEY=        # Supabase anon/public key
 VITE_SUPABASE_PROJECT_ID=             # Supabase project ID
 
 # Optional: Analytics and Monitoring
@@ -57,7 +56,7 @@ ANTHROPIC_API_KEY=                    # Anthropic API key (optional)
 GOOGLE_AI_API_KEY=                    # Google AI API key (optional)
 
 # Email Configuration (Required for notifications)
-SENDGRID_API_KEY=                     # SendGrid API key
+RESEND_API_KEY=                       # Resend API key (for send-backup-email edge function)
 EMAIL_FROM=                           # Sender email address
 
 # Security Configuration
@@ -295,7 +294,7 @@ NODE_ENV=production
 
 ### "Supabase client not initialized"
 - Check `VITE_SUPABASE_URL` is set
-- Check `VITE_SUPABASE_ANON_KEY` is set
+- Check `VITE_SUPABASE_PUBLISHABLE_KEY` is set
 - Verify variables are prefixed with `VITE_`
 
 ### "AI chat not working"

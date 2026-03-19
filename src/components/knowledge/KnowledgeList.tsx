@@ -16,6 +16,7 @@ import { BulkActionBar } from '@/components/feedback/BulkActionBar';
 import { BulkTagDialog } from '@/components/feedback/BulkTagDialog';
 import { SearchFilterBar } from '@/components/feedback/SearchFilterBar';
 import { ExportDialog } from '@/components/feedback/ExportDialog';
+import { KnowledgeDetailDialog } from '@/components/knowledge/KnowledgeDetailDialog';
 import { ConflictDialog } from '@/components/feedback/ConflictDialog';
 import { ShortcutsHelpDialog } from '@/components/feedback/ShortcutsHelpDialog';
 import { DragIndicator } from '@/components/ui/drag-indicator';
@@ -42,7 +43,8 @@ export const KnowledgeList: React.FC = () => {
 const { 
     items, 
     loading, 
-    deleteKnowledgeItem, 
+    deleteKnowledgeItem,
+    updateKnowledgeItem,
     softDeleteBulkKnowledgeItems,
     restoreBulkKnowledgeItems,
     updateKnowledgeOrder, 
@@ -93,6 +95,7 @@ const {
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<typeof filteredItems[0] | null>(null);
   
   const { handleClick, resetLastClicked } = useRangeSelection();
 
@@ -209,15 +212,21 @@ const {
     if (isMultiSelectMode) {
       handleClick(index, itemId, e.shiftKey, filteredItems.map(item => item.id), isSelected, toggleSelect, selectAll);
     } else {
-      toggleSelect(itemId);
+      // Open detail view instead of toggling selection
+      const item = filteredItems[index];
+      if (item) setDetailItem(item);
     }
   };
 
   const handleExport = async (format: ExportFormat, selectedFields: string[]) => {
     const itemsToExport = selectedCount > 0 ? items.filter(item => selectedIds.includes(item.id)) : filteredItems;
+    
+    // Always include content in the export data even if not in selectedFields
+    const fieldsWithContent = selectedFields.includes('content') ? selectedFields : [...selectedFields, 'content'];
+    
     const data = itemsToExport.map(item => {
       const filtered: any = { id: item.id };
-      selectedFields.forEach(field => { 
+      fieldsWithContent.forEach(field => { 
         filtered[field] = item[field as keyof typeof item]; 
       });
       return filtered;
@@ -392,7 +401,7 @@ const {
                     isDragging && "opacity-50",
                     "hover:shadow-md"
                   )}
-                  onClick={(e) => !isMultiSelectMode && handleItemClick(index, item.id, e)}
+                  onClick={(e) => handleItemClick(index, item.id, e)}
                 >
                   <div className="flex items-start gap-3">
                     {!isMultiSelectMode && (
@@ -452,7 +461,7 @@ const {
                     isDragging && "opacity-50",
                     "hover:shadow-md"
                   )}
-                  onClick={(e) => !isMultiSelectMode && handleItemClick(index, item.id, e)}
+                  onClick={(e) => handleItemClick(index, item.id, e)}
                 >
                   <div className="flex items-start gap-3">
                     {!isMultiSelectMode && (
@@ -524,6 +533,16 @@ const {
         onResolve={(resolution) => {
           setConflictDialogOpen(false);
           setCurrentConflict(null);
+        }}
+      />
+
+      <KnowledgeDetailDialog
+        item={detailItem}
+        open={!!detailItem}
+        onOpenChange={(open) => { if (!open) setDetailItem(null); }}
+        onUpdate={async (id, updates) => {
+          await updateKnowledgeItem(id, updates);
+          setDetailItem(prev => prev ? { ...prev, ...updates } : null);
         }}
       />
 

@@ -286,7 +286,7 @@ Secrets are stored in **Settings → Secrets and variables → Actions**.
 | `SUPABASE_ACCESS_TOKEN` | `deploy.yml` | Supabase CLI auth |
 | `SUPABASE_PROJECT_REF` | `deploy.yml` | Supabase project ID |
 | `VITE_SUPABASE_URL` | CI build | Supabase project URL (staging/prod) |
-| `VITE_SUPABASE_ANON_KEY` | CI build | Supabase anon key (staging/prod) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | CI build | Supabase anon key (staging/prod) |
 
 ### Variable vs Secret
 

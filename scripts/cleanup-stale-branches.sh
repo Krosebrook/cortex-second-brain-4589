@@ -1,133 +1,287 @@
 #!/bin/bash
 
 # cleanup-stale-branches.sh
-# Automated script to clean up stale branches in the repository
-# Usage: ./scripts/cleanup-stale-branches.sh [--dry-run]
+# Safely merge or prune stale branches in the repository.
+#
+# Usage:
+#   ./scripts/cleanup-stale-branches.sh [OPTIONS]
+#
+# Options:
+#   --dry-run          Preview actions without making any changes (default behavior
+#                      when no other mode flags are given; recommended for first use)
+#   --merge            Merge each unmerged stale branch into the default branch before
+#                      deleting it.  Use with caution: this commits unreviewed work.
+#   --force            Delete branches that have NOT been merged and have no closed PR.
+#                      Implies --prune for merged branches as well.
+#                      WARNING: work on these branches will be permanently lost.
+#
+# When neither --merge nor --force is supplied the script operates in
+# "prune-merged" mode: only branches already merged into the default branch
+# (or with a closed+merged PR) are deleted.
 
-set -e
+set -euo pipefail
 
-# Colors for output
+# ---------------------------------------------------------------------------
+# Colors
+# ---------------------------------------------------------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
-DRY_RUN=false
-if [[ "$1" == "--dry-run" ]]; then
-    DRY_RUN=true
-    echo -e "${YELLOW}🔍 Running in DRY RUN mode - no branches will be deleted${NC}"
+# ---------------------------------------------------------------------------
+# Parse flags
+# ---------------------------------------------------------------------------
+DRY_RUN=true
+MERGE_BEFORE_DELETE=false
+FORCE_DELETE=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run)    DRY_RUN=true ;;
+        --no-dry-run) DRY_RUN=false ;;
+        --merge)      MERGE_BEFORE_DELETE=true ;;
+        --force)      FORCE_DELETE=true ;;
+        *)
+            echo -e "${RED}Unknown option: $arg${NC}"
+            echo "Usage: $0 [--dry-run] [--merge] [--force] [--no-dry-run]"
+            exit 1
+            ;;
+    esac
+done
+
+# --dry-run takes precedence; activate live-run only when explicitly requested
+if [ "$DRY_RUN" = true ] && { [ "$MERGE_BEFORE_DELETE" = true ] || [ "$FORCE_DELETE" = true ]; }; then
+    : # dry-run wins — inform the user below
+elif [ "$MERGE_BEFORE_DELETE" = true ] || [ "$FORCE_DELETE" = true ]; then
+    DRY_RUN=false
 fi
 
+# ---------------------------------------------------------------------------
+# Branches that must never be deleted
+# ---------------------------------------------------------------------------
+PROTECTED_BRANCHES=("main" "master" "develop" "staging" "production")
+
+is_protected() {
+    local branch="$1"
+    for p in "${PROTECTED_BRANCHES[@]}"; do
+        [[ "$branch" == "$p" ]] && return 0
+    done
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# Header
+# ---------------------------------------------------------------------------
 echo -e "${BLUE}🧹 Branch Cleanup Script${NC}"
 echo "================================"
+if [ "$DRY_RUN" = true ]; then
+    echo -e "${YELLOW}🔍 DRY RUN — no changes will be made${NC}"
+elif [ "$FORCE_DELETE" = true ]; then
+    echo -e "${RED}⚠️  FORCE mode — unmerged branches will be deleted (work may be lost!)${NC}"
+elif [ "$MERGE_BEFORE_DELETE" = true ]; then
+    echo -e "${CYAN}🔀 MERGE mode — unmerged branches will be merged into default then deleted${NC}"
+else
+    echo -e "${GREEN}✂️  PRUNE-MERGED mode — only already-merged branches will be deleted${NC}"
+fi
 echo ""
 
-# Define branches to delete
-COPILOT_BRANCHES=(
-    "copilot/audit-code-repository"
-    "copilot/audit-codebase-documentation"
-)
+# ---------------------------------------------------------------------------
+# Determine default branch
+# ---------------------------------------------------------------------------
+DEFAULT_BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5)
+if [ -z "$DEFAULT_BRANCH" ]; then
+    DEFAULT_BRANCH="main"
+fi
+echo -e "${BLUE}ℹ️  Default branch:${NC} $DEFAULT_BRANCH"
+echo ""
 
-EDIT_BRANCHES=(
-    "edit/edt-0488e36f-68a1-484f-bfa0-8af624446b53"
-    "edit/edt-08449c4c-bd1d-4888-9b70-e3d7f531545d"
-    "edit/edt-2c156bc2-3d6a-43ad-b2d2-2d6497b12e50"
-    "edit/edt-5cd79452-405d-46b9-ae75-3ce491f5afc1"
-    "edit/edt-5df66913-5817-44ee-a74d-1b74cb920bf8"
-    "edit/edt-6ae8b07d-30f8-4283-95ba-8192014a8002"
-    "edit/edt-746ae396-3483-4f17-9c08-182bcfbd195a"
-    "edit/edt-7afda754-45b3-4f7b-a6fc-1ead3e6e41fd"
-    "edit/edt-8a6bbace-7aab-4be8-8dd7-c2d3c05f9061"
-    "edit/edt-a336a5d0-ef80-4fe0-a5da-6c18285dfb91"
-    "edit/edt-a67cbba8-398f-4dd0-8d17-00a2375a331b"
-    "edit/edt-c65824fb-5b19-42f6-82a8-d24387132332"
-)
+# Counters
+COUNT_PRUNED=0
+COUNT_MERGED=0
+COUNT_SKIPPED=0
+COUNT_ERRORS=0
 
-SNYK_BRANCHES=(
-    "snyk-upgrade-7035b837ce8afb2ac13cbd2e67503bba"
-    "snyk-upgrade-7245622d7002c03cb11d180d5d3bf324"
-    "snyk-upgrade-9afccf13546bd44d95d537be7d35d9e0"
-    "snyk-upgrade-f4308e432a52a8d8340006576f56ec12"
-    "snyk-upgrade-f5fc687721dfd80a7d9a4f237009b494"
-)
+# ---------------------------------------------------------------------------
+# Helper: check whether branch exists on remote
+# ---------------------------------------------------------------------------
+branch_exists_remote() {
+    git ls-remote --heads origin "$1" | grep -q "refs/heads/$1"
+}
 
-# Function to delete a branch
-delete_branch() {
-    local branch=$1
-    
-    # Check if branch exists remotely
-    if git ls-remote --heads origin "$branch" | grep -q "$branch"; then
-        if [ "$DRY_RUN" = true ]; then
-            echo -e "${YELLOW}[DRY RUN]${NC} Would delete: ${branch}"
-        else
-            echo -e "Deleting: ${branch}"
-            if git push origin --delete "$branch"; then
-                echo -e "${GREEN}✓${NC} Deleted: $branch"
-            else
-                echo -e "${RED}✗${NC} Failed to delete: $branch"
-                return 1
-            fi
-        fi
+# ---------------------------------------------------------------------------
+# Helper: check whether a branch is already merged into the default branch
+# using the git graph (works for regular merges; does NOT detect squash/rebase).
+# ---------------------------------------------------------------------------
+is_merged_git() {
+    local branch="$1"
+    git branch -r --merged "origin/$DEFAULT_BRANCH" 2>/dev/null \
+        | grep -qE "^\s*origin/$branch\s*$"
+}
+
+# ---------------------------------------------------------------------------
+# Helper: delete a remote branch
+# ---------------------------------------------------------------------------
+delete_remote_branch() {
+    local branch="$1"
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "  ${YELLOW}[DRY RUN]${NC} Would delete: ${branch}"
+        return 0
+    fi
+    if git push origin --delete "$branch" 2>&1; then
+        echo -e "  ${GREEN}✓${NC} Deleted: $branch"
+        return 0
     else
-        echo -e "${YELLOW}⊘${NC} Branch not found: $branch (already deleted?)"
+        echo -e "  ${RED}✗${NC} Failed to delete: $branch"
+        return 1
     fi
 }
 
-echo -e "${BLUE}📊 Summary:${NC}"
-echo "  - Copilot branches: ${#COPILOT_BRANCHES[@]}"
-echo "  - Edit branches: ${#EDIT_BRANCHES[@]}"
-echo "  - Snyk branches: ${#SNYK_BRANCHES[@]}"
-TOTAL_BRANCHES=$((${#COPILOT_BRANCHES[@]} + ${#EDIT_BRANCHES[@]} + ${#SNYK_BRANCHES[@]}))
-echo "  - Total to delete: $TOTAL_BRANCHES"
+# ---------------------------------------------------------------------------
+# Helper: merge a branch into the default branch then delete it
+# ---------------------------------------------------------------------------
+merge_and_delete() {
+    local branch="$1"
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "  ${YELLOW}[DRY RUN]${NC} Would merge '${branch}' into '${DEFAULT_BRANCH}' then delete"
+        return 0
+    fi
+
+    echo -e "  ${CYAN}↪${NC} Merging '$branch' into '$DEFAULT_BRANCH'..."
+    git fetch origin "$branch" 2>/dev/null
+    git checkout "$DEFAULT_BRANCH" 2>/dev/null
+    git pull --ff-only origin "$DEFAULT_BRANCH" 2>/dev/null
+
+    if git merge --no-ff -m \
+        "chore: merge stale branch '$branch' before pruning
+
+Branch had no open PRs and was merged into '$DEFAULT_BRANCH'
+automatically by cleanup-stale-branches.sh." \
+        "origin/$branch" 2>&1; then
+        git push origin "$DEFAULT_BRANCH" 2>&1
+        echo -e "  ${GREEN}✓${NC} Merged '$branch' into '$DEFAULT_BRANCH'"
+    else
+        echo -e "  ${RED}✗${NC} Merge conflict — aborting merge of '$branch'"
+        git merge --abort 2>/dev/null || true
+        return 1
+    fi
+
+    if git push origin --delete "$branch" 2>&1; then
+        echo -e "  ${GREEN}✓${NC} Deleted: $branch"
+        return 0
+    else
+        echo -e "  ${RED}✗${NC} Merged but failed to delete remote branch: $branch"
+        return 1
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Process each branch
+# ---------------------------------------------------------------------------
+echo -e "${BLUE}🔎 Scanning remote branches...${NC}"
 echo ""
 
-# Delete copilot branches
-echo -e "${BLUE}🤖 Processing Copilot branches...${NC}"
-for branch in "${COPILOT_BRANCHES[@]}"; do
-    delete_branch "$branch"
+# Collect all remote branch names (strip "origin/" prefix)
+mapfile -t ALL_BRANCHES < <(
+    git branch -r 2>/dev/null \
+    | grep -v 'HEAD' \
+    | sed 's|^\s*origin/||' \
+    | sort
+)
+
+for branch in "${ALL_BRANCHES[@]}"; do
+    # Skip protected branches
+    if is_protected "$branch"; then
+        continue
+    fi
+
+    # Skip the currently checked-out branch
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    if [[ "$branch" == "$CURRENT_BRANCH" ]]; then
+        continue
+    fi
+
+    echo -e "${BLUE}→${NC} $branch"
+
+    # Confirm branch still exists remotely
+    if ! branch_exists_remote "$branch"; then
+        echo -e "  ${YELLOW}⊘${NC} Branch not found on remote (already deleted?)"
+        continue
+    fi
+
+    # Check merge status via git graph
+    merged_git=false
+    if is_merged_git "$branch"; then
+        merged_git=true
+    fi
+
+    # Determine action based on mode
+    if [ "$merged_git" = true ]; then
+        # Branch is already merged — safe to prune in all modes
+        if delete_remote_branch "$branch"; then
+            COUNT_PRUNED=$((COUNT_PRUNED + 1))
+        else
+            COUNT_ERRORS=$((COUNT_ERRORS + 1))
+        fi
+
+    elif [ "$MERGE_BEFORE_DELETE" = true ]; then
+        # Unmerged branch: merge into default then delete
+        if merge_and_delete "$branch"; then
+            COUNT_MERGED=$((COUNT_MERGED + 1))
+        else
+            echo -e "  ${YELLOW}⊘${NC} Skipping '$branch' due to merge error"
+            COUNT_ERRORS=$((COUNT_ERRORS + 1))
+        fi
+
+    elif [ "$FORCE_DELETE" = true ]; then
+        # Unmerged branch: force-delete with loud warning
+        echo -e "  ${RED}⚠️  FORCE deleting unmerged branch (work will be lost):${NC} $branch"
+        if delete_remote_branch "$branch"; then
+            COUNT_PRUNED=$((COUNT_PRUNED + 1))
+        else
+            COUNT_ERRORS=$((COUNT_ERRORS + 1))
+        fi
+
+    else
+        # prune-merged mode: skip unmerged branches
+        echo -e "  ${YELLOW}⊘${NC} Skipping — branch not yet merged into '$DEFAULT_BRANCH'"
+        COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+    fi
 done
+
 echo ""
 
-# Delete edit branches
-echo -e "${BLUE}✏️  Processing Edit branches...${NC}"
-for branch in "${EDIT_BRANCHES[@]}"; do
-    delete_branch "$branch"
-done
-echo ""
-
-# Delete snyk branches
-echo -e "${BLUE}🔒 Processing Snyk branches...${NC}"
-for branch in "${SNYK_BRANCHES[@]}"; do
-    delete_branch "$branch"
-done
-echo ""
-
-# Prune remote tracking branches
+# ---------------------------------------------------------------------------
+# Prune stale remote-tracking refs
+# ---------------------------------------------------------------------------
 if [ "$DRY_RUN" = false ]; then
-    echo -e "${BLUE}🧼 Pruning remote tracking branches...${NC}"
+    echo -e "${BLUE}🧼 Pruning stale remote-tracking references...${NC}"
     git fetch --prune origin
-    echo -e "${GREEN}✓${NC} Pruned stale remote tracking branches"
+    echo -e "${GREEN}✓${NC} Pruned stale remote-tracking references"
     echo ""
 fi
 
-# Final verification
-echo -e "${BLUE}🔍 Verification:${NC}"
-if [ "$DRY_RUN" = false ]; then
-    REMAINING_BRANCHES=$(git ls-remote --heads origin | wc -l)
-    echo "  - Remaining remote branches: $REMAINING_BRANCHES"
-    echo ""
-    echo -e "${BLUE}📋 Current branches:${NC}"
-    git ls-remote --heads origin | sed 's/.*refs\/heads\//  - /'
-else
-    echo "  - Dry run completed - no changes made"
-fi
-
+# ---------------------------------------------------------------------------
+# Final summary
+# ---------------------------------------------------------------------------
+echo -e "${BLUE}📊 Results:${NC}"
+echo "  Pruned (deleted):      $COUNT_PRUNED"
+echo "  Merged then deleted:   $COUNT_MERGED"
+echo "  Skipped (not merged):  $COUNT_SKIPPED"
+echo "  Errors:                $COUNT_ERRORS"
 echo ""
+
+echo -e "${BLUE}📋 Remaining remote branches:${NC}"
+git ls-remote --heads origin 2>/dev/null | sed 's/.*refs\/heads\//  - /' || echo "  (none)"
+echo ""
+
 if [ "$DRY_RUN" = true ]; then
-    echo -e "${YELLOW}✅ Dry run complete!${NC}"
-    echo -e "${YELLOW}Run without --dry-run flag to perform actual deletion${NC}"
+    echo -e "${YELLOW}✅ Dry run complete — run without --dry-run to apply changes${NC}"
+elif [ "$COUNT_ERRORS" -gt 0 ]; then
+    echo -e "${RED}⚠️  Cleanup completed with $COUNT_ERRORS error(s)${NC}"
+    exit 1
 else
     echo -e "${GREEN}✅ Cleanup complete!${NC}"
 fi

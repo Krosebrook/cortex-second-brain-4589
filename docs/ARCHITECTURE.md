@@ -1,676 +1,248 @@
-# Cortex Architecture
-
-This document describes the system architecture, component relationships, and data flow in Cortex.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [System Architecture](#system-architecture)
-- [Frontend Architecture](#frontend-architecture)
-- [Backend Architecture](#backend-architecture)
-- [Data Flow](#data-flow)
-- [Component Relationships](#component-relationships)
-- [Security Architecture](#security-architecture)
-- [State Management](#state-management)
-
----
+# Architecture — Cortex Second Brain
 
 ## Overview
 
-Cortex is a knowledge management platform built with a modern React frontend and Supabase backend. The architecture prioritizes:
+Cortex Second Brain is a client-heavy Progressive Web App (PWA) backed by Supabase. The frontend is built with React 18 + TypeScript, communicates directly with Supabase (PostgreSQL, Auth, Realtime) via the JS SDK, and offloads compute-intensive or privileged operations to Deno-based Supabase Edge Functions.
 
-- **Simplicity**: Minimal abstractions, clear data flow
-- **Security**: Row-level security, input validation, rate limiting
-- **Performance**: Optimistic updates, caching, lazy loading
-- **Offline Support**: Service workers, local storage fallbacks
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Client (Browser)                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   React     │  │   PWA       │  │   Service Worker    │  │
-│  │   App       │  │   Shell     │  │   (Offline)         │  │
-│  └──────┬──────┘  └─────────────┘  └─────────────────────┘  │
-└─────────┼───────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Supabase Platform                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Auth      │  │   Database  │  │   Edge Functions    │  │
-│  │   (JWT)     │  │   (Postgres)│  │   (Deno)            │  │
-│  └─────────────┘  └─────────────┘  └──────────┬──────────┘  │
-└──────────────────────────────────────────────┼──────────────┘
-                                               │
-                                               ▼
-                                    ┌─────────────────────┐
-                                    │   OpenAI API        │
-                                    │   (GPT Models)      │
-                                    └─────────────────────┘
+## System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Client["Browser / Installed PWA"]
+        UI["React 18 UI\n(Vite + SWC)"]
+        SW["Service Worker\n(vite-plugin-pwa)"]
+        TQ["TanStack Query\nCache Layer"]
+        RR["React Router v6"]
+        AC["AuthContext\n(Supabase session)"]
+    end
+
+    subgraph Supabase["Supabase Cloud"]
+        Auth["Auth\n(email + TOTP)"]
+        DB["PostgreSQL\n(RLS enabled)"]
+        RT["Realtime"]
+        ST["Storage"]
+        EF["Edge Functions\n(Deno)"]
+    end
+
+    subgraph EdgeFunctions["Edge Functions"]
+        TESSA["chat-with-tessa-secure"]
+        PDF["parse-pdf"]
+        BACKUP["send-backup-email"]
+        LOCK["account-lockout"]
+        GDrive["google-drive-oauth"]
+        GEO["ip-geolocation"]
+        SHEADERS["security-headers"]
+        STATUS["system-status"]
+    end
+
+    subgraph ExternalAPIs["External Services"]
+        OpenAI["OpenAI API"]
+        Resend["Resend (email)"]
+        GDriveAPI["Google Drive API"]
+        IPAPI["ip-api.com"]
+    end
+
+    UI --> TQ
+    UI --> AC
+    UI --> RR
+    SW --> UI
+
+    TQ --> Auth
+    TQ --> DB
+    AC --> Auth
+
+    EF --> TESSA & PDF & BACKUP & LOCK & GDrive & GEO & SHEADERS & STATUS
+
+    TESSA --> OpenAI
+    BACKUP --> Resend
+    GDrive --> GDriveAPI
+    GEO --> IPAPI
+
+    UI --> EF
+    UI --> DB
+    UI --> RT
+    UI --> ST
 ```
 
 ---
 
-## System Architecture
+## Layer Breakdown
 
-### High-Level Components
+### 1. Presentation Layer (`src/components/`, `src/pages/`)
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Frontend** | React + Vite | User interface, routing, state |
-| **Styling** | Tailwind CSS | Design system, responsive layout |
-| **UI Components** | shadcn/ui | Accessible component primitives |
-| **Backend** | Supabase | Auth, database, storage, functions |
-| **AI** | OpenAI API | Natural language processing |
+- **Pages** (`src/pages/`): Route-level components, one per route. Thin orchestrators — they compose feature components, call hooks, and handle route params.
+- **Components** (`src/components/`): Organised by domain: `auth/`, `knowledge/`, `tessa/`, `admin/`, `settings/`, `landing/`, `ui/` (shadcn primitives), etc.
+- **Animations**: Framer Motion 12 with layout transitions and entrance animations.
+- **Command Palette**: `cmdk` library, available globally via `Ctrl+K`.
 
-### Technology Stack
+### 2. State & Data Layer
+
+| Concern | Solution |
+|---|---|
+| Server state / async data | TanStack Query 5 (queries, mutations, invalidation) |
+| Auth session | `AuthContext` (wraps `supabase.auth`, stored in `localStorage`) |
+| Local UI state | React `useState` / `useReducer` |
+| Offline queue | Custom background sync via Service Worker + IndexedDB |
+
+### 3. Service Layer (`src/services/`)
+
+All database access is encapsulated in service classes that extend `BaseService`. Services return typed results and throw `ApplicationError` on failure.
 
 ```
-Frontend                    Backend                     External
-────────                    ───────                     ────────
-React 18                    Supabase Auth               OpenAI API
-TypeScript                  PostgreSQL                  
-Vite                        Edge Functions (Deno)       
-Tailwind CSS                Row Level Security          
-React Query                 Realtime Subscriptions      
-React Router                Storage Buckets             
+BaseService
+├── KnowledgeService    – CRUD for knowledge_base table
+├── ChatService         – CRUD for chats + messages tables
+├── SearchService       – Full-text and semantic search
+├── UserService         – user_profiles + user_roles
+├── NotificationService – notifications table
+├── AdminService        – admin-level queries (rate limits, usage)
+└── AuditService        – profile_access_logs
+```
+
+### 4. Edge Functions (Deno / Supabase)
+
+Privileged or compute-intensive operations are handled server-side:
+
+| Function | Auth Required | Key Dependency |
+|---|---|---|
+| `chat-with-tessa-secure` | Yes | OpenAI, `usage_tracking` |
+| `parse-pdf` | No | Native Deno PDF parser |
+| `send-backup-email` | Yes | Resend API |
+| `account-lockout` | Service role | `login_attempts` table |
+| `google-drive-oauth` | Yes | Google OAuth 2.0 |
+| `ip-geolocation` | Yes | ip-api.com |
+| `security-headers` | No | — |
+| `system-status` | No (admin detail) | Supabase service role |
+
+### 5. Database (PostgreSQL + RLS)
+
+All tables enforce Row Level Security. Users can only read/write their own rows. Admin access is gated by `has_role('admin')` RPC check.
+
+See [DATABASE.md](DATABASE.md) for full schema.
+
+### 6. PWA / Offline
+
+- Service worker generated by `vite-plugin-pwa` (Workbox).
+- Caching strategies:
+  - **Fonts** → CacheFirst
+  - **Images** → CacheFirst
+  - **JS/CSS bundles** → StaleWhileRevalidate
+  - **Supabase API calls** → NetworkFirst with 10s timeout
+- Offline fallback route: `/offline`
+- Background sync queue retries failed writes when connectivity is restored.
+
+---
+
+## Data Flow — TESSA AI Chat
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as React UI
+    participant TQ as TanStack Query
+    participant EF as chat-with-tessa-secure
+    participant OAI as OpenAI API
+    participant DB as Supabase DB
+
+    User->>UI: Types message, presses Send
+    UI->>TQ: useMutation → POST /functions/v1/chat-with-tessa-secure
+    TQ->>EF: {message, chatId} + Bearer token
+    EF->>DB: Verify JWT, check usage_tracking rate limit
+    EF->>OAI: POST /chat/completions
+    OAI-->>EF: AI response stream
+    EF->>DB: INSERT message (role=assistant)
+    EF-->>TQ: {response: "..."}
+    TQ-->>UI: Invalidate messages query
+    UI-->>User: Renders AI response
 ```
 
 ---
 
-## Frontend Architecture
+## Data Flow — Offline Write
 
-### Directory Structure
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as React UI
+    participant SW as Service Worker
+    participant Queue as Sync Queue
+    participant DB as Supabase DB
 
-```
-src/
-├── components/           # React components
-│   ├── ui/              # Base UI primitives (shadcn)
-│   ├── feedback/        # Toasts, dialogs, progress
-│   ├── search/          # Chat interface components
-│   ├── knowledge/       # Knowledge base components
-│   ├── landing/         # Marketing/landing pages
-│   ├── layout/          # Page wrappers, navigation
-│   └── [feature]/       # Feature-specific components
-│
-├── pages/               # Route page components
-│   ├── Index.tsx        # Landing page
-│   ├── Dashboard.tsx    # Main dashboard
-│   ├── SearchPage.tsx   # Chat with Tessa
-│   └── ...
-│
-├── hooks/               # Custom React hooks
-│   ├── useChat.ts       # Chat state management
-│   ├── useKnowledge.ts  # Knowledge CRUD operations
-│   └── ...
-│
-├── services/            # API service layer
-│   ├── base.service.ts  # Common service utilities
-│   ├── chat.service.ts  # Chat API calls
-│   └── knowledge.service.ts
-│
-├── contexts/            # React context providers
-│   ├── AuthContext.tsx  # Authentication state
-│   ├── ThemeContext.tsx # Theme preferences
-│   └── OfflineContext.tsx
-│
-├── lib/                 # Utilities and helpers
-│   ├── utils.ts         # Common utilities
-│   ├── cache-manager.ts # Caching logic
-│   └── ...
-│
-├── types/               # TypeScript definitions
-│   ├── chat.ts
-│   ├── index.ts
-│   └── ...
-│
-└── integrations/        # External integrations
-    └── supabase/
-        ├── client.ts    # Supabase client instance
-        └── types.ts     # Generated database types
-```
+    User->>UI: Creates knowledge entry (offline)
+    UI->>SW: Register background sync
+    SW->>Queue: Enqueue operation in IndexedDB
+    UI-->>User: Optimistic UI update
 
-### Component Hierarchy
+    Note over SW: Network restored
 
-```
-App
-├── ThemeProvider
-│   └── AuthProvider
-│       └── OfflineProvider
-│           └── QueryClientProvider
-│               └── BrowserRouter
-│                   └── Routes
-│                       ├── Index (Landing)
-│                       ├── AuthPage
-│                       ├── ProtectedRoute
-│                       │   ├── Dashboard
-│                       │   ├── SearchPage
-│                       │   │   └── ChatContainer
-│                       │   │       ├── ChatSidebar
-│                       │   │       ├── ChatMessages
-│                       │   │       └── ChatInput
-│                       │   ├── ManagePage
-│                       │   └── Settings
-│                       └── NotFound
-```
-
-### Design System
-
-The design system is defined in two key files:
-
-**`src/index.css`** - CSS custom properties (tokens)
-```css
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --secondary: 210 40% 96.1%;
-  --muted: 210 40% 96.1%;
-  --accent: 210 40% 96.1%;
-  /* ... */
-}
-```
-
-**`tailwind.config.ts`** - Tailwind theme extension
-```typescript
-theme: {
-  extend: {
-    colors: {
-      background: "hsl(var(--background))",
-      foreground: "hsl(var(--foreground))",
-      primary: {
-        DEFAULT: "hsl(var(--primary))",
-        foreground: "hsl(var(--primary-foreground))",
-      },
-      // ...
-    }
-  }
-}
-```
-
----
-
-## Backend Architecture
-
-### Supabase Services
-
-```
-┌────────────────────────────────────────────────────────────┐
-│                    Supabase Project                         │
-├────────────────┬───────────────┬───────────────────────────┤
-│                │               │                           │
-│  ┌──────────┐  │  ┌─────────┐  │  ┌─────────────────────┐  │
-│  │   Auth   │  │  │Database │  │  │   Edge Functions    │  │
-│  ├──────────┤  │  ├─────────┤  │  ├─────────────────────┤  │
-│  │ - JWT    │  │  │ - Tables│  │  │ - chat-with-tessa   │  │
-│  │ - Users  │  │  │ - RLS   │  │  │ - chat-with-tessa-  │  │
-│  │ - OAuth  │  │  │ - Funcs │  │  │   secure            │  │
-│  └──────────┘  │  └─────────┘  │  │ - system-status     │  │
-│                │               │  │ - ip-geolocation    │  │
-│                │               │  └─────────────────────┘  │
-└────────────────┴───────────────┴───────────────────────────┘
-```
-
-### Database Schema (Key Tables)
-
-#### Core Tables
-
-```
-┌─────────────────┐     ┌─────────────────┐
-│     chats       │     │   messages      │
-├─────────────────┤     ├─────────────────┤
-│ id (PK)         │────<│ id (PK)         │
-│ user_id (FK)    │     │ chat_id (FK)    │
-│ title           │     │ content         │
-│ created_at      │     │ role            │
-│ updated_at      │     │ created_at      │
-└─────────────────┘     └─────────────────┘
-
-┌─────────────────┐     ┌─────────────────┐
-│  knowledge_base │     │  user_profiles  │
-├─────────────────┤     ├─────────────────┤
-│ id (PK)         │     │ id (PK)         │
-│ user_id (FK)    │     │ email           │
-│ title           │     │ full_name       │
-│ content         │     │ subscription_   │
-│ tags[]          │     │   tier          │
-│ type            │     │ created_at      │
-│ source_url      │     └─────────────────┘
-└─────────────────┘
-
-┌─────────────────┐
-│ filter_presets  │
-├─────────────────┤
-│ id (PK)         │
-│ user_id (FK)    │
-│ name            │
-│ filters (JSON)  │
-│ is_default      │
-│ sort_order      │
-└─────────────────┘
-```
-
-#### Security Tables
-
-```
-┌───────────────────────┐     ┌───────────────────────┐
-│ failed_login_attempts │     │     blocked_ips       │
-├───────────────────────┤     ├───────────────────────┤
-│ id (PK)               │     │ id (PK)               │
-│ email                 │     │ ip_address            │
-│ ip_address            │     │ reason                │
-│ user_agent            │     │ blocked_until         │
-│ attempted_at          │     │ permanent             │
-│ country               │     │ blocked_by_user_id    │
-│ city                  │     │ created_at            │
-│ region                │     └───────────────────────┘
-│ country_code          │
-└───────────────────────┘
-
-┌───────────────────────┐     ┌───────────────────────┐
-│   security_alerts     │     │   rate_limit_config   │
-├───────────────────────┤     ├───────────────────────┤
-│ id (PK)               │     │ id (PK)               │
-│ alert_type            │     │ config_key            │
-│ severity              │     │ max_attempts          │
-│ ip_address            │     │ time_window_minutes   │
-│ user_id               │     │ block_duration_minutes│
-│ event_data (JSON)     │     │ enabled               │
-│ triggered_at          │     │ updated_at            │
-│ email_sent            │     └───────────────────────┘
-└───────────────────────┘
-
-┌───────────────────────┐
-│    ip_geolocation     │
-├───────────────────────┤
-│ ip_address (PK)       │
-│ country               │
-│ country_code          │
-│ region                │
-│ city                  │
-│ latitude              │
-│ longitude             │
-│ cached_at             │
-└───────────────────────┘
-```
-
-### Edge Function Flow
-
-```
-                    ┌─────────────────────────────────────┐
-                    │         chat-with-tessa-secure      │
-                    └─────────────────────────────────────┘
-                                      │
-        ┌─────────────────────────────┼─────────────────────────────┐
-        ▼                             ▼                             ▼
-┌───────────────┐           ┌─────────────────┐           ┌─────────────────┐
-│ Rate Limiter  │           │ Input Validator │           │ Auth Verifier   │
-│ (10 req/min)  │           │ (Sanitize XSS)  │           │ (JWT + Owner)   │
-└───────┬───────┘           └────────┬────────┘           └────────┬────────┘
-        │                            │                             │
-        └────────────────────────────┼─────────────────────────────┘
-                                     ▼
-                    ┌─────────────────────────────────────┐
-                    │        Fetch Knowledge Context      │
-                    │     (User's knowledge_base items)   │
-                    └─────────────────────────────────────┘
-                                     │
-                                     ▼
-                    ┌─────────────────────────────────────┐
-                    │          OpenAI API Call            │
-                    │   (System prompt + User context)    │
-                    └─────────────────────────────────────┘
-                                     │
-                                     ▼
-                    ┌─────────────────────────────────────┐
-                    │        Store Response in DB         │
-                    │        Return to Client             │
-                    └─────────────────────────────────────┘
-```
-
----
-
-## Data Flow
-
-### Authentication Flow
-
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  User    │    │  React   │    │ Supabase │    │  Auth    │
-│          │    │   App    │    │  Client  │    │ Service  │
-└────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘
-     │               │               │               │
-     │  Login Form   │               │               │
-     │──────────────>│               │               │
-     │               │               │               │
-     │               │ signInWithPassword            │
-     │               │──────────────>│               │
-     │               │               │               │
-     │               │               │  Validate     │
-     │               │               │──────────────>│
-     │               │               │               │
-     │               │               │  JWT + User   │
-     │               │               │<──────────────│
-     │               │               │               │
-     │               │  Session      │               │
-     │               │<──────────────│               │
-     │               │               │               │
-     │  Redirect     │               │               │
-     │<──────────────│               │               │
-```
-
-### Chat Message Flow
-
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  User    │    │  Chat    │    │  Edge    │    │ Database │    │  OpenAI  │
-│          │    │  Input   │    │ Function │    │          │    │   API    │
-└────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘
-     │               │               │               │               │
-     │  Type message │               │               │               │
-     │──────────────>│               │               │               │
-     │               │               │               │               │
-     │               │  POST /chat-with-tessa        │               │
-     │               │──────────────>│               │               │
-     │               │               │               │               │
-     │               │               │  Save user msg│               │
-     │               │               │──────────────>│               │
-     │               │               │               │               │
-     │               │               │  Get knowledge│               │
-     │               │               │──────────────>│               │
-     │               │               │               │               │
-     │               │               │  knowledge[]  │               │
-     │               │               │<──────────────│               │
-     │               │               │               │               │
-     │               │               │  Chat completion               │
-     │               │               │──────────────────────────────>│
-     │               │               │               │               │
-     │               │               │  AI response  │               │
-     │               │               │<──────────────────────────────│
-     │               │               │               │               │
-     │               │               │  Save AI msg  │               │
-     │               │               │──────────────>│               │
-     │               │               │               │               │
-     │               │  Response     │               │               │
-     │               │<──────────────│               │               │
-     │               │               │               │               │
-     │  Show message │               │               │               │
-     │<──────────────│               │               │               │
-```
-
----
-
-## Component Relationships
-
-### Chat System
-
-```
-SearchPage
-    │
-    └── ChatContainer
-            │
-            ├── ChatSidebar
-            │       │
-            │       ├── Chat List
-            │       │     └── Chat Item (selectable)
-            │       │
-            │       └── New Chat Button
-            │
-            ├── ChatMessages
-            │       │
-            │       └── Message[]
-            │             ├── User Message
-            │             └── Assistant Message
-            │
-            └── ChatInput
-                    │
-                    ├── Text Input
-                    ├── Send Button
-                    └── Loading State
-```
-
-### Knowledge Management
-
-```
-ManagePage
-    │
-    ├── ViewSwitcher
-    │       └── [Table | Grid | Kanban | List]
-    │
-    ├── SearchFilterBar
-    │       ├── Search Input
-    │       ├── Filter Controls
-    │       └── Filter Presets
-    │
-    └── View Component
-            │
-            ├── TableView
-            │     └── CortexTable
-            │
-            ├── GridView
-            │     └── Knowledge Cards[]
-            │
-            ├── KanbanView
-            │     └── Columns[]
-            │           └── Cards[]
-            │
-            └── ListView
-                  └── List Items[]
+    SW->>Queue: Dequeue pending operations
+    Queue->>DB: Replay writes with retry/backoff
+    DB-->>SW: Confirm success
+    SW->>UI: postMessage → invalidate queries
+    UI-->>User: Synced state
 ```
 
 ---
 
 ## Security Architecture
 
-### Authentication Layer
+```mermaid
+graph LR
+    subgraph Transport
+        HTTPS["HTTPS / TLS 1.3"]
+    end
+    subgraph Auth
+        JWT["Supabase JWT\n(RS256)"]
+        MFA["TOTP MFA"]
+        Lockout["Account Lockout\nEdge Function"]
+    end
+    subgraph Data
+        RLS["PostgreSQL RLS\n(per-user isolation)"]
+        DP["DOMPurify\n(XSS sanitization)"]
+    end
+    subgraph Headers
+        CSP["Content-Security-Policy"]
+        HSTS["Strict-Transport-Security"]
+        XFO["X-Frame-Options: DENY"]
+    end
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Security Layers                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  1. Frontend Authentication (AuthContext)            │   │
-│  │     - Session management                              │   │
-│  │     - Protected route guards                          │   │
-│  │     - Token refresh                                   │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                           │                                  │
-│                           ▼                                  │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  2. API Authentication (JWT)                         │   │
-│  │     - Bearer token in headers                         │   │
-│  │     - Token validation in edge functions              │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                           │                                  │
-│                           ▼                                  │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  3. Database Security (RLS)                          │   │
-│  │     - Row Level Security policies                     │   │
-│  │     - User-scoped data access                         │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Row Level Security Example
-
-```sql
--- Users can only read their own knowledge items
-CREATE POLICY "Users can view own knowledge"
-ON knowledge_base FOR SELECT
-USING (auth.uid() = user_id);
-
--- Users can only insert their own knowledge items
-CREATE POLICY "Users can create own knowledge"
-ON knowledge_base FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-```
-
-### Rate Limiting Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   Rate Limiting Flow                         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-        ┌─────────────────────────────────────────┐
-        │        Failed Login Attempt              │
-        │    (AuthPage → record_failed_login)      │
-        └─────────────────────────────────────────┘
-                              │
-                              ▼
-        ┌─────────────────────────────────────────┐
-        │     check_and_block_ip() Trigger         │
-        │  • Check rate_limit_config settings      │
-        │  • Count attempts in time window         │
-        └─────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-     ┌─────────────────┐            ┌─────────────────┐
-     │ Under Threshold │            │ Over Threshold  │
-     │ (Allow access)  │            │ (Block IP)      │
-     └─────────────────┘            └────────┬────────┘
-                                             │
-                                             ▼
-                                  ┌─────────────────────┐
-                                  │ Insert blocked_ips  │
-                                  │ Log security_event  │
-                                  └─────────────────────┘
-```
-
-### IP Geolocation Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│               ip-geolocation Edge Function                   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-        ┌─────────────────────────────────────────┐
-        │       Check ip_geolocation cache         │
-        └─────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-     ┌─────────────────┐            ┌─────────────────┐
-     │   Cache Hit     │            │   Cache Miss    │
-     │ (Return cached) │            │ (Lookup IP)     │
-     └─────────────────┘            └────────┬────────┘
-                                             │
-                                             ▼
-                                  ┌─────────────────────┐
-                                  │  ip-api.com lookup  │
-                                  │  Cache result       │
-                                  │  Return geolocation │
-                                  └─────────────────────┘
+    HTTPS --> JWT --> RLS
+    JWT --> MFA
+    MFA --> Lockout
+    RLS --> DP
+    HTTPS --> CSP & HSTS & XFO
 ```
 
 ---
 
-## State Management
+## Build & Bundle
 
-### State Distribution
+Vite code-splitting produces the following chunks:
 
-| State Type | Location | Persistence |
-|------------|----------|-------------|
-| Auth state | AuthContext | Session storage |
-| Theme | ThemeContext | Local storage |
-| Server data | React Query cache | Memory (with refetch) |
-| Form state | React Hook Form | Component state |
-| UI state | Component state | None |
-| Offline queue | OfflineContext | IndexedDB |
+| Chunk | Contents |
+|---|---|
+| `react-vendor` | `react`, `react-dom`, `react-router-dom` |
+| `ui-vendor` | `@radix-ui/*`, `framer-motion`, `lucide-react` |
+| `supabase` | `@supabase/supabase-js` |
+| `query` | `@tanstack/react-query` |
+| `charts` | `recharts` |
 
-### React Query Pattern
+Dev server runs on **port 8080**.
+
+---
+
+## Error Handling
+
+All service errors are wrapped in `ApplicationError` which implements `AppError`:
 
 ```typescript
-// Query for fetching data
-const { data, isLoading, error } = useQuery({
-  queryKey: ['knowledge', userId],
-  queryFn: () => knowledgeService.list(userId),
-});
-
-// Mutation with optimistic updates
-const mutation = useMutation({
-  mutationFn: knowledgeService.create,
-  onMutate: async (newItem) => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries(['knowledge']);
-    
-    // Snapshot previous value
-    const previous = queryClient.getQueryData(['knowledge']);
-    
-    // Optimistically update
-    queryClient.setQueryData(['knowledge'], (old) => [...old, newItem]);
-    
-    return { previous };
-  },
-  onError: (err, newItem, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['knowledge'], context.previous);
-  },
-  onSettled: () => {
-    // Refetch after mutation
-    queryClient.invalidateQueries(['knowledge']);
-  },
-});
+enum ErrorCode {
+  UNKNOWN, VALIDATION, NOT_FOUND, UNAUTHORIZED,
+  FORBIDDEN, NETWORK_ERROR, TIMEOUT, DATABASE,
+  CONFLICT, SERVICE_UNAVAILABLE, RATE_LIMITED
+}
 ```
 
----
-
-## Performance Considerations
-
-### Optimization Strategies
-
-| Strategy | Implementation |
-|----------|----------------|
-| Code splitting | React.lazy + Suspense for routes |
-| Image optimization | Lazy loading, WebP format |
-| Query caching | React Query with stale-while-revalidate |
-| Virtual scrolling | @tanstack/react-virtual for large lists |
-| Debouncing | useDebounce hook for search inputs |
-| Memoization | React.memo, useMemo, useCallback |
-
-### Bundle Size Management
-
-```
-Route-based code splitting:
-├── / (Landing)           ~50KB
-├── /auth                 ~30KB
-├── /dashboard            ~80KB
-├── /search               ~100KB (includes chat)
-└── /manage               ~120KB (includes views)
-```
-
----
-
-## Future Considerations
-
-### Planned Improvements
-
-1. **Real-time Collaboration**
-   - Supabase Realtime for live updates
-   - Presence indicators
-   - Collaborative editing
-
-2. **Enhanced AI**
-   - Streaming responses
-   - Multi-modal support (images)
-   - Custom knowledge embeddings
-
-3. **Mobile App**
-   - React Native or Capacitor
-   - Offline-first architecture
-   - Push notifications
-
----
-
-## References
-
-- [React Documentation](https://react.dev)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)
-- [shadcn/ui](https://ui.shadcn.com)
-- [React Query](https://tanstack.com/query)
+TanStack Query retries network errors automatically (configured via `ApiConfig.maxRetries`).
