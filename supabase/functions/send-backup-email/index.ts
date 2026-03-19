@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "Cortex <onboarding@resend.dev>",
-      to: [email],
+      to: [userEmail],
       subject: `🧠 Your Cortex Backup - ${backupDate}`,
       html: emailHtml,
       attachments,
