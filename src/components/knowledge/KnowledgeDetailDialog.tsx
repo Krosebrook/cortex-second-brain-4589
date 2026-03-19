@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { FileText, Calendar, Link, Copy, Check, Pencil, Save, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 
