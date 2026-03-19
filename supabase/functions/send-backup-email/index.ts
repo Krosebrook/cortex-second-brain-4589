@@ -50,7 +50,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, backupData, format }: BackupEmailRequest = await req.json();
+    const { backupData, format }: BackupEmailRequest = await req.json();
+
+    // Use the authenticated user's email to prevent relay abuse
+    const userEmail = user.email;
+    if (!userEmail) {
+      return new Response(
+        JSON.stringify({ error: 'No email associated with your account' }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const backupDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
