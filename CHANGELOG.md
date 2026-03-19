@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.0](https://github.com/Krosebrook/cortex-second-brain-4589/compare/v0.1.2...v0.2.0) (2026-03-19)
+
+
+### Features
+
+* generate CLAUDE.md and refactor async/await patterns ([06e7e5b](https://github.com/Krosebrook/cortex-second-brain-4589/commit/06e7e5b44a2ca5ce9af9f6d3c9731efcdc487285))
+* safe merge-or-prune branch workflow and script ([d96eecc](https://github.com/Krosebrook/cortex-second-brain-4589/commit/d96eecc42568867e4f3ae992355cb551fdbeff60))
+
+
+### Bug Fixes
+
+* update @vitest/coverage-v8 to ^4.1.0 to match vitest@4.1.0 and fix npm ci failure ([8da7918](https://github.com/Krosebrook/cortex-second-brain-4589/commit/8da79186f7cd360bda5796936e7ae34d48b721d4))
+
 ## [Unreleased]
 
 ---
