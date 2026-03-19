@@ -174,9 +174,9 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
         ) : (
           <ScrollArea className="flex-1 min-h-0 max-h-[50vh] rounded-md border p-4 bg-muted/30">
             {item.content ? (
-              <pre className="whitespace-pre-wrap break-words text-sm text-foreground font-sans leading-relaxed">
-                {item.content}
-              </pre>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed">
+                <ReactMarkdown>{item.content}</ReactMarkdown>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">No content available</p>
             )}
