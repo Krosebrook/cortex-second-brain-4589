@@ -36,14 +36,46 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck (if available)
-        run: npm run typecheck --if-present
+      - name: Type check
+        run: npm run type-check
 
       - name: Lint (if available)
         run: npm run lint --if-present
+
+      - name: Security audit
+        run: npm audit --audit-level=high --omit=dev
+        continue-on-error: true
 
       - name: Test (if available)
         run: npm test --if-present
 
       - name: Build
         run: npm run build
+
+      - name: Check bundle size
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const assetsDir = 'dist/assets';
+            if (!fs.existsSync(assetsDir)) { console.log('No dist/assets directory found'); process.exit(0); }
+            const files = fs.readdirSync(assetsDir)
+              .filter(f => f.endsWith('.js') || f.endsWith('.css'))
+              .map(f => ({ name: f, size: fs.statSync(path.join(assetsDir, f)).size }))
+              .sort((a, b) => b.size - a.size);
+            const totalKB = files.reduce((s, f) => s + f.size, 0) / 1024;
+            console.log('| File | Size |');
+            console.log('|------|------|');
+            files.slice(0, 10).forEach(f => console.log(\`| \${f.name} | \${(f.size/1024).toFixed(1)} KB |\`));
+            console.log('');
+            console.log(\`**Total assets: \${totalKB.toFixed(1)} KB**\`);
+            const BUDGET_KB = 2048;
+            if (totalKB > BUDGET_KB) {
+              console.error(\`❌ Bundle size \${totalKB.toFixed(1)} KB exceeds budget of \${BUDGET_KB} KB\`);
+              process.exit(1);
+            } else {
+              console.log(\`✅ Bundle size \${totalKB.toFixed(1)} KB is within budget of \${BUDGET_KB} KB\`);
+            }
+          " | tee -a $GITHUB_STEP_SUMMARY
