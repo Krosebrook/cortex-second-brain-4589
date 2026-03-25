@@ -44,10 +44,10 @@ class NotificationServiceImpl extends BaseService {
         query = query.eq('is_read', isRead);
       }
       if (type) {
-        query = query.eq('type', type as any);
+        query = query.eq('type', type);
       }
       if (category) {
-        query = query.eq('category', category as any);
+        query = query.eq('category', category);
       }
 
       const { data, error, count } = await query;
@@ -127,11 +127,11 @@ class NotificationServiceImpl extends BaseService {
           user_id: notification.userId,
           title: notification.title,
           message: notification.message,
-          type: (notification.type || 'info') as any,
-          category: (notification.category || 'general') as any,
+          type: notification.type || 'info',
+          category: notification.category || 'general',
           action_url: notification.actionUrl || null,
           metadata: notification.metadata || {},
-        } as any)
+        })
         .select('id')
         .single();
 

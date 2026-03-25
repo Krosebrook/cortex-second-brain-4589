@@ -38,12 +38,12 @@ This roadmap reflects planned improvements based on the current state of the cod
 - [ ] Upgrade `esbuild` / `vite` to resolve moderate dev-server vulnerability
 - [ ] Upgrade `flatted`, `serialize-javascript`, `@rollup/plugin-terser` (build-time highs)
 - [ ] Track `workbox-build` upstream fix for `@rollup/plugin-terser` dependency
-- [ ] Add Dependabot / Renovate configuration
+- [x] Add Dependabot / Renovate configuration
 
 ### Type Safety
 
-- [ ] Eliminate `as any` in `src/services/` (highest risk — 35 occurrences)
-- [ ] Eliminate `as any` in `src/hooks/` (20 occurrences)
+- [x] Eliminate `as any` in `src/services/` production code (5 occurrences in `notification.service.ts` fixed)
+- [ ] Eliminate `as any` in `src/hooks/` (20 occurrences in test files)
 - [ ] Reduce `as any` in `src/components/` and `src/utils/`
 - [ ] Enable `ts-unused-exports` in CI to catch dead exports
 
@@ -55,9 +55,9 @@ This roadmap reflects planned improvements based on the current state of the cod
 
 ### CI/CD
 
-- [ ] Add `npm audit` check (fail on high severity in non-dev deps)
-- [ ] Add `npm run type-check` to CI pipeline
-- [ ] Add bundle size tracking with budget alerts
+- [x] Add `npm audit` check (fail on high severity in non-dev deps)
+- [x] Add `npm run type-check` to CI pipeline
+- [x] Add bundle size tracking with budget alerts
 
 ---
 
