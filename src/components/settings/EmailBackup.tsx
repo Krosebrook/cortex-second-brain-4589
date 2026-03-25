@@ -83,7 +83,6 @@ export const EmailBackup: React.FC = () => {
 
       const response = await supabase.functions.invoke('send-backup-email', {
         body: {
-          email: settings.email,
           backupData,
           format: settings.includeAttachment ? 'json' : 'summary'
         }
