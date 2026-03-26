@@ -1,131 +1,105 @@
-## Description
+## Summary
 
-<!-- Provide a brief description of the changes in this PR -->
+<!-- Provide a concise summary of what this PR does and why -->
 
-## Related Issues
 
-<!-- Link any related issues using "Fixes #123" or "Relates to #123" -->
-
-Fixes #
 
 ## Type of Change
 
-<!-- Mark the appropriate option with an "x" -->
+<!-- Mark the appropriate option(s) with an "x" -->
 
 - [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
 - [ ] ✨ New feature (non-breaking change that adds functionality)
 - [ ] 💥 Breaking change (fix or feature that would cause existing functionality to change)
 - [ ] 📝 Documentation update
-- [ ] 🎨 Style/UI update (formatting, styling, no code change)
+- [ ] 🎨 Style/UI update (formatting, styling, no logic change)
 - [ ] ♻️ Refactor (code change that neither fixes a bug nor adds a feature)
 - [ ] ⚡ Performance improvement
 - [ ] ✅ Test update (adding or updating tests)
-- [ ] 🔧 Configuration change
+- [ ] 🔧 Configuration / infrastructure change
 - [ ] 🔒 Security fix
 
-## Changes Made
+## What Changed
 
-<!-- List the key changes made in this PR -->
+<!-- List every meaningful change introduced by this PR. Be specific. -->
 
 - 
 - 
 - 
-
-## Screenshots / Videos
-
-<!-- If applicable, add screenshots or videos to demonstrate the changes -->
-
-| Before | After |
-|--------|-------|
-|        |       |
 
 ## Testing
 
-### How Has This Been Tested?
+<!-- Describe how you verified these changes work correctly -->
 
-<!-- Describe the tests you ran to verify your changes -->
+### Test Coverage
 
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Manual testing
-- [ ] E2E tests
+- [ ] Unit tests added / updated
+- [ ] Integration tests added / updated
+- [ ] E2E tests added / updated
+- [ ] Manual testing performed
 
-### Test Configuration
+### How to Reproduce / Verify
 
-- **Browser(s)**: 
-- **Device(s)**: 
-
-### Test Cases
-
-<!-- List specific test cases covered -->
+<!-- Step-by-step instructions a reviewer can follow to manually verify the change -->
 
 1. 
 2. 
 3. 
 
+### Test Configuration
+
+- **Browser(s)**:
+- **Device(s)**:
+
+## Security Impact
+
+<!--
+  Does this PR touch authentication, authorisation, secrets handling, user-input
+  processing, cryptography, or any security-sensitive subsystem?
+
+  If YES — add the label `security-review` to this PR.
+  The @security-review team will be automatically requested for review.
+  CI will fail until a member of @security-review approves.
+
+  Answer each question below:
+-->
+
+- [ ] This PR modifies authentication or authorisation logic
+- [ ] This PR touches secrets, credentials, or environment variable handling
+- [ ] This PR changes input validation, sanitisation, or output encoding
+- [ ] This PR modifies RLS policies or database access control
+- [ ] This PR introduces or changes cryptographic operations
+- [ ] This PR has **no** security impact (skip security review)
+
+**Security notes** (required if any box above is checked):
+
+<!-- Explain the security implications and any mitigations applied -->
+
+## Rollback Plan
+
+<!-- How do we revert this change if it causes issues in production?
+     For trivial changes (docs, config tweaks) you may write "Revert commit". -->
+
+
+
 ## Checklist
 
-### Code Quality
+### Author
 
-- [ ] My code follows the project's coding standards
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] My changes generate no new warnings or errors
-- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] Self-review completed — I have read through every changed line
+- [ ] Code follows project conventions (`@/` imports, `async/await`, `ApplicationError`, etc.)
+- [ ] No new lint errors or TypeScript warnings introduced (`npm run lint && npm run type-check`)
+- [ ] Tests pass locally (`npm run test`)
+- [ ] No secrets, credentials, or personally-identifiable data committed
+- [ ] `dangerouslySetInnerHTML` only used with DOMPurify sanitisation (if applicable)
+- [ ] New Supabase tables include RLS policies (if applicable)
+- [ ] Documentation updated (if behaviour or API changed)
+- [ ] CHANGELOG.md updated (if user-facing change)
 
-### Documentation
+### Reviewer
 
-- [ ] I have updated the documentation accordingly
-- [ ] I have updated the CHANGELOG.md if applicable
-- [ ] I have added/updated JSDoc comments for new functions
-
-### Security
-
-- [ ] I have considered security implications of my changes
-- [ ] Sensitive data is not exposed or logged
-- [ ] RLS policies are in place for new database tables
-- [ ] Input validation is implemented where needed
-
-### Accessibility
-
-- [ ] UI changes are accessible (keyboard navigation, screen readers)
-- [ ] Color contrast meets WCAG guidelines
-- [ ] Interactive elements have appropriate labels
-
-### Performance
-
-- [ ] I have considered the performance impact of my changes
-- [ ] No unnecessary re-renders or API calls are introduced
-- [ ] Large lists use virtualization if applicable
-
-## Database Changes
-
-<!-- If this PR includes database changes, describe them here -->
-
-- [ ] This PR includes database migrations
-- [ ] RLS policies have been added/updated
-- [ ] Indexes have been considered for new queries
-
-## Deployment Notes
-
-<!-- Any special considerations for deployment? -->
-
-- [ ] Environment variables need to be updated
-- [ ] Edge functions need to be redeployed
-- [ ] Database migrations need to be run
-
-## Additional Notes
-
-<!-- Any additional information that reviewers should know -->
-
----
-
-## Reviewer Checklist
-
-<!-- For reviewers to complete -->
-
-- [ ] Code follows project conventions
-- [ ] Tests are adequate and passing
-- [ ] Documentation is updated
-- [ ] Security considerations are addressed
-- [ ] No sensitive data is exposed
+- [ ] Code logic is correct and complete
+- [ ] Tests adequately cover the change
+- [ ] No security concerns introduced (or `security-review` label applied)
+- [ ] No sensitive data exposed in logs, responses, or comments
+- [ ] Breaking changes are documented and communicated

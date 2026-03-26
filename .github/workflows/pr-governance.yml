@@ -1,0 +1,211 @@
+name: PR Governance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Auto-label security-sensitive PRs
+  # ─────────────────────────────────────────────────────────────────────────────
+  label-security-prs:
+    name: Label security-sensitive PRs
+    runs-on: ubuntu-latest
+    outputs:
+      is_security: ${{ steps.detect.outputs.is_security }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect security-sensitive file changes
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || \
+                    git diff --name-only origin/${{ github.event.pull_request.base.ref }} HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          IS_SECURITY=false
+          while IFS= read -r file; do
+            case "$file" in
+              src/auth/*|infra/*|secrets/*|middleware/*|\
+              .env|.env.*|terraform/*|helm/*)
+                IS_SECURITY=true
+                break
+                ;;
+            esac
+          done <<< "$CHANGED"
+
+          echo "is_security=$IS_SECURITY" >> "$GITHUB_OUTPUT"
+          echo "is_security=$IS_SECURITY"
+
+      - name: Ensure 'security-review' label exists in repo
+        if: steps.detect.outputs.is_security == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          CREATE_OUTPUT=$(gh label create "security-review" \
+            --repo "$REPO" \
+            --description "Requires security team review before merge" \
+            --color "B60205" \
+            2>&1) || {
+            # Treat "already exists" as success; re-raise any other error
+            if echo "$CREATE_OUTPUT" | grep -qi "already exists"; then
+              echo "Label 'security-review' already exists — skipping creation."
+            else
+              echo "Failed to create label: $CREATE_OUTPUT" >&2
+              exit 1
+            fi
+          }
+
+      - name: Apply 'security-review' label to PR
+        if: steps.detect.outputs.is_security == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "security-review"
+          echo "✅ Applied 'security-review' label to PR #$PR_NUMBER"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Fail CI if security paths are touched but label is absent
+  # ─────────────────────────────────────────────────────────────────────────────
+  security-review-gate:
+    name: Security review gate
+    runs-on: ubuntu-latest
+    needs: label-security-prs
+    steps:
+      - name: Check security-review label
+        env:
+          IS_SECURITY: ${{ needs.label-security-prs.outputs.is_security }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "Security-sensitive paths touched: $IS_SECURITY"
+          echo "Current PR labels: $PR_LABELS"
+
+          if [[ "$IS_SECURITY" != "true" ]]; then
+            echo "✅ No security-sensitive paths modified — gate passed."
+            exit 0
+          fi
+
+          # Check whether the security-review label is present
+          if echo "$PR_LABELS" | grep -q '"security-review"'; then
+            echo "✅ 'security-review' label is present — gate passed."
+            echo "   A member of the security team must approve before this PR can be merged."
+            exit 0
+          else
+            echo "❌ This PR modifies security-sensitive paths but the"
+            echo "   'security-review' label is missing."
+            echo ""
+            echo "   Affected path patterns: src/auth/, infra/, secrets/,"
+            echo "   middleware/, .env, terraform/, helm/"
+            echo ""
+            echo "   The 'label-security-prs' job should have applied the label"
+            echo "   automatically. If it was manually removed, please restore it"
+            echo "   and obtain approval from the @security-review team."
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 — Warn on large PRs (> 800 lines changed)
+  # ─────────────────────────────────────────────────────────────────────────────
+  pr-size-check:
+    name: PR size check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count lines changed
+        id: count
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          DIFF_STAT=$(git diff --stat "$BASE_SHA" "$HEAD_SHA" 2>/dev/null) || \
+            DIFF_STAT=$(git diff --stat "origin/${{ github.event.pull_request.base.ref }}" HEAD 2>/dev/null) || {
+              echo "Warning: could not compute diff stat; defaulting counts to 0" >&2
+              DIFF_STAT=""
+            }
+
+          # Extract total insertions + deletions from the summary line
+          # Uses two-step grep for portability (no lookahead required)
+          SUMMARY=$(echo "$DIFF_STAT" | tail -1)
+          ADDED=$(echo "$SUMMARY" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' | head -1 || true)
+          DELETED=$(echo "$SUMMARY" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' | head -1 || true)
+          ADDED=${ADDED:-0}
+          DELETED=${DELETED:-0}
+          TOTAL=$(( ADDED + DELETED ))
+
+          echo "Lines added:   $ADDED"
+          echo "Lines deleted: $DELETED"
+          echo "Total changed: $TOTAL"
+
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "added=$ADDED" >> "$GITHUB_OUTPUT"
+          echo "deleted=$DELETED" >> "$GITHUB_OUTPUT"
+
+      - name: Post warning comment for large PRs
+        if: ${{ fromJson(steps.count.outputs.total) > 800 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          TOTAL: ${{ steps.count.outputs.total }}
+          ADDED: ${{ steps.count.outputs.added }}
+          DELETED: ${{ steps.count.outputs.deleted }}
+        run: |
+          BODY="## ⚠️ Large PR Warning
+
+          This PR changes **${TOTAL} lines** (+${ADDED} / -${DELETED}), which exceeds the recommended limit of **800 lines**.
+
+          Large PRs are harder to review thoroughly and increase the risk of introducing bugs or security issues.
+
+          **Please consider:**
+          - Breaking this PR into smaller, focused pull requests
+          - Confirming that the full change is truly atomic and cannot be split
+
+          If this PR must remain large, add a comment explaining why it cannot be broken up.
+
+          > *This is an automated message from the PR Governance workflow.*"
+
+          # Post or update the warning comment (avoid duplicate comments on re-runs)
+          EXISTING=$(gh api \
+            "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | startswith("## ⚠️ Large PR Warning")) | .id' \
+            2>/dev/null | head -1)
+
+          if [[ -n "$EXISTING" ]]; then
+            gh api --method PATCH \
+              "repos/${REPO}/issues/comments/${EXISTING}" \
+              -f body="$BODY" > /dev/null
+            echo "Updated existing large-PR warning comment (id=$EXISTING)."
+          else
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
+            echo "Posted large-PR warning comment."
+          fi
+
+      - name: Report size status
+        env:
+          TOTAL: ${{ steps.count.outputs.total }}
+        run: |
+          if (( TOTAL > 800 )); then
+            echo "⚠️  PR size is ${TOTAL} lines — a warning comment has been posted."
+          else
+            echo "✅ PR size is ${TOTAL} lines — within the 800-line guideline."
+          fi
